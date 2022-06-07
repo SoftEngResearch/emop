@@ -1,0 +1,17 @@
+# Build files
+**/target/*
+emop-core/target/
+emop-plugin/target/
+
+# IntelliJ IDEA specific
+.idea
+**/*.iml
+
+# Mac OS X specific
+**/.DS_Store
+
+# Eclipse specific
+.classpath
+.project
+
+.settings/
