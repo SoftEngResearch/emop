@@ -13,5 +13,4 @@ emop-plugin/target/
 # Eclipse specific
 .classpath
 .project
-
 .settings/
