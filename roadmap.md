@@ -11,10 +11,15 @@
 ## Stage 1
 
 - [ ] How to use STARTS API
-- [ ] Emop:impacted (our impacted acts like the STARTS) (internally invoke STARTS)
+- [ ] `emop:impacted` (our impacted acts like the STARTS) (internally invoke STARTS)
 - [ ] Use STARTS as a Dependency
 - [ ] Extend STARTS
 - [ ] Store impacted classes in memory and in file
+
+### Specific Functionalities
+
+- [ ] Something with project source code (types and tests) as **input**, and checksum for them as **output**.
+- [ ] Something with project source code (types and tests) and previous checksum as **input**, changed classes and their associated impacted classes (types and tests) as **output**.
 
 ## Side Tasks
 
