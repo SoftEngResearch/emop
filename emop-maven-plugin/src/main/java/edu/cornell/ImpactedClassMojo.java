@@ -1,12 +1,13 @@
 package edu.cornell;
 
-import org.apache.maven.plugin.AbstractMojo;
+import edu.illinois.starts.jdeps.ImpactedMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 
 @Mojo(name = "impacted")
-public class ImpactedMojo extends AbstractMojo {
+public class ImpactedClassMojo extends ImpactedMojo {
   public void execute() throws MojoExecutionException {
-    getLog().info( "Hello, world!");
+    getLog().info( "[eMOP] Invoking STARTS Impacted Mojo...");
+    super.execute();
   }
 }
