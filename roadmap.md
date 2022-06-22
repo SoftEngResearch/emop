@@ -24,4 +24,4 @@
 
 - [ ] Set up continuous integration, eventually using it in upstream
 - [ ] Finish writing integration test
-- [ ] Add checkstyle (use STARTS config)
+- [x] Add checkstyle (use STARTS config)
