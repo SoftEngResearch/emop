@@ -18,10 +18,34 @@
 
 ## Stage 2
 
-- [ ] Get JavaMOP agent to print mapping from affected types to specs
+- [x] Get JavaMOP agent to print mapping from affected types to specs
+- [ ] We want a mapping from **affected specs** to **affected classes**
+- [ ] First step is to parse the string to mapping, and then use API to replace it
 
 ## Side Tasks
 
-- [ ] Set up continuous integration, eventually using it in upstream
+- [x] Set up continuous integration, eventually using it in upstream
 - [ ] Finish writing integration test
 - [x] Add checkstyle (use STARTS config)
+- [ ] Figure out how to get verbose log with Surefire > 2.16
+
+### Impacted Classes file in `.starts/`
+
+- [ ] Replace . with /
+- [ ] Remove $num
+- [ ] Append .java suffix
+- [ ] ajc append classpath  for both two & all
+
+### Notes
+
+Instrument specs in all classes to specs in a subset (affected) for both two and all
+What is Java Agent? It's something attached to the JVM
+Start with bash script, then convert to Java
+
+## TODO
+
+- [ ] Read AspectJ compile-time weaving
+- [ ] Given a bunch of .aj files, try weave it with two & all
+- [ ] Change commons-fileupload 
+- [ ] See affected classes
+- [ ] Run ajc with two & all for affected files
