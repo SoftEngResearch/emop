@@ -33,19 +33,21 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         URL allSpecsDir = AffectedSpecsMojo.class.getClassLoader().getResource("all-specs");
         if ((allSpecsDir != null) && allSpecsDir.getProtocol().equals("jar")) {
             try {
-                JarURLConnection connection = (JarURLConnection) allSpecsDir.openConnection();
-                JarFile jarfile = connection.getJarFile();
-                getLog().info("JAR: " + jarfile.getName());
+                String destinationDir = getArtifactsDir() + File.separator + "all-specs";
+                new File(destinationDir).mkdirs();
+                JarFile jarfile = ((JarURLConnection) allSpecsDir.openConnection()).getJarFile();
                 Enumeration<JarEntry> entries = jarfile.entries();
                 while (entries.hasMoreElements()) {
                     JarEntry entry =  entries.nextElement();
                     if (entry.getName().contains(".mop")) {
-                        getLog().info("ENTRY: " + entry.getName());
                         specs.add(entry.getName());
                         InputStream inputStream = jarfile.getInputStream(entry);
-                        FileOutputStream outputStream = new FileOutputStream(new File(getArtifactsDir() + File.separator + entry.getName().replace("all-specs/", "")));
-                        while (inputStream.available() > 0) {
-                            outputStream.write(inputStream.read());
+                        File spec = new File(destinationDir + File.separator + entry.getName().replace("all-specs/", ""));
+                        if (!spec.exists()) {
+                            FileOutputStream outputStream = new FileOutputStream(spec);
+                            while (inputStream.available() > 0) {
+                                outputStream.write(inputStream.read());
+                            }
                         }
                     }
                 }
