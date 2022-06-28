@@ -1,11 +1,8 @@
 package edu.cornell.emop.util;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 public class Util {
     public static List<String> findFilesOfType(File path, String extension) {
