@@ -11,21 +11,20 @@ public class Util {
     public static List<String> findFilesOfType(File path, String extension) {
         List<String> returnedFileNames = new ArrayList<>();
         String[] files = path.list();
-        System.out.println("CCC: " + Arrays.asList(files));
-////        if (files != null) {
-////            for (File currFile : files) {
-//                if (currFile.isDirectory()) {
-//                    List<String> internal = findFilesOfType(currFile, extension);
-//                    returnedFileNames.addAll(internal);
-//                } else {
-//                    System.out.println("BBBB: " + Arrays.asList(files));
-//                    String fileName = currFile.getName();
-//                    if (fileName.endsWith(extension)) {
-//                        returnedFileNames.add(fileName);
-//                    }
-//                }
-//            }
-//        }
+        if (files != null) {
+            for (String currFile : files) {
+                File file = new File(currFile);
+                if (file.isDirectory()) {
+                    List<String> internal = findFilesOfType(file, extension);
+                    returnedFileNames.addAll(internal);
+                } else {
+                    String fileName = file.getName();
+                    if (fileName.endsWith(extension)) {
+                        returnedFileNames.add(fileName);
+                    }
+                }
+            }
+        }
         return returnedFileNames;
     }
 
