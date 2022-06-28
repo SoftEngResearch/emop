@@ -5,6 +5,9 @@ import edu.illinois.starts.helpers.Writer;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.aspectj.bridge.IMessage;
+import org.aspectj.bridge.MessageHandler;
+import org.aspectj.tools.ajc.Main;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -13,6 +16,7 @@ import java.io.InputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -35,8 +39,30 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         makeSourcesFile(sourceList, getImpacted());
         String argsList = getArtifactsDir() + File.separator + "argz";
         List<String> args = find(argsList, ".lst", "argz");
-        String classpath = getClassPath();
-        getLog().info("[eMOP] classpath: " + classpath);
+        String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
+        String[] arguments = { "-classpath", classpath,
+                "-argfile", aspectList,
+                "-argfile", sourceList,
+                "-argfile", args.get(0),
+                "-d", getArtifactsDir() + File.separator + "aj-output"};
+
+        Main compiler = new Main();
+        MessageHandler m = new MessageHandler();
+        compiler.run(arguments, m);
+        IMessage[] ms = m.getMessages(IMessage.WEAVEINFO, false);
+        Writer.writeToFile(Arrays.asList(ms), getArtifactsDir() + File.separator + "join-points");
+        getLog().info("[eMOP] classpath: " + Arrays.asList(arguments));
+    }
+
+    /**
+     * We need to put aspectjrt and rv-monitor-rt on the classpath for AJC.
+      * @return classpath with only the runtime jars
+     * @throws MojoExecutionException
+     */
+    private String getRuntimeJars() throws MojoExecutionException {
+        String destinationDir = getArtifactsDir() + File.separator + "lib";
+        List<String> runtimeJars = find(destinationDir, ".jar", "lib");
+        return String.join(File.pathSeparator, runtimeJars);
     }
 
     private String getClassPath() throws MojoExecutionException {
