@@ -111,7 +111,8 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                         if (entry.getName().contains(extension)) {
                             files.add(getArtifactsDir() + entry.getName());
                             InputStream inputStream = jarfile.getInputStream(entry);
-                            File spec = new File(destinationDir + File.separator + entry.getName().replace(name + File.separator, ""));
+                            File spec = new File(destinationDir + File.separator
+                                    + entry.getName().replace(name + File.separator, ""));
                             if (!spec.exists()) {
                                 FileOutputStream outputStream = new FileOutputStream(spec);
                                 while (inputStream.available() > 0) {
