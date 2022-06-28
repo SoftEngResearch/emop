@@ -23,8 +23,6 @@ jobs:
       uses: actions/setup-java@v3
       with:
         java-version: ${{ matrix.java-version }}
-        distribution: 'temurin'
-        cache: maven
     - name: Install STARTS
       run: bash scripts/install-starts.sh
     - name: Verify with Maven
