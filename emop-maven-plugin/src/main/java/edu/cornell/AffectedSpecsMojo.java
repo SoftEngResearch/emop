@@ -35,7 +35,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         compiler.run(arguments, m);
         IMessage[] ms = m.getMessages(IMessage.WEAVEINFO, false);
         Writer.writeToFile(Arrays.asList(ms), getArtifactsDir() + File.separator + "join-points");
-        getLog().info("[eMOP] classpath: " + Arrays.asList(arguments));
+        getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
     private String[] createAJCArguments() throws MojoExecutionException {
@@ -54,7 +54,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
         // prepare an array of arguments that the aspectj compiler will be called with
         return new String[]{ "-classpath", classpath, "-argfile", aspectList, "-argfile", sourceList, "-argfile",
-                args.get(0), "-d", getArtifactsDir() + File.separator + "aj-output"};
+                args.get(0), "-d", "none"};
     }
 
     /**
