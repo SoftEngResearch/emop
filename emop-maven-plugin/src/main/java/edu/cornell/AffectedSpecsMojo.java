@@ -29,29 +29,32 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info( "[eMOP] Invoking the AffectedSpecs Mojo...");
-//        getLog().info("[EMOP] Impacted classes: " + getImpacted());
-        // find all the available specs
-        String destinationDir = getArtifactsDir() + File.separator + "weaved-specs";
-        String aspectList = getArtifactsDir() + File.separator + "aspects.lst";
-        List<String> aspects = find(destinationDir, ".aj", "weaved-specs");
-        Writer.writeToFile(aspects, aspectList);
-        String sourceList = getArtifactsDir() + File.separator + "sources.lst";
-        makeSourcesFile(sourceList, getImpacted());
-        String argsList = getArtifactsDir() + File.separator + "argz";
-        List<String> args = find(argsList, ".lst", "argz");
-        String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
-        String[] arguments = { "-classpath", classpath,
-                "-argfile", aspectList,
-                "-argfile", sourceList,
-                "-argfile", args.get(0),
-                "-d", getArtifactsDir() + File.separator + "aj-output"};
-
+        String[] arguments = createAJCArguments();
         Main compiler = new Main();
         MessageHandler m = new MessageHandler();
         compiler.run(arguments, m);
         IMessage[] ms = m.getMessages(IMessage.WEAVEINFO, false);
         Writer.writeToFile(Arrays.asList(ms), getArtifactsDir() + File.separator + "join-points");
         getLog().info("[eMOP] classpath: " + Arrays.asList(arguments));
+    }
+
+    private String[] createAJCArguments() throws MojoExecutionException {
+        // extract the aspects for all available specs from the jar and make a list of them in a file
+        String destinationDir = getArtifactsDir() + File.separator + "weaved-specs";
+        String aspectList = getArtifactsDir() + File.separator + "aspects.lst";
+        List<String> aspects = find(destinationDir, ".aj", "weaved-specs");
+        Writer.writeToFile(aspects, aspectList);
+        // the source files that we want to weave are the impacted classes, write them to a file
+        String sourceList = getArtifactsDir() + File.separator + "sources.lst";
+        makeSourcesFile(sourceList, getImpacted());
+        // extract the argument file that we want to use from the jar to the .starts directory
+        String argsList = getArtifactsDir() + File.separator + "argz";
+        List<String> args = find(argsList, ".lst", "argz");
+        // prepare the classpath that we want to call AJC with
+        String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
+        // prepare an array of arguments that the aspectj compiler will be called with
+        return new String[]{ "-classpath", classpath, "-argfile", aspectList, "-argfile", sourceList, "-argfile",
+                args.get(0), "-d", getArtifactsDir() + File.separator + "aj-output"};
     }
 
     /**
