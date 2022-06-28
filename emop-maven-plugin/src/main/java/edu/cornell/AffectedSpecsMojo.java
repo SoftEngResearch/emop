@@ -21,19 +21,19 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info( "[eMOP] Invoking the AffectedSpecs Mojo...");
+        String destinationDir = getArtifactsDir() + File.separator + "all-specs";
         //  getLog().info("[EMOP] Impacted classes: " + getImpacted());
         // find all the available specs
-        List<String> allSpecs = getAllSpecs();
+        List<String> allSpecs = getAllSpecs(destinationDir);
         getLog().info("[EMOP] All Specs: " + allSpecs);
         getLog().info("[EMOP] .STARTS DIR: " + getArtifactsDir());
     }
 
-    private List<String> getAllSpecs() {
+    private List<String> getAllSpecs(String destinationDir) {
         List<String> specs = new ArrayList<>();
         URL allSpecsDir = AffectedSpecsMojo.class.getClassLoader().getResource("all-specs");
         if ((allSpecsDir != null) && allSpecsDir.getProtocol().equals("jar")) {
             try {
-                String destinationDir = getArtifactsDir() + File.separator + "all-specs";
                 new File(destinationDir).mkdirs();
                 JarFile jarfile = ((JarURLConnection) allSpecsDir.openConnection()).getJarFile();
                 Enumeration<JarEntry> entries = jarfile.entries();
@@ -52,8 +52,6 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                     }
                 }
             } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (MojoExecutionException e) {
                 throw new RuntimeException(e);
             }
         }
