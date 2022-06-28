@@ -2,14 +2,11 @@ package edu.cornell;
 
 import edu.cornell.emop.util.Util;
 import edu.illinois.starts.helpers.Writer;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.surefire.booter.Classpath;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
