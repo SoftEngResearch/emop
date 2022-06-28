@@ -35,6 +35,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         compiler.run(arguments, m);
         IMessage[] ms = m.getMessages(IMessage.WEAVEINFO, false);
         Writer.writeToFile(Arrays.asList(ms), getArtifactsDir() + File.separator + "join-points");
+        getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
