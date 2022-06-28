@@ -43,9 +43,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     }
 
     private String getClassPath() throws MojoExecutionException {
-        Classpath sfClassPath = getSureFireClassPath();
-        String sfPathString = Writer.pathToString(sfClassPath.getClassPath());
-        return sfPathString;
+        return Writer.pathToString(getSureFireClassPath().getClassPath());
     }
 
     private void makeSourcesFile(String sourceList, Set<String> impacted) {
