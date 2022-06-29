@@ -6,8 +6,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 
 @Mojo(name = "impacted")
 public class ImpactedClassMojo extends ImpactedMojo {
-  public void execute() throws MojoExecutionException {
-    getLog().info( "[eMOP] Invoking STARTS Impacted Mojo...");
-    super.execute();
-  }
+    public void execute() throws MojoExecutionException {
+        getLog().info("[eMOP] Invoking STARTS Impacted Mojo...");
+        super.execute();
+    }
 }
