@@ -1,14 +1,5 @@
 package edu.cornell;
 
-import edu.cornell.emop.util.Util;
-import edu.illinois.starts.helpers.Writer;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.aspectj.bridge.IMessage;
-import org.aspectj.bridge.MessageHandler;
-import org.aspectj.tools.ajc.Main;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -24,16 +15,25 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+import edu.cornell.emop.util.Util;
+import edu.illinois.starts.helpers.Writer;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.aspectj.bridge.IMessage;
+import org.aspectj.bridge.MessageHandler;
+import org.aspectj.tools.ajc.Main;
+
 @Mojo(name = "affected-specs", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class AffectedSpecsMojo extends ImpactedClassMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
-        getLog().info( "[eMOP] Invoking the AffectedSpecs Mojo...");
+        getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
         String[] arguments = createAJCArguments();
         Main compiler = new Main();
-        MessageHandler m = new MessageHandler();
-        compiler.run(arguments, m);
-        IMessage[] ms = m.getMessages(IMessage.WEAVEINFO, false);
+        MessageHandler mh = new MessageHandler();
+        compiler.run(arguments, mh);
+        IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
         Writer.writeToFile(Arrays.asList(ms), getArtifactsDir() + File.separator + "join-points");
         getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
@@ -60,8 +60,8 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     /**
      * We need to put aspectjrt and rv-monitor-rt on the classpath for AJC.
-      * @return classpath with only the runtime jars
-     * @throws MojoExecutionException
+     * @return classpath with only the runtime jars
+     * @throws MojoExecutionException throws MojoExecutionException
      */
     private String getRuntimeJars() throws MojoExecutionException {
         String destinationDir = getArtifactsDir() + File.separator + "lib";
@@ -85,7 +85,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                     "src" + File.separator + "main"));
             if (source.exists()) {
                 classes.add(source.getAbsolutePath());
-            } else if (test.exists()){
+            } else if (test.exists()) {
                 classes.add(test.getAbsolutePath());
             } else {
                 getLog().error("Source file not found: " + source.getAbsolutePath());
@@ -122,8 +122,8 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                             }
                         }
                     }
-                } catch (IOException | MojoExecutionException e) {
-                    throw new RuntimeException(e);
+                } catch (IOException | MojoExecutionException ex) {
+                    throw new RuntimeException(ex);
                 }
             }
         }
@@ -133,8 +133,18 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
 // ajc command that Owolabi ran locally:
 
-// time ajc -classpath /home/owolabi/.m2/repository/junit/junit/4.12/junit-4.12.jar:/home/owolabi/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/home/owolabi/.m2/repository/javax/servlet/servlet-api/2.4/servlet-api-2.4.jar:/home/owolabi/.m2/repository/portlet-api/portlet-api/1.0/portlet-api-1.0.jar:/home/owolabi/.m2/repository/commons-io/commons-io/2.2/commons-io-2.2.jar:target/classes:target/test-classes:/home/owolabi/projects/emop/scripts/lib/rv-monitor-rt.jar:/home/owolabi/projects/emop/scripts/lib/aspectjrt.jar -argfile args.lst -d test-ajc -argfile aspects.lst -argfile sources.lst &> a.txt
+/*
+time ajc -classpath /home/owolabi/.m2/repository/junit/junit/4.12/junit-4.12.jar:/home/owolabi/.m2/repository/org/hamcre
+st/hamcrest-core/1.3/hamcrest-core-1.3.jar:/home/owolabi/.m2/repository/javax/servlet/servlet-api/2.4/servlet-api-2.4.ja
+r:/home/owolabi/.m2/repository/portlet-api/portlet-api/1.0/portlet-api-1.0.jar:/home/owolabi/.m2/repository/commons-io/c
+ommons-io/2.2/commons-io-2.2.jar:target/classes:target/test-classes:/home/owolabi/projects/emop/scripts/lib/rv-monitor-r
+t.jar:/home/owolabi/projects/emop/scripts/lib/aspectjrt.jar -argfile args.lst -d test-ajc -argfile aspects.lst -argfile
+sources.lst &> a.txt
+ */
 
 // String processing command to get the map of specs to tests
 
-// paste -d, <(grep "Join point" ${weave_out} | cut -d\' -f4) <(grep "Join point" ${weave_out} | rev | cut -d\( -f1 | rev | cut -d. -f1) | sort -u
+/*
+paste -d, <(grep "Join point" ${weave_out} | cut -d\' -f4) <(grep "Join point" ${weave_out} | rev | cut -d\( -f1 | rev |
+ cut -d. -f1) | sort -u
+ */
