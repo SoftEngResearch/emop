@@ -17,7 +17,7 @@ public class Util {
                 } else {
                     String fileName = file.getName();
                     if (fileName.endsWith(extension)) {
-                        returnedFileNames.add(fileName);
+                        returnedFileNames.add(path.getAbsolutePath() + File.separator + fileName);
                     }
                 }
             }
