@@ -43,19 +43,19 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         // extract the aspects for all available specs from the jar and make a list of them in a file
         String destinationDir = getArtifactsDir() + File.separator + "weaved-specs";
         String aspectList = getArtifactsDir() + File.separator + "aspects.lst";
-        List<String> aspects = find(destinationDir, ".aj", "weaved-specs");
+        List<String> aspects = extractOrFind(destinationDir, ".aj", "weaved-specs");
         Writer.writeToFile(aspects, aspectList);
         // the source files that we want to weave are the impacted classes, write them to a file
         String sourceList = getArtifactsDir() + File.separator + "sources.lst";
         makeSourcesFile(sourceList, getImpacted());
         // extract the argument file that we want to use from the jar to the .starts directory
         String argsList = getArtifactsDir() + File.separator + "argz";
-        List<String> args = find(argsList, ".lst", "argz");
+        List<String> args = extractOrFind(argsList, ".lst", "argz");
         // prepare the classpath that we want to call AJC with
         String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
         // prepare an array of arguments that the aspectj compiler will be called with
         return new String[]{ "-classpath", classpath, "-argfile", aspectList, "-argfile", sourceList, "-argfile",
-                args.get(0), "-d", "none"};
+                args.get(0), "-d", "weaved-bytecode"};
     }
 
     /**
@@ -65,7 +65,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
      */
     private String getRuntimeJars() throws MojoExecutionException {
         String destinationDir = getArtifactsDir() + File.separator + "lib";
-        List<String> runtimeJars = find(destinationDir, ".jar", "lib");
+        List<String> runtimeJars = extractOrFind(destinationDir, ".jar", "lib");
         return String.join(File.pathSeparator, runtimeJars);
     }
 
@@ -95,7 +95,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         Writer.writeToFile(classes, sourceList);
     }
 
-    private List<String> find(String destinationDir, String extension, String name) {
+    private List<String> extractOrFind(String destinationDir, String extension, String name) {
         List<String> files = new ArrayList<>();
         File destination = new File(destinationDir);
         if (destination.exists()) {
