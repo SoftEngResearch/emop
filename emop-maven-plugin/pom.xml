@@ -17,11 +17,55 @@
     <maven>${maven.version}</maven>
   </prerequisites>
 
+  <dependencies>
+    <dependency>
+      <groupId>edu.cornell</groupId>
+      <artifactId>emop-core</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.aspectj</groupId>
+      <artifactId>aspectjtools</artifactId>
+      <version>1.8.1</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>edu.illinois</groupId>
+        <artifactId>starts-maven-plugin</artifactId>
+        <version>1.4-SNAPSHOT</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-plugin-plugin</artifactId>
+        <version>3.3</version>
+        <configuration>
+          <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
+        </configuration>
+        <executions>
+          <execution>
+            <id>mojo-descriptor</id>
+            <goals>
+              <goal>descriptor</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>help-goal</id>
+            <goals>
+              <goal>helpmojo</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
   <profiles>
     <profile>
       <id>run-its</id>
       <build>
-
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>

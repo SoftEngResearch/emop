@@ -1,0 +1,6 @@
+-1.8
+-showWeaveInfo
+-verbose
+-warn:none
+-Xlint:ignore
+-warn:none

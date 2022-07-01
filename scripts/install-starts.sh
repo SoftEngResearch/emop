@@ -3,7 +3,8 @@ if [ $? -eq 0 ]; then
   (
     cd starts
     git checkout impacted-both-ways
-    mvn install
+    # export JAVA_HOME=$(/usr/libexec/java_home -v1.8)
+    mvn install -DskipTests -Dinvoker.skip
   )
   rm -rf starts/
 fi
