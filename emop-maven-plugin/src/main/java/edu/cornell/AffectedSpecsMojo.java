@@ -3,11 +3,11 @@ package edu.cornell;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -82,23 +82,22 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 // Referenced from https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
                 try (FileOutputStream fos
                              = new FileOutputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
-                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                    ObjectOutputStream oos = new ObjectOutputStream(fos)) {
                     oos.writeObject(classToSpecs);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
                 break;
             case TXT:
-                try (FileWriter writer
-                             = new FileWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
+            default:
+                try (PrintWriter writer
+                             = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
                     for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
-                        writer.write(entry.getKey() + ":" + String.join(",", entry.getValue()) + "\n");
+                        writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
                     }
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
-                break;
-            default:
                 break;
         }
     }
@@ -110,8 +109,9 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     private Map<String, Set<String>> readMapFromFile() throws MojoExecutionException {
         // Referenced from https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
         Map<String, Set<String>> map = new HashMap<>();
-        try (FileInputStream fileInput = new FileInputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
-             ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+        try (FileInputStream fileInput
+                     = new FileInputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
+            ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
             map = (Map) objectInput.readObject();
         } catch (IOException | ClassNotFoundException ex) {
             ex.printStackTrace();
