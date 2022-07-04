@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -16,7 +15,6 @@ import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,11 +33,13 @@ import org.aspectj.tools.ajc.Main;
 @Mojo(name = "affected-specs", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class AffectedSpecsMojo extends ImpactedClassMojo {
 
-    public static final int CLASS_IDX_IN_MSG = 3;
-    public static final int SPEC_IDX_IN_MSG = 5;
-    public static final int TRIMMED_SPEC_NAME_IDX = 4;
+    private static final int CLASS_INDEX_IN_MSG = 3;
+    private static final int TRIMMED_SPEC_NAME_INDEX = 4;
+    private static final int SPEC_INDEX_IN_MSG = 5;
 
     private Map<String, Set<String>> classToSpecs = new HashMap<>();
+
+    private enum OutputFormat { BIN, TXT }
 
     public void execute() throws MojoExecutionException {
         super.execute();
@@ -50,8 +50,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         compiler.run(arguments, mh);
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
         computeMapFromMessage(ms);
-        writeMapToFile("txt");
-        Writer.writeToFile(Arrays.asList(ms), getArtifactsDir() + File.separator + "join-points");
+        writeMapToFile(OutputFormat.TXT);
         getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
@@ -64,8 +63,8 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     private void computeMapFromMessage(IMessage[] ms) throws MojoExecutionException {
         for (IMessage message : ms) {
             String[] lexedMessage = message.getMessage().split("'");
-            String key = lexedMessage[CLASS_IDX_IN_MSG];
-            String value = lexedMessage[SPEC_IDX_IN_MSG].substring(TRIMMED_SPEC_NAME_IDX);
+            String key = lexedMessage[CLASS_INDEX_IN_MSG];
+            String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
             if (!classToSpecs.containsKey(key)) {
                 classToSpecs.put(key, new HashSet<>());
             }
@@ -77,42 +76,30 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
      * Write map from class to specs in either text or binary format.
      * @param format Output format of the map, text or binary
      */
-    private void writeMapToFile(String format) throws MojoExecutionException {
-        if (format.equals("bin")) {
-            // Referenced from https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
-            try {
-                FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
-                ObjectOutputStream oos = new ObjectOutputStream(fos);
-                oos.writeObject(classToSpecs);
-                oos.close();
-                fos.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        } else {
-            try {
-                FileWriter writer = new FileWriter(getArtifactsDir() + File.separator + "classToSpecs.txt");
-                for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
-                    String key = entry.getKey();
-                    Set<String> value = entry.getValue();
-                    writer.write(key);
-                    Iterator<String> it = value.iterator();
-                    boolean first = true;
-                    while (it.hasNext()) {
-                        if (first) {
-                            writer.write(":");
-                            first = false;
-                        } else {
-                            writer.write(",");
-                        }
-                        writer.write(it.next());
-                    }
-                    writer.write("\n");
+    private void writeMapToFile(OutputFormat format) throws MojoExecutionException {
+        switch (format) {
+            case BIN:
+                // Referenced from https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
+                try (FileOutputStream fos
+                             = new FileOutputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
+                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                    oos.writeObject(classToSpecs);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
                 }
-                writer.close();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+                break;
+            case TXT:
+                try (FileWriter writer
+                             = new FileWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
+                    for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
+                        writer.write(entry.getKey() + ":" + String.join(",", entry.getValue()) + "\n");
+                    }
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                break;
+            default:
+                break;
         }
     }
 
@@ -123,12 +110,9 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     private Map<String, Set<String>> readMapFromFile() throws MojoExecutionException {
         // Referenced from https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
         Map<String, Set<String>> map = new HashMap<>();
-        try {
-            FileInputStream fileInput = new FileInputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
-            ObjectInputStream objectInput = new ObjectInputStream(fileInput);
+        try (FileInputStream fileInput = new FileInputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
+             ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
             map = (Map) objectInput.readObject();
-            objectInput.close();
-            fileInput.close();
         } catch (IOException | ClassNotFoundException ex) {
             ex.printStackTrace();
         }
