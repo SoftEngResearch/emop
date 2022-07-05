@@ -25,6 +25,7 @@ import edu.cornell.emop.util.Util;
 import edu.illinois.starts.helpers.Writer;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.aspectj.bridge.IMessage;
 import org.aspectj.bridge.MessageHandler;
@@ -41,6 +42,12 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     private enum OutputFormat { BIN, TXT }
 
+    /**
+     * Defines the output format of the map.
+     */
+    @Parameter(property = "classToSpecsFormat", defaultValue = "TXT")
+    private OutputFormat classToSpecsFormat;
+
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
@@ -50,7 +57,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         compiler.run(arguments, mh);
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
         computeMapFromMessage(ms);
-        writeMapToFile(OutputFormat.TXT);
+        writeMapToFile(classToSpecsFormat);
         getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
