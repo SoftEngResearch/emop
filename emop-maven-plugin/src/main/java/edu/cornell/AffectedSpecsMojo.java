@@ -38,7 +38,15 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
 
-    private Map<String, Set<String>> classToSpecs = new HashMap<>();
+    /**
+     * A map from affected classes to affected specs, for debugging purposes.
+     */
+    protected Map<String, Set<String>> classToSpecs = new HashMap<>();
+
+    /**
+     * A set of specs to monitor for javamop agent.
+     */
+    protected Set<String> specs = new HashSet<>();
 
     private enum OutputFormat { BIN, TXT }
 
@@ -76,6 +84,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 classToSpecs.put(key, new HashSet<>());
             }
             classToSpecs.get(key).add(value);
+            specs.add(value);
         }
     }
 

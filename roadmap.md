@@ -20,7 +20,8 @@
 
 - [x] Get AspectJ to print mapping from affected types to specs
 - [x] We want a mapping from **affected specs** to **affected classes**
-- [ ] First step is to parse the string to mapping, and then use API to replace it
+- [x] First step is to parse the string to mapping
+- [ ] Use AspectJ API to obtain the mapping directly
 
 ## Side Tasks
 
