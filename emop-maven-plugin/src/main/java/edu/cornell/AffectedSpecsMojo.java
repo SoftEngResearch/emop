@@ -44,9 +44,9 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     protected Map<String, Set<String>> classToSpecs = new HashMap<>();
 
     /**
-     * A set of specs to monitor for javamop agent.
+     * A set of affected specs to monitor for javamop agent.
      */
-    protected Set<String> specs = new HashSet<>();
+    protected Set<String> affectedSpecs = new HashSet<>();
 
     private enum OutputFormat { BIN, TXT }
 
@@ -84,7 +84,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 classToSpecs.put(key, new HashSet<>());
             }
             classToSpecs.get(key).add(value);
-            specs.add(value);
+            affectedSpecs.add(value);
         }
     }
 

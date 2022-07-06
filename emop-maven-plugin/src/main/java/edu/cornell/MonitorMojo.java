@@ -13,6 +13,8 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
+    private static String MONITOR_FILE = "new-aop-ajc.xml";
+
     /**
      * The path that specify the Javamop Agent JAR file.
      */
@@ -23,18 +25,17 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         generateNewMonitorFile();
-        Util.replaceSpecSelectionWithFile(javamopAgent, getArtifactsDir() + File.separator + "new-aop-ajc.xml");
-        deleteNewMonitorFile();
+        Util.replaceSpecSelectionWithFile(javamopAgent, getArtifactsDir() + File.separator + MONITOR_FILE);
     }
 
     private void generateNewMonitorFile() throws MojoExecutionException {
-        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "new-aop-ajc.xml")) {
+        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + MONITOR_FILE)) {
             // Write header
             writer.println("<aspectj>");
             writer.println("<aspects>");
             // Write body
-            for (String spec : specs) {
-                writer.println("<aspect name=\"mop." + spec + "\"/>");
+            for (String affectedSpec : affectedSpecs) {
+                writer.println("<aspect name=\"mop." + affectedSpec + "\"/>");
             }
             // Write footer
             writer.println("</aspects>");
@@ -43,13 +44,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
             writer.println("</aspectj>");
         } catch (IOException ex) {
             ex.printStackTrace();
-        }
-    }
-
-    private void deleteNewMonitorFile() throws MojoExecutionException {
-        File file = new File(getArtifactsDir() + File.separator + "new-aop-ajc.xml");
-        if (!file.delete()) {
-            throw new MojoExecutionException("new-aop-ajc.xml delete unsuccessful.");
         }
     }
 }
