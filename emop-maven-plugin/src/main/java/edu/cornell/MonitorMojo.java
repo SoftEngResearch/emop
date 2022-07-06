@@ -22,10 +22,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
-        // TODO: Should get the affected mojo to return a set (keep the map for debugging)
-//        for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
-//            monitoredSpecs.addAll(entry.getValue());
-//        }
         generateNewMonitorFile();
         Util.replaceSpecSelectionWithFile(javamopAgent, getArtifactsDir() + File.separator + "new-aop-ajc.xml");
         deleteNewMonitorFile();
