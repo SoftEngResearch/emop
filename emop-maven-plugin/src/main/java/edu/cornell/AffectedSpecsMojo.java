@@ -48,7 +48,15 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
      */
     protected Set<String> affectedSpecs = new HashSet<>();
 
+    private enum OutputContent { MAP, SET }
+
     private enum OutputFormat { BIN, TXT }
+
+    /**
+     * Defines whether the output content is a set or a map.
+     */
+    @Parameter(property = "classToSpecsContent", defaultValue = "SET")
+    private OutputContent classToSpecsContent;
 
     /**
      * Defines the output format of the map.
@@ -108,8 +116,18 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
             default:
                 try (PrintWriter writer
                              = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
-                    for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
-                        writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
+                    switch (classToSpecsContent) {
+                        case MAP:
+                            for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
+                                writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
+                            }
+                            break;
+                        case SET:
+                        default:
+                            for (String affectedSpec : affectedSpecs) {
+                                writer.println(affectedSpec);
+                            }
+                            break;
                     }
                 } catch (IOException ex) {
                     ex.printStackTrace();
