@@ -13,7 +13,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
-    private static String MONITOR_FILE = "new-aop-ajc.xml";
+    private String MONITOR_FILE = "new-aop-ajc.xml";
 
     /**
      * The path that specify the Javamop Agent JAR file.

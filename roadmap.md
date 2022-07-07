@@ -5,8 +5,8 @@
   - [x] In addition, store that information in memory, as a mapping.
 - [x] Using information for affected classes, find affected specs to instrument for each affected class.
   - [x] A mapping from type to spec should be maintained.
-- [ ] Given affected classes, turn off unaffected specs for these with JavaMOP Agent.
-- [ ] Monitor affected ones only.
+- [x] Given affected classes, turn off unaffected specs for these with JavaMOP Agent.
+- [x] Monitor affected ones only.
 
 ## Stage 1
 
