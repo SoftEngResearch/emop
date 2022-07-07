@@ -13,7 +13,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
-    private String MONITOR_FILE = "new-aop-ajc.xml";
+    private String monitorFile = "new-aop-ajc.xml";
 
     /**
      * The path that specify the Javamop Agent JAR file.
@@ -25,11 +25,11 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         generateNewMonitorFile();
-        Util.replaceSpecSelectionWithFile(javamopAgent, getArtifactsDir() + File.separator + MONITOR_FILE);
+        Util.replaceSpecSelectionWithFile(javamopAgent, getArtifactsDir() + File.separator + monitorFile);
     }
 
     private void generateNewMonitorFile() throws MojoExecutionException {
-        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + MONITOR_FILE)) {
+        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + monitorFile)) {
             // Write header
             writer.println("<aspectj>");
             writer.println("<aspects>");
