@@ -114,25 +114,31 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 break;
             case TXT:
             default:
-                try (PrintWriter writer
-                             = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
-                    switch (classToSpecsContent) {
-                        case MAP:
-                            for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
-                                writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
-                            }
-                            break;
-                        case SET:
-                        default:
-                            for (String affectedSpec : affectedSpecs) {
-                                writer.println(affectedSpec);
-                            }
-                            break;
+                writeToText(classToSpecsContent);
+        }
+    }
+
+    /**
+     * Write class and specification information to text file.
+     * @param content What to output
+     */
+    private void writeToText(OutputContent content) throws MojoExecutionException {
+        try (PrintWriter writer
+                     = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
+            switch (classToSpecsContent) {
+                case MAP:
+                    for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
+                        writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
                     }
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-                break;
+                    break;
+                case SET:
+                default:
+                    for (String affectedSpec : affectedSpecs) {
+                        writer.println(affectedSpec);
+                    }
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
     }
 
