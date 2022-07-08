@@ -18,13 +18,19 @@ public class MonitorMojo extends AffectedSpecsMojo {
     /**
      * The path that specify the Javamop Agent JAR file.
      */
-    @Parameter(property = "javamopAgent", required = true)
+    @Parameter(property = "javamopAgent")
     private String javamopAgent;
 
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         generateNewMonitorFile();
+        if (javamopAgent == null) {
+            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
+                    + File.separator + "javamop-agent"
+                    + File.separator + "1.0"
+                    + File.separator + "javamop-agent-1.0.jar";
+        }
         Util.replaceSpecSelectionWithFile(javamopAgent, getArtifactsDir() + File.separator + monitorFile);
     }
 
