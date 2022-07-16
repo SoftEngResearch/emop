@@ -45,8 +45,8 @@ public class MonitorMojo extends AffectedSpecsMojo {
             }
             // Write footer
             writer.println("</aspects>");
-            // TODO: Hard-coded for now, make optional later
-            writer.println("<weaver options=\"-nowarn -Xlint:ignore -verbose -showWeaveInfo\"></weaver>");
+            // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
+            writer.println("<weaver options=\"-nowarn -Xlint:ignore \"></weaver>");
             writer.println("</aspectj>");
         } catch (IOException ex) {
             ex.printStackTrace();
