@@ -67,13 +67,22 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
+        long start = System.currentTimeMillis();
         String[] arguments = createAJCArguments();
         Main compiler = new Main();
         MessageHandler mh = new MessageHandler();
         compiler.run(arguments, mh);
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
+        long end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
+        start = System.currentTimeMillis();
         computeMapFromMessage(ms);
+        end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+        start = System.currentTimeMillis();
         writeMapToFile(classToSpecsFormat);
+        end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
         getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
