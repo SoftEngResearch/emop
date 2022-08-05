@@ -52,6 +52,8 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     private enum OutputFormat { BIN, TXT }
 
+    private Map<String, Set<String>> changedMap = new HashMap<>();
+
     /**
      * Defines whether the output content is a set or a map.
      */
@@ -68,6 +70,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
         long start = System.currentTimeMillis();
+        // If only compute changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
         Main compiler = new Main();
         MessageHandler mh = new MessageHandler();
@@ -76,20 +79,41 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
+        classToSpecs = readMapFromFile();
         computeMapFromMessage(ms);
+        // TODO: Examine this idea
+//        if (changedMap.isEmpty()) {
+//            getLog().info("[eMOP] Changed classes are not associated with any specs, terminating...");
+//            System.exit(0);
+//        }
+        // Referenced from: https://stackoverflow.com/questions/7194522/how-to-putall-on-java-hashmap-contents-of-one-to-another-but-not-replace-existi
+        // Update map
+        changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+        computeAffectedSpecs();
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
-        writeMapToFile(classToSpecsFormat);
+        // Write map
+        writeMapToFile(OutputFormat.BIN);
+        // Write affectedSpecs
+        writeMapToFile(OutputFormat.TXT);
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
         getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
+    private void computeAffectedSpecs() throws MojoExecutionException {
+        for (String impactedClass : getImpacted()) {
+            Set<String> associatedSpecs = classToSpecs.get(impactedClass);
+            if (associatedSpecs != null) {
+                affectedSpecs.addAll(associatedSpecs);
+            }
+        }
+    }
+
     /**
      * Compute a mapping from affected classes to specifications based on the messages from AJC.
-     * TODO: Handling output messages are definitely slower than reading them directly from AJC
      * @param ms An array of IMessage objects
      */
     private void computeMapFromMessage(IMessage[] ms) throws MojoExecutionException {
@@ -97,11 +121,10 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
             String[] lexedMessage = message.getMessage().split("'");
             String key = lexedMessage[CLASS_INDEX_IN_MSG];
             String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
-            if (!classToSpecs.containsKey(key)) {
-                classToSpecs.put(key, new HashSet<>());
+            if (!changedMap.containsKey(key)) {
+                changedMap.put(key, new HashSet<>());
             }
-            classToSpecs.get(key).add(value);
-            affectedSpecs.add(value);
+            changedMap.get(key).add(value);
         }
     }
 
@@ -158,12 +181,15 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     private Map<String, Set<String>> readMapFromFile() throws MojoExecutionException {
         // Referenced from https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
         Map<String, Set<String>> map = new HashMap<>();
-        try (FileInputStream fileInput
-                     = new FileInputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
-            ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
-            map = (Map) objectInput.readObject();
-        } catch (IOException | ClassNotFoundException ex) {
-            ex.printStackTrace();
+        File oldMap = new File(getArtifactsDir() + File.separator + "classToSpecs.bin");
+        if (oldMap.exists()) {
+            try (FileInputStream fileInput
+                         = new FileInputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
+                 ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+                map = (Map) objectInput.readObject();
+            } catch (IOException | ClassNotFoundException ex) {
+                ex.printStackTrace();
+            }
         }
         return map;
     }
@@ -176,7 +202,9 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         Writer.writeToFile(aspects, aspectList);
         // the source files that we want to weave are the impacted classes, write them to a file
         String sourceList = getArtifactsDir() + File.separator + "sources.lst";
-        makeSourcesFile(sourceList, getImpacted());
+        // Get changed instead of impacted to reduce compile time
+        // get both changed (existing) and new classes
+        makeSourcesFile(sourceList, getNewClasses());
         // extract the argument file that we want to use from the jar to the .starts directory
         String argsList = getArtifactsDir() + File.separator + "argz";
         List<String> args = extractOrFind(argsList, ".lst", "argz");
@@ -221,6 +249,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 getLog().error("Test file not found: " + test.getAbsolutePath());
             }
         }
+        classes.addAll(getChanged());
         Writer.writeToFile(classes, sourceList);
     }
 
