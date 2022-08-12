@@ -70,7 +70,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
         long start = System.currentTimeMillis();
-        // If only compute changed classes, then these lines can stay the same
+        // If only computing changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
         Main compiler = new Main();
         MessageHandler mh = new MessageHandler();
@@ -81,12 +81,6 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         start = System.currentTimeMillis();
         classToSpecs = readMapFromFile();
         computeMapFromMessage(ms);
-        // TODO: Examine this idea
-//        if (changedMap.isEmpty()) {
-//            getLog().info("[eMOP] Changed classes are not associated with any specs, terminating...");
-//            System.exit(0);
-//        }
-        // Referenced from: https://stackoverflow.com/questions/7194522/how-to-putall-on-java-hashmap-contents-of-one-to-another-but-not-replace-existi
         // Update map
         changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
         computeAffectedSpecs();
@@ -185,7 +179,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         if (oldMap.exists()) {
             try (FileInputStream fileInput
                          = new FileInputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
-                 ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+                ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
                 map = (Map) objectInput.readObject();
             } catch (IOException | ClassNotFoundException ex) {
                 ex.printStackTrace();
