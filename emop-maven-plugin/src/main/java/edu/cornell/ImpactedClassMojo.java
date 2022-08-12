@@ -17,7 +17,15 @@ public class ImpactedClassMojo extends ImpactedMojo {
 
     public void execute() throws MojoExecutionException {
         setUpdateImpactedChecksums(updateChecksums);
+        setTrackNewClasses(true);
+        long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedClasses Mojo...");
         super.execute();
+        long end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Execute ImpactedClasses Mojo takes " + (end - start) + " ms");
+        if (getImpacted().isEmpty()) {
+            getLog().info("[eMOP] No impacted classes, terminating...");
+            System.exit(0);
+        }
     }
 }
