@@ -32,7 +32,7 @@ Whether to include libraries and non-affected classes:
 
 - [ ] $ps_i$
 - [ ] $ps_i^{c}$
-- [x] $ps_i^{l}$: Currently implemented by `emop`, excluding libraries and non-affected classes.
+- [x] $ps_i^{l}$: Currently implemented by `emop`, excluding libraries.
 - [ ] $ps_i^{cl}$: Can be done through modifying the list of classes that `emop` can exclude during execution.
 
 The implementation of $ps_i^{cl}$ can reference [this](https://github.com/thenewpyjiang/emop/commit/5ffd29ee744c8b728f315f113bbe0fe5126606c7), already in experimentation.
