@@ -11,8 +11,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Util {
     public static List<String> findFilesOfType(File path, String extension) {
@@ -47,4 +49,32 @@ public class Util {
             ex.printStackTrace();
         }
     }
+
+    /**
+     * Recursive routine accumulating the set of String indicating files to include.
+     * Borrowed from DSI.
+     */
+    public static Set<String> classFilesWalk(File currRoot, String dirName) {
+        Set<String> packageNameSet = new HashSet<>();
+        File[] files = currRoot.listFiles();
+        if (files == null) {
+            return packageNameSet;
+        }
+        for (File currFile : files) {
+            if (currFile.isDirectory()) { // recurse into subdirectory
+                Set<String> packageNameSet2 = classFilesWalk(currFile, dirName);
+                packageNameSet.addAll(packageNameSet2);
+            } else { // regular file, now we just need to get the name of the path and apply
+                String fileName = currFile.getName();
+                if (fileName.endsWith(".class")) { // only checking class files
+                    // get parent directory
+                    String parentName = currFile.getParent().split(dirName + File.separator)[1];
+                    String packageName = parentName.replaceAll(File.separator, ".") + "..*";
+                    packageNameSet.add(packageName);
+                }
+            }
+        }
+        return packageNameSet;
+    }
+
 }
