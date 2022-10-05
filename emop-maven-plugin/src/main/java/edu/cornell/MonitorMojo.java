@@ -26,6 +26,12 @@ public class MonitorMojo extends AffectedSpecsMojo {
     @Parameter(property = "javamopAgent")
     private String javamopAgent;
 
+    /**
+     * The path that specify the Javamop Agent JAR file.
+     */
+    @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
+    private boolean includeNonAffected;
+
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
@@ -40,22 +46,24 @@ public class MonitorMojo extends AffectedSpecsMojo {
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + monitorFile);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
-        start = System.currentTimeMillis();
-        // Rewrite BaseAspect.aj to ignore non-affected classes
-        generateNewBaseAspect();
-        // Compile BaseAspect.aj with ajc
-        Main compiler = new Main();
-        MessageHandler mh = new MessageHandler();
-        String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
-        String[] ajcArgs = {"-d", getArtifactsDir(), "-classpath", classpath,
-                getArtifactsDir() + File.separator + baseAspectFile};
-        compiler.run(ajcArgs, mh);
-        IMessage[] ms = mh.getMessages(null, true);
-        // Replace compiled BaseAspect in javamop-agent's jar
-        Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
-                getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
-        end = System.currentTimeMillis();
-        getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
+        if (!includeNonAffected) {
+            start = System.currentTimeMillis();
+            // Rewrite BaseAspect.aj to ignore non-affected classes
+            generateNewBaseAspect();
+            // Compile BaseAspect.aj with ajc
+            Main compiler = new Main();
+            MessageHandler mh = new MessageHandler();
+            String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
+            String[] ajcArgs = {"-d", getArtifactsDir(), "-classpath", classpath,
+                    getArtifactsDir() + File.separator + baseAspectFile};
+            compiler.run(ajcArgs, mh);
+            IMessage[] ms = mh.getMessages(null, true);
+            // Replace compiled BaseAspect in javamop-agent's jar
+            Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
+                    getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
+            end = System.currentTimeMillis();
+            getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
+        }
     }
 
     private void generateNewMonitorFile() throws MojoExecutionException {
