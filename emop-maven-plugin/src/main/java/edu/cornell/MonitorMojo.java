@@ -48,7 +48,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         Set<String> packages = Util.classFilesWalk(getClassesDirectory(), getClassesDirectory().getAbsolutePath());
         StringBuilder stringBuilder = new StringBuilder();
         for (String packageName : packages) {
-            stringBuilder.append("    !within(" + packageName + ") &&\n");
+            stringBuilder.append("    !within(" + packageName + "..*) &&\n");
         }
         getLog().info("Generated:\n" + stringBuilder.toString());
         return stringBuilder.toString();

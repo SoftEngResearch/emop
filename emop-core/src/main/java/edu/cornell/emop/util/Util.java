@@ -69,7 +69,7 @@ public class Util {
                 if (fileName.endsWith(".class")) { // only checking class files
                     // get parent directory
                     String parentName = currFile.getParent().split(dirName + File.separator)[1];
-                    String packageName = parentName.replaceAll(File.separator, ".") + "..*";
+                    String packageName = parentName.replaceAll(File.separator, ".");
                     packageNameSet.add(packageName);
                 }
             }
