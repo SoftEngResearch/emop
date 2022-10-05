@@ -77,4 +77,24 @@ public class Util {
         return packageNameSet;
     }
 
+    /**
+     * FIXME: there is most likely a more efficient way to filter out the subpackages...
+     * @param currRoot
+     * @param dirName
+     * @return
+     */
+    public static Set<String> retrieveProjectPackageNames(File currRoot, String dirName) {
+        Set<String> fullSet = classFilesWalk(currRoot, dirName);
+        // exclude subpackage names (not really necessary, but for the sake of having a clean BaseAspect)
+        Set<String> subPackageNames = new HashSet<>();
+        for (String packageName : fullSet) {
+            for (String otherPackageName : fullSet) {
+                if (!packageName.equals(otherPackageName) && packageName.contains(otherPackageName)) {
+                    subPackageNames.add(packageName);
+                }
+            }
+        }
+        fullSet.removeAll(subPackageNames);
+        return fullSet;
+    }
 }

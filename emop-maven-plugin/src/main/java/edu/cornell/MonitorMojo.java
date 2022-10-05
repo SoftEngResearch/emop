@@ -62,13 +62,15 @@ public class MonitorMojo extends AffectedSpecsMojo {
             Main compiler = new Main();
             MessageHandler mh = new MessageHandler();
             String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
+            getLog().info("Location of BaseAspect: " + getArtifactsDir() + File.separator + baseAspectFile);
             String[] ajcArgs = {"-d", getArtifactsDir(), "-classpath", classpath,
                                 getArtifactsDir() + File.separator + baseAspectFile};
             compiler.run(ajcArgs, mh);
             IMessage[] ms = mh.getMessages(null, true);
             // Replace compiled BaseAspect in javamop-agent's jar
             Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
-                                  getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
+                                  getArtifactsDir() + File.separator + "BaseAspect.class");
+//                                  getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
         }
@@ -81,14 +83,16 @@ public class MonitorMojo extends AffectedSpecsMojo {
      * @return
      */
     private String generateThirdPartyExclusion() {
-        Set<String> packages = Util.classFilesWalk(getClassesDirectory(), getClassesDirectory().getAbsolutePath());
         StringBuilder stringBuilder = new StringBuilder();
-        for (String packageName : packages) {
-            stringBuilder.append("    !within(" + packageName + "..*) &&\n");
+        if (!includeLibraries) {
+            Set<String> packages =
+                    Util.retrieveProjectPackageNames(getClassesDirectory(), getClassesDirectory().getAbsolutePath());
+            for (String packageName : packages) {
+                stringBuilder.append("    within(" + packageName + "..*) &&\n");
+            }
+            getLog().info("Generated:\n" + stringBuilder.toString());
         }
-        getLog().info("Generated:\n" + stringBuilder.toString());
         return stringBuilder.toString();
-
     }
 
     private void generateNewMonitorFile() throws MojoExecutionException {
@@ -115,6 +119,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             writer.println("package mop;");
             writer.println("public aspect BaseAspect {");
             writer.println("    pointcut notwithin() :");
+            writer.println(generateThirdPartyExclusion());
             for (String className : getNonAffected()) {
                 writer.println("    !within(" + className + ") &&");
             }
