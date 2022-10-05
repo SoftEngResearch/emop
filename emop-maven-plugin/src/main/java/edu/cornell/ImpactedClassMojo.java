@@ -23,6 +23,7 @@ public class ImpactedClassMojo extends ImpactedMojo {
         super.execute();
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Execute ImpactedClasses Mojo takes " + (end - start) + " ms");
+        getLog().info("[eMOP] Total number of classes: " + (getOldClasses().size() + getNewClasses().size()));
         if (getImpacted().isEmpty()) {
             getLog().info("[eMOP] No impacted classes, terminating...");
             System.exit(0);

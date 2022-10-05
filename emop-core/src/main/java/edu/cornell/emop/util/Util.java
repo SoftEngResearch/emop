@@ -37,13 +37,13 @@ public class Util {
         return returnedFileNames;
     }
 
-    public static void replaceSpecSelectionWithFile(String javamopAgentPath, String newFilePath) {
+    public static void replaceFileInJar(String jarPath, String oldPath, String newPath) {
         Map<String, String> env = new HashMap<>();
         env.put("create", "true");
-        URI javamopAgent = URI.create("jar:file:" + javamopAgentPath);
-        try (FileSystem jarfs = FileSystems.newFileSystem(javamopAgent, env)) {
-            Path newFile = Paths.get(newFilePath);
-            Path pathInJarFile = jarfs.getPath("/META-INF/aop-ajc.xml");
+        URI jarFile = URI.create("jar:file:" + jarPath);
+        try (FileSystem jarfs = FileSystems.newFileSystem(jarFile, env)) {
+            Path newFile = Paths.get(newPath);
+            Path pathInJarFile = jarfs.getPath(oldPath);
             Files.copy(newFile, pathInJarFile, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException ex) {
             ex.printStackTrace();

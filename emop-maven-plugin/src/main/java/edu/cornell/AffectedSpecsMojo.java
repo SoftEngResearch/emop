@@ -214,13 +214,13 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
      * @return classpath with only the runtime jars
      * @throws MojoExecutionException throws MojoExecutionException
      */
-    private String getRuntimeJars() throws MojoExecutionException {
+    protected String getRuntimeJars() throws MojoExecutionException {
         String destinationDir = getArtifactsDir() + File.separator + "lib";
         List<String> runtimeJars = extractOrFind(destinationDir, ".jar", "lib");
         return String.join(File.pathSeparator, runtimeJars);
     }
 
-    private String getClassPath() throws MojoExecutionException {
+    protected String getClassPath() throws MojoExecutionException {
         return Writer.pathToString(getSureFireClassPath().getClassPath());
     }
 
