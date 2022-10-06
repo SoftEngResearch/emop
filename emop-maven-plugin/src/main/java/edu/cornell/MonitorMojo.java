@@ -51,11 +51,13 @@ public class MonitorMojo extends AffectedSpecsMojo {
                 + File.separator + "1.0"
                 + File.separator + "javamop-agent-1.0.jar";
         }
+        getLog().info("JavaMOP agent: " + javamopAgent);
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + monitorFile);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
         if(!includeNonAffected || !includeLibraries) {
             start = System.currentTimeMillis();
+//            getLog().info(generateThirdPartyExclusion());
             // Rewrite BaseAspect.aj to ignore non-affected classes
             generateNewBaseAspect();
             // Compile BaseAspect.aj with ajc
@@ -67,14 +69,18 @@ public class MonitorMojo extends AffectedSpecsMojo {
                                 getArtifactsDir() + File.separator + baseAspectFile};
             compiler.run(ajcArgs, mh);
             IMessage[] ms = mh.getMessages(null, true);
+            for (IMessage i : ms) {
+                if (i.isError()) {
+                    getLog().error("AspectJ compilation of BaseAspect.aj failed! Exiting...");
+                    System.exit(0);
+                }
+            }
             // Replace compiled BaseAspect in javamop-agent's jar
             Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
-                                  getArtifactsDir() + File.separator + "BaseAspect.class");
-//                                  getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
+                                  getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
         }
-
     }
 
     /**
@@ -90,7 +96,18 @@ public class MonitorMojo extends AffectedSpecsMojo {
             for (String packageName : packages) {
                 stringBuilder.append("    within(" + packageName + "..*) &&\n");
             }
-            getLog().info("Generated:\n" + stringBuilder.toString());
+        }
+        return stringBuilder.toString();
+    }
+
+    private String generateNonAffectedExclusion() {
+        StringBuilder stringBuilder = new StringBuilder();
+        if (!includeNonAffected) {
+            for (String className : getNonAffected()) {
+                if (!className.contains("package-info")) {
+                    stringBuilder.append("    !within(" + className + ") &&\n");
+                }
+            }
         }
         return stringBuilder.toString();
     }
@@ -115,15 +132,14 @@ public class MonitorMojo extends AffectedSpecsMojo {
     }
 
     private void generateNewBaseAspect() throws MojoExecutionException {
+        getLog().info("impacted: \n" + getImpacted());
         try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + baseAspectFile)) {
             writer.println("package mop;");
             writer.println("public aspect BaseAspect {");
             writer.println("    pointcut notwithin() :");
             writer.println(generateThirdPartyExclusion());
-            for (String className : getNonAffected()) {
-                writer.println("    !within(" + className + ") &&");
-            }
-            // TODO: Hard-coded for now, need to be changed to implement different variants for including libraries.
+            writer.println(generateNonAffectedExclusion());
+            // hard-coding the essential exclusions.
             writer.println("    !within(sun..*) &&");
             writer.println("    !within(java..*) &&");
             writer.println("    !within(javax..*) &&");
