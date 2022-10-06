@@ -137,7 +137,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
     }
 
     private void generateNewBaseAspect() throws MojoExecutionException {
-        getLog().info("impacted: \n" + getImpacted());
         try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + baseAspectFile)) {
             writer.println("package mop;");
             writer.println("public aspect BaseAspect {");
