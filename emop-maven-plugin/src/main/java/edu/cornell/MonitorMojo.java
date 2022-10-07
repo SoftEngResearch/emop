@@ -54,7 +54,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + monitorFile);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
-        if(!includeNonAffected || !includeLibraries) {
+        if (!includeNonAffected || !includeLibraries) {
             start = System.currentTimeMillis();
             // Rewrite BaseAspect.aj to ignore non-affected classes
             generateNewBaseAspect();
@@ -62,7 +62,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
             Main compiler = new Main();
             MessageHandler mh = new MessageHandler();
             String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
-            getLog().info("Location of BaseAspect: " + getArtifactsDir() + File.separator + baseAspectFile);
             String[] ajcArgs = {"-d", getArtifactsDir(), "-classpath", classpath,
                                 getArtifactsDir() + File.separator + baseAspectFile};
             compiler.run(ajcArgs, mh);
@@ -70,7 +69,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             for (IMessage i : ms) {
                 if (i.isError()) {
                     getLog().error("AspectJ compilation of BaseAspect.aj failed! Exiting...");
-                    System.exit(0);
+                    System.exit(1);
                 }
             }
             // Replace compiled BaseAspect in javamop-agent's jar
@@ -84,14 +83,13 @@ public class MonitorMojo extends AffectedSpecsMojo {
     /**
      * Generates a String containing within() pointcuts so that instrumentation is only performed within the
      * packages in the maven project in question, effectively disabling instrumentation in third-party libraries.
-     *
      * If the includeLibraries parameter is set to true, then this method would return an empty string.
      */
     private String generateThirdPartyExclusion() {
         StringBuilder stringBuilder = new StringBuilder();
         if (!includeLibraries) {
             Set<String> packages =
-                    Util.retrieveProjectPackageNames(getClassesDirectory(), getClassesDirectory().getAbsolutePath());
+                    Util.retrieveProjectPackageNames(getClassesDirectory());
             for (String packageName : packages) {
                 stringBuilder.append("    within(" + packageName + "..*) &&\n");
             }
@@ -102,14 +100,13 @@ public class MonitorMojo extends AffectedSpecsMojo {
     /**
      * Generates a String containing !within() pointcuts so that instrumentation is only performed within the
      * affected classes, effectively disabling instrumentation in non-affected classes.
-     *
      * If the includeNonAffected parameter is set to true, then this method would return an empty string.
      */
     private String generateNonAffectedExclusion() {
         StringBuilder stringBuilder = new StringBuilder();
         if (!includeNonAffected) {
             for (String className : getNonAffected()) {
-                if (!className.contains("package-info")) {
+                if (!className.contains("package-info")) { // not excluding package-info results in compile error
                     stringBuilder.append("    !within(" + className + ") &&\n");
                 }
             }

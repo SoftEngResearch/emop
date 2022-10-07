@@ -51,8 +51,12 @@ public class Util {
     }
 
     /**
-     * Recursive routine accumulating the set of String indicating files to include.
+     * Recursive routine accumulating the set of package names within the project.
      * Borrowed from DSI.
+     *
+     * @param currRoot the current location
+     * @param dirName the name of the directory
+     * @return set of all package names within the project.
      */
     public static Set<String> classFilesWalk(File currRoot, String dirName) {
         Set<String> packageNameSet = new HashSet<>();
@@ -78,13 +82,14 @@ public class Util {
     }
 
     /**
+     * Wrapper method for retrieving the package names within the project.
      * FIXME: there is most likely a more efficient way to filter out the subpackages...
-     * @param currRoot
-     * @param dirName
-     * @return
+     *
+     * @param classesDir the classes directory of the project.
+     * @return set of strings containing package names (without subpackages).
      */
-    public static Set<String> retrieveProjectPackageNames(File currRoot, String dirName) {
-        Set<String> fullSet = classFilesWalk(currRoot, dirName);
+    public static Set<String> retrieveProjectPackageNames(File classesDir) {
+        Set<String> fullSet = classFilesWalk(classesDir, classesDir.getAbsolutePath());
         // exclude subpackage names (not really necessary, but for the sake of having a clean BaseAspect)
         Set<String> subPackageNames = new HashSet<>();
         for (String packageName : fullSet) {
