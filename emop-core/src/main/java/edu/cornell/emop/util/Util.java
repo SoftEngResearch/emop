@@ -1,6 +1,7 @@
 package edu.cornell.emop.util;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -58,23 +59,31 @@ public class Util {
      * @param dirName the name of the directory
      * @return set of all package names within the project.
      */
-    public static Set<String> classFilesWalk(File currRoot, String dirName) {
+    private static Set<String> classFilesWalk(File currRoot, String dirName) {
         Set<String> packageNameSet = new HashSet<>();
         File[] files = currRoot.listFiles();
         if (files == null) {
             return packageNameSet;
         }
-        for (File currFile : files) {
-            if (currFile.isDirectory()) { // recurse into subdirectory
-                Set<String> packageNameSet2 = classFilesWalk(currFile, dirName);
-                packageNameSet.addAll(packageNameSet2);
-            } else { // regular file, now we just need to get the name of the path and apply
-                String fileName = currFile.getName();
-                if (fileName.endsWith(".class")) { // only checking class files
-                    // get parent directory
-                    String parentName = currFile.getParent().split(dirName + File.separator)[1];
-                    String packageName = parentName.replaceAll(File.separator, ".");
-                    packageNameSet.add(packageName);
+        // we want to list all the potential *.class files in this directory
+        File[] classFiles = currRoot.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File file) {
+                return !file.isDirectory() && (file.getName().endsWith(".class"));
+            }
+        });
+        if (classFiles.length > 0) {
+            // we found a class file, which means we are in a directory with class files (package)
+            // No need to traverse further because AspectJ within(${PACKAGE_NAME}..*) syntax instruments subpackages.
+            String packageName = currRoot.getAbsolutePath().split(dirName + File.separator)[1];
+            packageNameSet.add(packageName.replace(File.separator, "."));
+        } else {
+            // all contents of this directory are subdirectories or non-*.class files.
+            // we need to traverse through the directories
+            for (File currFile : files) {
+                if (currFile.isDirectory()) {
+                    Set<String> packageNameSet2 = classFilesWalk(currFile, dirName);
+                    packageNameSet.addAll(packageNameSet2);
                 }
             }
         }
@@ -83,23 +92,12 @@ public class Util {
 
     /**
      * Wrapper method for retrieving the package names within the project.
-     * FIXME: there is most likely a more efficient way to filter out the subpackages...
      *
      * @param classesDir the classes directory of the project.
      * @return set of strings containing package names (without subpackages).
      */
     public static Set<String> retrieveProjectPackageNames(File classesDir) {
         Set<String> fullSet = classFilesWalk(classesDir, classesDir.getAbsolutePath());
-        // exclude subpackage names (not really necessary, but for the sake of having a clean BaseAspect)
-        Set<String> subPackageNames = new HashSet<>();
-        for (String packageName : fullSet) {
-            for (String otherPackageName : fullSet) {
-                if (!packageName.equals(otherPackageName) && packageName.contains(otherPackageName)) {
-                    subPackageNames.add(packageName);
-                }
-            }
-        }
-        fullSet.removeAll(subPackageNames);
         return fullSet;
     }
 }
