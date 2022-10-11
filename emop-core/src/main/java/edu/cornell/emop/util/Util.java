@@ -53,10 +53,9 @@ public class Util {
 
     /**
      * Recursive routine accumulating the set of package names within the project.
-     * Borrowed from DSI.
      *
-     * @param currRoot the current location
-     * @param dirName the name of the directory
+     * @param currRoot the current location.
+     * @param dirName the name of the directory.
      * @return set of all package names within the project.
      */
     private static Set<String> classFilesWalk(File currRoot, String dirName) {
@@ -69,7 +68,7 @@ public class Util {
         File[] classFiles = currRoot.listFiles(new FileFilter() {
             @Override
             public boolean accept(File file) {
-                return !file.isDirectory() && (file.getName().endsWith(".class"));
+                return !file.isDirectory() && file.getName().endsWith(".class");
             }
         });
         if (classFiles.length > 0) {
