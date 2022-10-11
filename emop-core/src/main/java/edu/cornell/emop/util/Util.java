@@ -54,11 +54,11 @@ public class Util {
     /**
      * Recursive routine accumulating the set of package names within the project.
      *
-     * @param currRoot the current location.
-     * @param dirName the name of the directory.
+     * @param currRoot the current directory location.
+     * @param classesDirName the absolute path of the classes directory.
      * @return set of all package names within the project.
      */
-    private static Set<String> classFilesWalk(File currRoot, String dirName) {
+    private static Set<String> classFilesWalk(File currRoot, String classesDirName) {
         Set<String> packageNameSet = new HashSet<>();
         File[] files = currRoot.listFiles();
         if (files == null) {
@@ -74,14 +74,17 @@ public class Util {
         if (classFiles.length > 0) {
             // we found a class file, which means we are in a directory with class files (package)
             // No need to traverse further because AspectJ within(${PACKAGE_NAME}..*) syntax instruments subpackages.
-            String packageName = currRoot.getAbsolutePath().split(dirName + File.separator)[1];
+            // The [1] here points to the part of the path after the location of the classes directory.
+            // ex) for commons-fileupload, classesDirName would be /home/*/commons-fileupload/target/classes/
+            // and packageName would be org/apache/commons/fileupload2
+            String packageName = currRoot.getAbsolutePath().split(classesDirName + File.separator)[1];
             packageNameSet.add(packageName.replace(File.separator, "."));
         } else {
             // all contents of this directory are subdirectories or non-*.class files.
             // we need to traverse through the directories
             for (File currFile : files) {
                 if (currFile.isDirectory()) {
-                    Set<String> packageNameSet2 = classFilesWalk(currFile, dirName);
+                    Set<String> packageNameSet2 = classFilesWalk(currFile, classesDirName);
                     packageNameSet.addAll(packageNameSet2);
                 }
             }
