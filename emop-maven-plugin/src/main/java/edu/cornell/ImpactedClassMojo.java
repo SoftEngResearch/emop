@@ -18,13 +18,13 @@ public class ImpactedClassMojo extends ImpactedMojo {
 
     /**
      * Parameter to determine which closure to use for impacted classes.
-     * TRANS_OF_INVERSE_TRANS = p1
-     * TRANS_AND_INVERSE_TRANS = p2
-     * TRANS = p3
+     * TRANSITIVE_OF_INVERSE_TRANSITIVE = p1
+     * TRANSITIVE_AND_INVERSE_TRANSITIVE = p2
+     * TRANSITIVE = p3
      */
     @Parameter(
             property = "closureOption",
-            defaultValue = "TRANS"
+            defaultValue = "TRANSITIVE"
     )
     private TransitiveClosureOptions closureOption;
 
