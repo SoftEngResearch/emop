@@ -41,32 +41,20 @@ $ps_i$ and $ps_i^c$ needs to modify `STARTS` to include third-party libraries, a
 
 ## VMS
 
-Goal of VMS:
+Outline:
 
-* Re-monitor all properties but show only new violations that were not in the old version.
-* Computes a mapping of code between new and old versions.
-* Filters out violations of the same property that occurred on likely equivalent locations in both versions.
-
-More detail:
-
-* Take violations from $P_1$ and $P_2$.
-* Remove violations generated in $P_2$ is line mapping can map the same violation to a likely corresponding line number
-  in $P_1$ (after taking care of renames).
+* Store violations from $P_1$ and $P_2$
+  * Violations should store the specification violated and line number occurred
+* Use jDiff
+  * Maven plugin here: http://www.spf4j.org/spf4j-jdiff-maven-plugin/index.html
+* Remove violations generated in $P_2$ is line mapping can map the same violation in $P_1$ (watch for renames)
 * Report any remaining violations generated in $P_2$ as likely new violations
-* Use jDiff (from jEdit)
 
-Problem:
+To Do:
 
-* We need to be able to map the violations from old versions to new and store them
-* We need to store context
-* Investigate diffMap! for mapping line numbers across versions
-* Maybe implement a crude version first: function level granularity?? -- this would require trace awareness
 * Investigate git api for java
-
-Some primitive thoughts:
-
-- [ ] Store messages as maps containing key information like where the violation was found
-  - [ ] Problems: Don't have a reliable way of expressing the violation location. (Can't be line numbers because they are prone to change) Eventually might work with`ajc`.
+* Find a way to create line mappings for jDiff
+  * diff-map probably won't be useful without major overhaul, but has good ideas
 
 ## RPP
 
