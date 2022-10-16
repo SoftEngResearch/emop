@@ -51,6 +51,7 @@ Some primitive thoughts:
 ## RPP
 
 Input: (optional) list of critical specs, (optional) list of background specs. If neither are provided, then we have to either (1) autocompute a list of critical specs (if we have a `violation-counts` file to refer to), or (2) run all specs as either critical/background.
+
 Output: standard out/err of test execution for critical phase, violation-counts for critical phase, file containing test execution for background phase, violation-counts for background phase. Bonus if we can provide a file listing the violated specs, so we can reuse it for the next run of RPP.
 
 ### Autocomputing the list of critical specs
