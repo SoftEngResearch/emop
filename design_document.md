@@ -43,18 +43,21 @@ $ps_i$ and $ps_i^c$ needs to modify `STARTS` to include third-party libraries, a
 
 Outline:
 
-* Store violations from $P_1$ and $P_2$
-  * Violations should store the specification violated and line number occurred
-* Use jDiff
-  * Maven plugin here: http://www.spf4j.org/spf4j-jdiff-maven-plugin/index.html
-* Remove violations generated in $P_2$ is line mapping can map the same violation in $P_1$ (watch for renames)
-* Report any remaining violations generated in $P_2$ as likely new violations
-
-To Do:
-
-* Investigate git api for java
-* Find a way to create line mappings for jDiff
-  * diff-map probably won't be useful without major overhaul, but has good ideas
+- [ ] Store violations from $P_1$ and $P_2$
+  - Violations should store the specification violated along with the file and line number where it occurred
+- [ ] For every violation in $P_2$, look at the same violations in $P_1$
+  - [ ] Use `diff` (via JGit, found [here](https://www.eclipse.org/jgit/download/)) to determine if these violations
+        occured in the same location in the code
+    - You can interpret this as being the same line number in code, after taking account all edits in a file
+    - Make sure to use the option allowing for the analysis of renames
+    - JGit was chosen for its robust [documentation](https://download.eclipse.org/jgit/site/6.3.0.202209071007-r/apidocs/org/eclipse/jgit/diff/package-summary.html) 
+      and its continued maintenance
+    - There were many options for analyzing differences such as JEdit (JDiff) and diff-map, but these alternatives
+      lacked documentation and have not been maintained in several years
+    - Might be able to optimize runtime by doing this on a per-file instead of a per-violation basis
+    - Other relevant sites for how to do this ([here](https://www.codeaffine.com/2016/06/16/jgit-diff/))
+  - [ ] If the previous condition is true, stop the violation from being reported in $P_2$
+    - Otherwise, report the violation
 
 ## RPP
 
