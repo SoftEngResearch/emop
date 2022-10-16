@@ -50,6 +50,19 @@ Some primitive thoughts:
 
 ## RPP
 
-Ideas:
+Input: (optional) list of critical specs, (optional) list of background specs. If neither are provided, then we have to either (1) autocompute a list of critical specs (if we have a `violation-counts` file to refer to), or (2) run all specs as either critical/background.
+Output: standard out/err of test execution for critical phase, violation-counts for critical phase, file containing test execution for background phase, violation-counts for background phase. Bonus if we can provide a file listing the violated specs, so we can reuse it for the next run of RPP.
 
-- [ ] Store from previous run statistics what generated most number of monitors. If it is configurable to specify to instrument which specs first, then instrument them according to that order.
+### Autocomputing the list of critical specs
+A first pass implementation can assume that a list of critical specs and/or a list of background specs is provided. This part is more simple, and we can definitely put it in later.
+- [ ] Can we get `violation-counts` automatically stored in the `.starts` directory?
+- [ ] Need to parse a `violation-counts` file to retrieve the list of specs that were previously violated
+  - [ ] Any spec that does not belong in this set is brought to the background phase.
+
+### Executing the critical and background phases
+Note that for the first pass implementation, we will run the critical and background phases sequentially. Later, we can work out running the two phases in parallel.
+- [ ] Create two versions of the JavaMOP agent. Replace the `aop-ajc.xml` file for both JavaMOP agents accordingly (one containing the critical specs, one containing the background specs).
+- [ ] Get a handle on maven surefire (follow how to do this in STARTS/DSI)
+- [ ] The standard out and standard error of the background phase needs to be redirected to a file.
+- [ ] Need to relocate `violation-counts`.
+- [ ] Nice to have: if either critical or background has 0 specs, then we want to skip it.
