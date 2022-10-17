@@ -63,6 +63,9 @@ A first pass implementation can assume that a list of critical specs and/or a li
 
 ### Executing the critical and background phases
 Note that for the first pass implementation, we will run the critical and background phases sequentially. Later, we can work out running the two phases in parallel.
+
+DSI grabs the surefire mojo by grabbing the mojo passed into the `execute()` method in [SurefireMojoInterceptor](https://github.com/TestingResearchIllinois/starts/blob/master/starts-core/src/main/java/edu/illinois/starts/maven/SurefireMojoInterceptor.java). I can definitely share more of what DSI does to the person implementing RPP, but right now it's in a private bitbucket repo...
+
 - [ ] Create two versions of the JavaMOP agent. Replace the `aop-ajc.xml` file for both JavaMOP agents accordingly (one containing the critical specs, one containing the background specs).
 - [ ] Get a handle on maven surefire (follow how to do this in STARTS/DSI), so we can run it twice. I think referring to code in DSI would be super helpful here, as we basically need to follow it to run surefire from within the mojo.
 - [ ] The standard out and standard error of the background phase needs to be redirected to a file. Refer to DSI tool for this.
