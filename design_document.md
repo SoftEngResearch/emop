@@ -69,5 +69,5 @@ DSI grabs the surefire mojo by grabbing the mojo passed into the `execute()` met
 - [ ] Create two versions of the JavaMOP agent. Replace the `aop-ajc.xml` file for both JavaMOP agents accordingly (one containing the critical specs, one containing the background specs).
 - [ ] Get a handle on maven surefire (follow how to do this in STARTS/DSI), so we can run it twice. I think referring to code in DSI would be super helpful here, as we basically need to follow it to run surefire from within the mojo.
 - [ ] The standard out and standard error of the background phase needs to be redirected to a file. Refer to DSI tool for this.
-- [ ] Need to relocate `violation-counts` so that future instances have access to it.
+- [ ] Need to relocate `violation-counts` so that future instances have access to it. How can we ensure that `violation-counts` is created and how can we move the `violation-counts` file after the execution of surefire?
 - [ ] Nice to have: if either critical or background has 0 specs, then we want to skip it.
