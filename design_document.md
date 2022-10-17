@@ -50,14 +50,15 @@ Some primitive thoughts:
 
 ## RPP
 
-Input: (optional) list of critical specs, (optional) list of background specs. If neither are provided, then we have to either (1) autocompute a list of critical specs (if we have a `violation-counts` file to refer to), or (2) run all specs as either critical/background.
+Input: (optional) list of critical specs. If not provided, then we have to either (1) autocompute a list of critical specs (if we have a `violation-counts` file to refer to), or (2) run all specs as either critical/background.
 
 Output: standard out/err of test execution for critical phase, violation-counts for critical phase, file containing test execution for background phase, violation-counts for background phase. Bonus if we can provide a file listing the violated specs, so we can reuse it for the next run of RPP.
+
 
 ### Autocomputing the list of critical specs
 A first pass implementation can assume that a list of critical specs and/or a list of background specs is provided. This part is more simple, and we can definitely put it in later.
 - [ ] Can we get `violation-counts` automatically stored in the `.starts` directory?
-- [ ] Need to parse a `violation-counts` file to retrieve the list of specs that were previously violated
+- [ ] Need to parse a `violation-counts` file to retrieve the list of specs that were previously violated. **This functionality will be necessary for VMS as well, so the two people implementing VMS and RPP should collaborate**
   - [ ] Any spec that does not belong in this set is brought to the background phase.
 
 ### Executing the critical and background phases
