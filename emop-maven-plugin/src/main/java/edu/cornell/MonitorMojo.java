@@ -57,7 +57,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         if (!includeNonAffected || !includeLibraries) {
             start = System.currentTimeMillis();
             // Rewrite BaseAspect.aj to ignore non-affected classes
-            generateNewBaseAspect();
+            generateNewBaseAspect(!(!includeNonAffected || !includeLibraries));
             // Compile BaseAspect.aj with ajc
             Main compiler = new Main();
             MessageHandler mh = new MessageHandler();
@@ -77,6 +77,8 @@ public class MonitorMojo extends AffectedSpecsMojo {
                                   getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
+        } else {
+
         }
     }
 
@@ -133,13 +135,15 @@ public class MonitorMojo extends AffectedSpecsMojo {
         }
     }
 
-    private void generateNewBaseAspect() throws MojoExecutionException {
+    private void generateNewBaseAspect(boolean revert) throws MojoExecutionException {
         try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + baseAspectFile)) {
             writer.println("package mop;");
             writer.println("public aspect BaseAspect {");
             writer.println("    pointcut notwithin() :");
-            writer.println(generateThirdPartyExclusion());
-            writer.println(generateNonAffectedExclusion());
+            if (!revert) {
+                writer.println(generateThirdPartyExclusion());
+                writer.println(generateNonAffectedExclusion());
+            }
             // hard-coding the essential exclusions.
             writer.println("    !within(sun..*) &&");
             writer.println("    !within(java..*) &&");
