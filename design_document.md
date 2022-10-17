@@ -41,8 +41,6 @@ $ps_i$ and $ps_i^c$ needs to modify `STARTS` to include third-party libraries, a
 
 ## VMS
 
-Outline:
-
 - [ ] Store violations from $P_1$ and $P_2$
   - Violations should store the specification violated along with the file and line number where it occurred
 - [ ] For every violation in $P_2$, look at the same violations in $P_1$
@@ -58,6 +56,16 @@ Outline:
     - Other relevant sites for how to do this ([here](https://www.codeaffine.com/2016/06/16/jgit-diff/))
   - [ ] If the previous condition is true, stop the violation from being reported in $P_2$
     - Otherwise, report the violation
+
+Possible issues and things to think about
+* If there is a version of `violation-counts` present, keep it in `violation-counts-old` and refer back to it for $P_1$
+* MMMP have multiple `violation-counts`, VMS at the moment does not account for this
+* How to deal with libraries in general, their lack of version history and if we want their violations or not
+* Class + Spec + Line = the equation to determine if violations are the same or not
+* Suggestions: implement this as its own independent variant (in its own module running mop) to begin with, integrate later
+* We need options for showing different violations (show me what I saw before)
+* First pass: evaluate only on common-filesupload
+* If necessary, clone JGit and modify it
 
 ## RPP
 
