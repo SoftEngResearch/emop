@@ -23,6 +23,26 @@
 - [x] First step is to parse the string to mapping
 - [ ] Use AspectJ API to obtain the mapping directly
 
+## Push for the paper
+
+- [ ] Need these Mojos
+  - [ ] RPS
+  - [ ] VMS
+  - [ ] RPP
+- [ ] Need these data (50 SHAs each project for 50 projects)
+  - [ ] RPS
+  - [ ] VMS
+  - [ ] RPP
+  - [ ] Power set of the three
+  - [ ] Combine RTS with three techniques
+- [ ] Inspect these for data
+  - [ ] Are they correct?
+  - [ ] Do they look good?
+- [ ] Things not available in 2019 (novelty)
+  - [ ] Maybe MMMP?
+  - [ ] New strategies for RPP
+  - [ ] Different methods of doing diff for VMS
+  
 ## Side Tasks
 
 - [x] Set up continuous integration, eventually using it in upstream

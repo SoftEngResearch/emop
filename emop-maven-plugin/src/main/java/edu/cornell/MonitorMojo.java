@@ -77,8 +77,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
                                   getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
-        } else {
-
         }
     }
 
