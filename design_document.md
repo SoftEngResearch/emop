@@ -60,6 +60,7 @@ A first pass implementation can assume that a list of critical specs and/or a li
 - [ ] Can we get `violation-counts` automatically stored in the `.starts` directory?
 - [ ] Need to parse a `violation-counts` file to retrieve the list of specs that were previously violated. **This functionality will be necessary for VMS as well, so the two people implementing VMS and RPP should collaborate**
   - [ ] Any spec that does not belong in this set is brought to the background phase.
+  - [ ] Background phase specs that get violated need to get promoted.
 
 ### Executing the critical and background phases
 Note that for the first pass implementation, we will run the critical and background phases sequentially. Later, we can work out running the two phases in parallel.
@@ -68,6 +69,13 @@ DSI grabs the surefire mojo by grabbing the mojo passed into the `execute()` met
 
 - [ ] Create two versions of the JavaMOP agent. Replace the `aop-ajc.xml` file for both JavaMOP agents accordingly (one containing the critical specs, one containing the background specs).
 - [ ] Get a handle on maven surefire (follow how to do this in STARTS/DSI), so we can run it twice. I think referring to code in DSI would be super helpful here, as we basically need to follow it to run surefire from within the mojo.
-- [ ] The standard out and standard error of the background phase needs to be redirected to a file. Refer to DSI tool for this.
+- [ ] Run critical with redirected output, output violations to stdout, run background with redirected output, output violations to stdout, tell user where to look for the entire maven output.
+- [ ] The standard out and standard error of both phases needs to be redirected to a file. Refer to DSI tool for this.
 - [ ] Need to relocate `violation-counts` so that future instances have access to it. How can we ensure that `violation-counts` is created and how can we move the `violation-counts` file after the execution of surefire?
 - [ ] Nice to have: if either critical or background has 0 specs, then we want to skip it.
+
+### Post-Straight line pass
+- [ ] Make parallel
+- [ ] Autocompute the list of critical specs
+- [ ] Automatically promote specs from background phase to critical phase (what is the criteria for this?)
+- [ ] Options for demoting critical phase specs
