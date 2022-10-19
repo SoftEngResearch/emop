@@ -57,7 +57,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         if (!includeNonAffected || !includeLibraries) {
             start = System.currentTimeMillis();
             // Rewrite BaseAspect.aj to ignore non-affected classes
-            generateNewBaseAspect(!(!includeNonAffected || !includeLibraries));
+            generateNewBaseAspect(includeNonAffected && includeLibraries);
             // Compile BaseAspect.aj with ajc
             Main compiler = new Main();
             MessageHandler mh = new MessageHandler();
