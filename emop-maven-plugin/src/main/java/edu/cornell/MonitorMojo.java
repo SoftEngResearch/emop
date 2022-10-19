@@ -44,7 +44,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
-        generateNewMonitorFile();
+        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs);
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                 + File.separator + "javamop-agent"
@@ -112,25 +112,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
             }
         }
         return stringBuilder.toString();
-    }
-
-    private void generateNewMonitorFile() throws MojoExecutionException {
-        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + monitorFile)) {
-            // Write header
-            writer.println("<aspectj>");
-            writer.println("<aspects>");
-            // Write body
-            for (String affectedSpec : affectedSpecs) {
-                writer.println("<aspect name=\"mop." + affectedSpec + "\"/>");
-            }
-            // Write footer
-            writer.println("</aspects>");
-            // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
-            writer.println("<weaver options=\"-nowarn -Xlint:ignore\"></weaver>");
-            writer.println("</aspectj>");
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
     }
 
     private void generateNewBaseAspect() throws MojoExecutionException {

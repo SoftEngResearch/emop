@@ -23,6 +23,7 @@ public class RppHandlerMojo extends AbstractMojo {
     @Parameter( defaultValue = "${localRepository}", required = true, readonly = true )
     private ArtifactRepository localRepository;
 
+
     public void execute() throws MojoExecutionException {
         // prepare the two jars
         if (javamopAgent == null) {

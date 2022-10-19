@@ -1,8 +1,11 @@
 package edu.cornell.emop.util;
 
+import org.apache.maven.plugin.MojoExecutionException;
+
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -101,5 +104,24 @@ public class Util {
     public static Set<String> retrieveProjectPackageNames(File classesDir) {
         Set<String> fullSet = classFilesWalk(classesDir, classesDir.getAbsolutePath());
         return fullSet;
+    }
+
+    public static void generateNewMonitorFile(String monitorFilePath, Set<String> specsToMonitor) throws MojoExecutionException {
+        try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
+            // Write header
+            writer.println("<aspectj>");
+            writer.println("<aspects>");
+            // Write body
+            for (String affectedSpec : specsToMonitor) {
+                writer.println("<aspect name=\"mop." + affectedSpec + "\"/>");
+            }
+            // Write footer
+            writer.println("</aspects>");
+            // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
+            writer.println("<weaver options=\"-nowarn -Xlint:ignore\"></weaver>");
+            writer.println("</aspectj>");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 }
