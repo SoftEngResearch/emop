@@ -71,7 +71,7 @@ public final class MavenCFT implements ClassFileTransformer {
                             throws IllegalClassFormatException {
         String abstractSurefireMojo = "org/apache/maven/plugin/surefire/AbstractSurefireMojo";
         String surefirePlugin = "org/apache/maven/plugin/surefire/SurefirePlugin";
-        String surefireMojoInterceptor = "edu/cornell/dsi/maven/SurefireMojoInterceptor";
+        String surefireMojoInterceptor = "edu/cornell/emop/maven/SurefireMojoInterceptor";
         if (className.equals(abstractSurefireMojo) || className.equals(surefirePlugin)) {
             return addInterceptor(className, classfileBuffer, surefireMojoInterceptor);
         } else {

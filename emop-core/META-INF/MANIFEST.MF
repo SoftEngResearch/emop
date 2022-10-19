@@ -1,0 +1,4 @@
+Agent-Class: edu.cornell.emop.maven.JavaAgent
+Can-Retransform-Classes: true
+Can-Redefine-Classes: true
+Boot-Class-Path: ./emop-maven-plugin-core-1.0-SNAPSHOT.jar
