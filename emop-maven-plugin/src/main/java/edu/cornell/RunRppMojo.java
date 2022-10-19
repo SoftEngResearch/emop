@@ -13,10 +13,7 @@ import java.lang.reflect.InvocationTargetException;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RunRppMojo extends RppHandlerMojo {
 
-    public void execute() throws MojoExecutionException {
-        System.out.println();
-        System.out.println(SurefireMojoInterceptor.sfMojo);
-        System.out.println("AYAKA: Running surefire again for the LOLs");
+    public void invokeSurefire() {
         try {
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
         } catch (IllegalAccessException e) {
@@ -26,6 +23,11 @@ public class RunRppMojo extends RppHandlerMojo {
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void execute() throws MojoExecutionException {
+        System.out.println();
+        invokeSurefire();
     }
 
 }
