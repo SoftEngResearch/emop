@@ -27,7 +27,7 @@
         <executions>
           <execution>
             <goals>
-              <goal>monitor</goal>
+              <goal>rpp-handler</goal>
             </goals>
           </execution>
         </executions>

@@ -46,63 +46,64 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
     }
 
     private static void callMethodTracer(Object mojo, String currentArgs) throws Exception {
-        // FIXME: series of hacks to get the
-        if (currentArgs != null) { // sad sad hack. Will fix later
-            if (currentArgs.equals("BASERUN")) {
-                setField("argLine", mojo, null); // no args for base run
-                return;
-            }
-            String dsiJarOriginal = System.getProperty("dsiJarOriginal");
-            if (dsiJarOriginal != null && currentArgs.contains(dsiJarOriginal)) {
-                // another cheap hack that I'm not proud of
-                return;
-            }
-        }
-        // new config skipping trace collection
-        if (Boolean.getBoolean("skipTraceCollection")) {
-            System.out.println("SKIPPING TRACE COLLECTION...");
-            return;
-        }
-//        String jarPath = extractJarURLFromClass(MethodTracingAgent.class).toString().replace("file:", "");
-        // FIXME
-        String jarPath = "";
-        String testName = (String) getField("test", mojo);
-        String newArgLine = "-javaagent:" + jarPath + "=";
-        if (testName != null) {
-            newArgLine = newArgLine + testName + "@";
-        } else {
-            newArgLine = newArgLine + "all-tests@"; // we will have a all-tests.txt.gz traces file
-        }
-        // NOTE: somehow specifying excludes (of files that are not in the includes list)
-        // makes the trace file much larger than if we specified includes.
-        // Not quite sure why? but I'm going to comment out the excluding procedure for now.
-        // TODO: investigate the above
-        String traceExclude;
-        String instrumentExclude;
-        // uncomment below to use user-specified traceExcludes and instrumentExcludes
-        traceExclude = System.getProperty("traceExclude");
-        instrumentExclude = System.getProperty("instrumentExclude");
-        if (traceExclude != null) {
-            newArgLine = newArgLine + "trace.exclude=" + traceExclude + ";";
-        }
-        if (instrumentExclude != null) {
-            newArgLine = newArgLine + "instrument.exclude=" + instrumentExclude + ";";
-        }
-        if (Boolean.getBoolean("autoComputeIncludes")) {
-            String includes = "";
-            newArgLine = newArgLine + "trace.include=" + includes + ";" + "instrument.include=" + includes;
-        }
-        if (currentArgs != null) {
-            if (currentArgs.equals("EXTRACOLLECTION")) {
-                currentArgs = getOriginalArgs();
-            } else {
-                System.setProperty("originalArgs", currentArgs);
-            }
-            newArgLine = newArgLine + " " + currentArgs;
-        } else {
-            System.setProperty("originalArgs", "none"); // sad hack
-        }
-        setField("argLine", mojo, newArgLine);
+        System.out.println("in callMethodTracer");
+//        // FIXME: series of hacks to get the
+//        if (currentArgs != null) { // sad sad hack. Will fix later
+//            if (currentArgs.equals("BASERUN")) {
+//                setField("argLine", mojo, null); // no args for base run
+//                return;
+//            }
+//            String dsiJarOriginal = System.getProperty("dsiJarOriginal");
+//            if (dsiJarOriginal != null && currentArgs.contains(dsiJarOriginal)) {
+//                // another cheap hack that I'm not proud of
+//                return;
+//            }
+//        }
+//        // new config skipping trace collection
+//        if (Boolean.getBoolean("skipTraceCollection")) {
+//            System.out.println("SKIPPING TRACE COLLECTION...");
+//            return;
+//        }
+////        String jarPath = extractJarURLFromClass(MethodTracingAgent.class).toString().replace("file:", "");
+//        // FIXME
+//        String jarPath = "";
+//        String testName = (String) getField("test", mojo);
+//        String newArgLine = "-javaagent:" + jarPath + "=";
+//        if (testName != null) {
+//            newArgLine = newArgLine + testName + "@";
+//        } else {
+//            newArgLine = newArgLine + "all-tests@"; // we will have a all-tests.txt.gz traces file
+//        }
+//        // NOTE: somehow specifying excludes (of files that are not in the includes list)
+//        // makes the trace file much larger than if we specified includes.
+//        // Not quite sure why? but I'm going to comment out the excluding procedure for now.
+//        // TODO: investigate the above
+//        String traceExclude;
+//        String instrumentExclude;
+//        // uncomment below to use user-specified traceExcludes and instrumentExcludes
+//        traceExclude = System.getProperty("traceExclude");
+//        instrumentExclude = System.getProperty("instrumentExclude");
+//        if (traceExclude != null) {
+//            newArgLine = newArgLine + "trace.exclude=" + traceExclude + ";";
+//        }
+//        if (instrumentExclude != null) {
+//            newArgLine = newArgLine + "instrument.exclude=" + instrumentExclude + ";";
+//        }
+//        if (Boolean.getBoolean("autoComputeIncludes")) {
+//            String includes = "";
+//            newArgLine = newArgLine + "trace.include=" + includes + ";" + "instrument.include=" + includes;
+//        }
+//        if (currentArgs != null) {
+//            if (currentArgs.equals("EXTRACOLLECTION")) {
+//                currentArgs = getOriginalArgs();
+//            } else {
+//                System.setProperty("originalArgs", currentArgs);
+//            }
+//            newArgLine = newArgLine + " " + currentArgs;
+//        } else {
+//            System.setProperty("originalArgs", "none"); // sad hack
+//        }
+//        setField("argLine", mojo, newArgLine);
     }
 
     private static String getOriginalArgs() {
