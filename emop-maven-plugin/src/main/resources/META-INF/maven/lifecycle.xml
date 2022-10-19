@@ -12,7 +12,6 @@
             </goals>
           </execution>
         </executions>
-        <configuration/>
       </phase>
       <phase>
         <id>test</id>
@@ -31,7 +30,6 @@
             </goals>
           </execution>
         </executions>
-        <configuration/>
       </phase>
       <phase>
         <id>test</id>

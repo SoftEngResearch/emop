@@ -11,16 +11,16 @@ import java.util.Set;
 public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
     public static final String UNSUPPORTED_SUREFIRE_VERSION_EXCEPTION = "Unsupported surefire version. ";
     public static Object sfMojo;
-    public static boolean oldCmdLineSet = false;
-    public static String oldCmdLine;
 
     /**
      * Method that executes at the very beginning of SurefirePlugin's execute method.
      */
     public static void execute(Object mojo) throws Exception {
         sfMojo = mojo;
+        System.out.println("SFMOJO!!!!" + sfMojo);
         String currentArgs = checkSurefireVersion(mojo); // check if the version of surefire is good
         callMethodTracer(mojo, currentArgs);
+        System.out.println("2SFMOJO!!!!" + sfMojo);
     }
 
     private static boolean isSurefirePlugin(Object mojo) throws Exception {
