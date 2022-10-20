@@ -14,6 +14,7 @@ import java.lang.reflect.InvocationTargetException;
 public class RunRppMojo extends RppHandlerMojo {
 
     public void invokeSurefire() {
+        System.setProperty("agent", this.backgroundRunJavaMop.getAbsolutePath());
         try {
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
         } catch (IllegalAccessException e) {
@@ -28,6 +29,8 @@ public class RunRppMojo extends RppHandlerMojo {
     public void execute() throws MojoExecutionException {
         System.out.println();
         invokeSurefire();
+        // removing the jars
+
     }
 
 }
