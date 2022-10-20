@@ -14,3 +14,17 @@ emop-plugin/target/
 .classpath
 .project
 .settings/
+
+# Intermediate files
+*.rvm
+*.aj
+*.class
+*.jar
+
+# emacs
+\#*\#
+.\#*
+*~
+#*
+*#
+

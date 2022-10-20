@@ -9,7 +9,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -20,6 +22,8 @@ import java.util.Set;
 public class RunRppMojo extends RppHandlerMojo {
 
     public void invokeSurefire() {
+        PrintStream stdout = System.out;
+//        PrintStream ps = new PrintStream(new FileOutputStream(new File(System.getProperty("user.dir") + )));
         try {
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
         } catch (IllegalAccessException e) {
@@ -39,6 +43,8 @@ public class RunRppMojo extends RppHandlerMojo {
                     + File.separator + "javamop-agent-1.0.jar";
         }
         File javamopAgentFile = new File(javamopAgent);
+        Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent);
+        System.out.println("specs: " + allSpecs);
         this.backgroundRunJavaMop = new File(javamopAgentFile.getParentFile(), "background-javamop.jar");
         try {
             Files.copy(javamopAgentFile.toPath(), backgroundRunJavaMop.toPath(), StandardCopyOption.REPLACE_EXISTING);

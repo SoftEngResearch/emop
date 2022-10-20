@@ -2,11 +2,16 @@ package edu.cornell.emop.util;
 
 import org.apache.maven.plugin.MojoExecutionException;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -52,6 +57,25 @@ public class Util {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public static Set<String> retrieveSpecListFromJar(String jarPath) {
+        // we assume that the jar contains a specs.txt
+        Set<String> specs = new HashSet<>();
+        URL specsFileInJar = null;
+        try {
+            specsFileInJar = new URL("jar:file:" + jarPath + "!/specs.txt");
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(specsFileInJar.openStream()))) {
+            while (reader.ready()) {
+                specs.add(reader.readLine());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return specs;
     }
 
     /**
