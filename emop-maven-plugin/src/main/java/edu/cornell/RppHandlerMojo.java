@@ -12,7 +12,9 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,21 +23,21 @@ import java.util.stream.Collectors;
 public class RppHandlerMojo extends AbstractMojo {
 
     @Parameter(property = "criticalSpecsFile", defaultValue = "")
-    private String criticalSpecsFile;
+    protected String criticalSpecsFile;
 
     @Parameter(property = "backgroundSpecsFile", defaultValue = "")
-    private String backgroundSpecsFile;
+    protected String backgroundSpecsFile;
 
     @Parameter(property = "javamopAgent")
-    private String javamopAgent;
+    protected String javamopAgent;
 
     @Parameter( defaultValue = "${localRepository}", required = true, readonly = true )
-    private ArtifactRepository localRepository;
+    protected ArtifactRepository localRepository;
 
     protected File criticalRunJavaMop;
     protected File backgroundRunJavaMop;
 
-    private Set<String> parseSpecsFile(String specsFilePath) {
+    protected Set<String> parseSpecsFile(String specsFilePath) {
         try {
             // FIXME: clean this up
             return new HashSet<>(Files.readAllLines(new File(specsFilePath).toPath()))
@@ -57,24 +59,12 @@ public class RppHandlerMojo extends AbstractMojo {
         File javamopAgentFile = new File(javamopAgent);
         this.criticalRunJavaMop = new File(javamopAgentFile.getParentFile(), "critical-javamop.jar");
         try {
-            Files.copy(javamopAgentFile.toPath(), criticalRunJavaMop.toPath());
+            Files.copy(javamopAgentFile.toPath(), criticalRunJavaMop.toPath(), StandardCopyOption.REPLACE_EXISTING);
             Set<String> criticalSpecs = parseSpecsFile(criticalSpecsFile);
             Util.generateNewMonitorFile(
                     System.getProperty("user.dir") + File.separator + "critical-ajc.xml", criticalSpecs);
             Util.replaceFileInJar(this.criticalRunJavaMop.getAbsolutePath(), "/META-INF/aop-ajc.xml",
                     System.getProperty("user.dir") + File.separator + "critical-ajc.xml");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        this.backgroundRunJavaMop = new File(javamopAgentFile.getParentFile(), "background-javamop.jar");
-        try {
-            Files.copy(javamopAgentFile.toPath(), backgroundRunJavaMop.toPath());
-            Set<String> backgroundSpecs = parseSpecsFile(backgroundSpecsFile);
-            Util.generateNewMonitorFile(
-                    System.getProperty("user.dir") + File.separator + "background-ajc.xml", backgroundSpecs);
-            Util.replaceFileInJar(this.backgroundRunJavaMop.getAbsolutePath(), "/META-INF/aop-ajc.xml",
-                    System.getProperty("user.dir") + File.separator + "background-ajc.xml");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
