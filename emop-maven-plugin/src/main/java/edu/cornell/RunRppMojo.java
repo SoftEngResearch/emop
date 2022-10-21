@@ -9,6 +9,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
@@ -20,22 +22,30 @@ import java.util.Set;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RunRppMojo extends RppHandlerMojo {
 
-    public void invokeSurefire() {
+    public void invokeSurefire() throws MojoExecutionException {
         PrintStream stdout = System.out;
-//        PrintStream ps = new PrintStream(new FileOutputStream(new File(System.getProperty("user.dir") + )));
+        PrintStream stderr = System.err;
         try {
+            PrintStream ps = new PrintStream(new FileOutputStream(getArtifactsDir() + File.separator + "background-surefire-run.txt"));
+            System.setOut(ps);
+            System.setErr(ps);
+            System.out.println("starting execution hehe");
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
+            System.setOut(stdout);
+            System.setErr(stderr);
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         } catch (InvocationTargetException e) {
             throw new RuntimeException(e);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
         }
     }
 
     public void execute() throws MojoExecutionException {
-        // need to move violation-counts file
+        // FIXME: move violation-counts file
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
             System.setProperty("rpp-agent", backgroundAgent);
