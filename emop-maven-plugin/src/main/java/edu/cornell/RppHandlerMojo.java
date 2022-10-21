@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Mojo(name = "rpp-handler", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class RppHandlerMojo extends AbstractMojo {
+public class RppHandlerMojo extends MonitorMojo {
 
     @Parameter(property = "criticalSpecsFile", defaultValue = "")
     protected String criticalSpecsFile;
@@ -31,11 +31,10 @@ public class RppHandlerMojo extends AbstractMojo {
     @Parameter(property = "javamopAgent")
     protected String javamopAgent;
 
-    @Parameter( defaultValue = "${localRepository}", required = true, readonly = true )
-    protected ArtifactRepository localRepository;
+    Set<String> criticalSpecsSet;
+    Set<String> backgroundSpecsSet;
 
-    protected File criticalRunJavaMopJar;
-    protected File backgroundRunJavaMopJar;
+    File metaInfoDirectory;
 
     protected Set<String> parseSpecsFile(String specsFilePath) {
         try {
@@ -51,10 +50,8 @@ public class RppHandlerMojo extends AbstractMojo {
     private void setupSpecFiles() {
         if (criticalSpecsFile.isEmpty() && backgroundSpecsFile.isEmpty()) {
             // if the user didn't provide any
-            String baseDir = System.getProperty("basedir");
-            File startsDir = new File(baseDir + File.separator + ".starts");
-            File autogenCriticalSpecs = new File(startsDir, "rpp-critical-specs.txt");
-            File autogenBackgroundSpecs = new File(startsDir, "rpp-background-specs.txt");
+            File autogenCriticalSpecs = new File(metaInfoDirectory, "rpp-critical-specs.txt");
+            File autogenBackgroundSpecs = new File(metaInfoDirectory, "rpp-background-specs.txt");
             if (autogenCriticalSpecs.exists()) {
                 criticalSpecsFile = autogenCriticalSpecs.getAbsolutePath();
             }
@@ -63,9 +60,6 @@ public class RppHandlerMojo extends AbstractMojo {
             }
         }
     }
-
-    Set<String> criticalSpecsSet;
-    Set<String> backgroundSpecsSet;
 
     private void computeSpecSets() {
         Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent);
@@ -90,13 +84,13 @@ public class RppHandlerMojo extends AbstractMojo {
 
     private String setUpSingleJar(String mode, Set<String> specsToMonitor) {
         File javamopAgentFile = new File(javamopAgent);
-        File createdJar = new File(javamopAgentFile.getParentFile(), mode + "-javamop.jar");
+        File createdJar = new File(metaInfoDirectory, mode + "-javamop.jar");
         try {
             Files.copy(javamopAgentFile.toPath(), createdJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
             Util.generateNewMonitorFile(
-                    System.getProperty("user.dir") + File.separator + mode + "-ajc.xml", specsToMonitor);
+                    metaInfoDirectory + File.separator + mode + "-ajc.xml", specsToMonitor);
             Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
-                    System.getProperty("user.dir") + File.separator + mode + "-ajc.xml");
+                    metaInfoDirectory + File.separator + mode + "-ajc.xml");
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (MojoExecutionException e) {
@@ -106,21 +100,24 @@ public class RppHandlerMojo extends AbstractMojo {
     }
 
     private void setupJars() {
-        setupSpecFiles();
-        computeSpecSets();
         if (javamopAgent == null) {
-            javamopAgent = localRepository.getBasedir() + File.separator + "javamop-agent"
+            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
         }
-        setUpSingleJar("critical", criticalSpecsSet);
-        setUpSingleJar("background", backgroundSpecsSet);
+        setupSpecFiles();
+        computeSpecSets();
+        String criticalRunAgentPath = setUpSingleJar("critical", criticalSpecsSet);
+        System.setProperty("rpp-agent", criticalRunAgentPath);
+        String backgroundRunAgentPath = setUpSingleJar("background", backgroundSpecsSet);
+        System.setProperty("background-agent", backgroundRunAgentPath);
     }
-    public void execute() throws MojoExecutionException {
-        // prepare the two jars
 
-        System.setProperty("rpp-agent", this.criticalRunJavaMopJar.getAbsolutePath());
+    public void execute() throws MojoExecutionException {
+        metaInfoDirectory = new File(getArtifactsDir());
+        // prepare the two jars
+        setupJars();
         // record path to jars in system properties
         if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
             throw new MojoExecutionException("Could not attach agent");

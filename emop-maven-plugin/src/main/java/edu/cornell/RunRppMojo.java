@@ -35,26 +35,8 @@ public class RunRppMojo extends RppHandlerMojo {
     }
 
     public void execute() throws MojoExecutionException {
-        if (this.javamopAgent == null) {
-            javamopAgent = localRepository.getBasedir() + File.separator + "javamop-agent"
-                    + File.separator + "javamop-agent"
-                    + File.separator + "1.0"
-                    + File.separator + "javamop-agent-1.0.jar";
-        }
-        File javamopAgentFile = new File(javamopAgent);
-        this.backgroundRunJavaMopJar = new File(javamopAgentFile.getParentFile(), "background-javamop.jar");
-        try {
-            Files.copy(javamopAgentFile.toPath(), backgroundRunJavaMopJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            Set<String> backgroundSpecs = parseSpecsFile(backgroundSpecsFile);
-            Util.generateNewMonitorFile(
-                    System.getProperty("user.dir") + File.separator + "background-ajc.xml", backgroundSpecs);
-            Util.replaceFileInJar(this.backgroundRunJavaMopJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
-                    System.getProperty("user.dir") + File.separator + "background-ajc.xml");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        System.setProperty("rpp-agent", this.backgroundRunJavaMopJar.getAbsolutePath());
-        System.out.println();
+        // need to move violation-counts file
+        System.setProperty("rpp-agent", System.getProperty("background-agent"));
         invokeSurefire();
         // removing the jars
     }

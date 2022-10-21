@@ -68,6 +68,7 @@ public class Util {
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
+        System.out.println("specsFileInJar: " + specsFileInJar);
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(specsFileInJar.openStream()))) {
             while (reader.ready()) {
                 specs.add(reader.readLine());
