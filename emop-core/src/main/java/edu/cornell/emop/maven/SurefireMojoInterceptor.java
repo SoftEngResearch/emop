@@ -46,9 +46,9 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
     }
 
     private static void callMethodTracer(Object mojo, String currentArgs) throws Exception {
-        System.out.println("in callMethodTracer");
         String agentPathString = System.getProperty("rpp-agent");
         if (agentPathString != null) {
+            // FIXME: need to keep all of the previous arguments that are not -javaagent
 //            String newArgLine = currentArgs != null ? "-javaagent:" + agentPathString + " " + currentArgs
 //                    : "-javaagent:" + agentPathString;
             String newArgLine = "-javaagent:" + agentPathString;

@@ -9,7 +9,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
@@ -43,20 +42,18 @@ public class RunRppMojo extends RppHandlerMojo {
                     + File.separator + "javamop-agent-1.0.jar";
         }
         File javamopAgentFile = new File(javamopAgent);
-        Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent);
-        System.out.println("specs: " + allSpecs);
-        this.backgroundRunJavaMop = new File(javamopAgentFile.getParentFile(), "background-javamop.jar");
+        this.backgroundRunJavaMopJar = new File(javamopAgentFile.getParentFile(), "background-javamop.jar");
         try {
-            Files.copy(javamopAgentFile.toPath(), backgroundRunJavaMop.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(javamopAgentFile.toPath(), backgroundRunJavaMopJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
             Set<String> backgroundSpecs = parseSpecsFile(backgroundSpecsFile);
             Util.generateNewMonitorFile(
                     System.getProperty("user.dir") + File.separator + "background-ajc.xml", backgroundSpecs);
-            Util.replaceFileInJar(this.backgroundRunJavaMop.getAbsolutePath(), "/META-INF/aop-ajc.xml",
+            Util.replaceFileInJar(this.backgroundRunJavaMopJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
                     System.getProperty("user.dir") + File.separator + "background-ajc.xml");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.setProperty("rpp-agent", this.backgroundRunJavaMop.getAbsolutePath());
+        System.setProperty("rpp-agent", this.backgroundRunJavaMopJar.getAbsolutePath());
         System.out.println();
         invokeSurefire();
         // removing the jars
