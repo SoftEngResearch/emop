@@ -23,10 +23,10 @@ import java.util.stream.Collectors;
 public class RppHandlerMojo extends MonitorMojo {
 
     @Parameter(property = "criticalSpecsFile", defaultValue = "")
-    protected String criticalSpecsFile;
+    private String criticalSpecsFile;
 
     @Parameter(property = "backgroundSpecsFile", defaultValue = "")
-    protected String backgroundSpecsFile;
+    private String backgroundSpecsFile;
 
     @Parameter(property = "javamopAgent")
     protected String javamopAgent;
@@ -48,7 +48,7 @@ public class RppHandlerMojo extends MonitorMojo {
     }
 
     private void setupSpecFiles() {
-        if (criticalSpecsFile.isEmpty() && backgroundSpecsFile.isEmpty()) {
+        if (criticalSpecsFile == null && backgroundSpecsFile == null) {
             // if the user didn't provide any
             File autogenCriticalSpecs = new File(metaInfoDirectory, "rpp-critical-specs.txt");
             File autogenBackgroundSpecs = new File(metaInfoDirectory, "rpp-background-specs.txt");
@@ -64,14 +64,14 @@ public class RppHandlerMojo extends MonitorMojo {
     private void computeSpecSets() {
         Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent);
         // if we still don't have any spec files, then we'd just need to obtain all specs and run it in critical
-        if (criticalSpecsFile.isEmpty() && backgroundSpecsFile.isEmpty()) {
+        if (criticalSpecsFile == null && backgroundSpecsFile == null) {
             criticalSpecsSet = allSpecs;
             backgroundSpecsSet = new HashSet<>();
-        } else if (backgroundSpecsFile.isEmpty()) {
+        } else if (backgroundSpecsFile == null) {
             // if we only have the critical specs, then our background specs is the set difference
             criticalSpecsSet = parseSpecsFile(criticalSpecsFile);
             backgroundSpecsSet = Sets.difference(allSpecs, criticalSpecsSet);
-        } else if (criticalSpecsFile.isEmpty()) {
+        } else if (criticalSpecsFile == null) {
             // if we only have the background specs, then our critical specs is the set difference
             backgroundSpecsSet = parseSpecsFile(backgroundSpecsFile);
             criticalSpecsSet = Sets.difference(allSpecs, backgroundSpecsSet);
@@ -79,24 +79,32 @@ public class RppHandlerMojo extends MonitorMojo {
             // we have both files, so all we need to do is read from them.
             criticalSpecsSet = parseSpecsFile(criticalSpecsFile);
             backgroundSpecsSet = parseSpecsFile(backgroundSpecsFile);
+            if (criticalSpecsSet.isEmpty() && backgroundSpecsSet.isEmpty()) {
+                getLog().error("Both critical sets and background sets were empty!");
+                System.exit(1);
+            }
         }
     }
 
     private String setUpSingleJar(String mode, Set<String> specsToMonitor) {
-        File javamopAgentFile = new File(javamopAgent);
-        File createdJar = new File(metaInfoDirectory, mode + "-javamop.jar");
-        try {
-            Files.copy(javamopAgentFile.toPath(), createdJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            Util.generateNewMonitorFile(
-                    metaInfoDirectory + File.separator + mode + "-ajc.xml", specsToMonitor);
-            Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
-                    metaInfoDirectory + File.separator + mode + "-ajc.xml");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (MojoExecutionException e) {
-            throw new RuntimeException(e);
+        if (specsToMonitor.isEmpty()) {
+            return "";
+        } else {
+            File javamopAgentFile = new File(javamopAgent);
+            File createdJar = new File(metaInfoDirectory, mode + "-javamop.jar");
+            try {
+                Files.copy(javamopAgentFile.toPath(), createdJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                Util.generateNewMonitorFile(
+                        metaInfoDirectory + File.separator + mode + "-ajc.xml", specsToMonitor);
+                Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
+                        metaInfoDirectory + File.separator + mode + "-ajc.xml");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (MojoExecutionException e) {
+                throw new RuntimeException(e);
+            }
+            return createdJar.getAbsolutePath();
         }
-        return createdJar.getAbsolutePath();
     }
 
     private void setupJars() {
@@ -109,12 +117,19 @@ public class RppHandlerMojo extends MonitorMojo {
         setupSpecFiles();
         computeSpecSets();
         String criticalRunAgentPath = setUpSingleJar("critical", criticalSpecsSet);
-        System.setProperty("rpp-agent", criticalRunAgentPath);
         String backgroundRunAgentPath = setUpSingleJar("background", backgroundSpecsSet);
-        System.setProperty("background-agent", backgroundRunAgentPath);
+        if (!criticalRunAgentPath.isEmpty()) {
+            System.setProperty("rpp-agent", criticalRunAgentPath);
+            System.setProperty("background-agent", backgroundRunAgentPath);
+        } else {
+            getLog().info("Critical phase had no specs, skipping and running background phase...");
+            System.setProperty("rpp-agent", backgroundRunAgentPath);
+        }
     }
 
     public void execute() throws MojoExecutionException {
+        System.out.println("criticalSpecsFile: " + criticalSpecsFile);
+        System.out.println("backgroundSpecsFile: " + backgroundSpecsFile);
         metaInfoDirectory = new File(getArtifactsDir());
         // prepare the two jars
         setupJars();

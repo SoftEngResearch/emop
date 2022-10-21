@@ -36,9 +36,13 @@ public class RunRppMojo extends RppHandlerMojo {
 
     public void execute() throws MojoExecutionException {
         // need to move violation-counts file
-        System.setProperty("rpp-agent", System.getProperty("background-agent"));
-        invokeSurefire();
-        // removing the jars
+        String backgroundAgent = System.getProperty("background-agent");
+        if (!backgroundAgent.isEmpty()) {
+            System.setProperty("rpp-agent", backgroundAgent);
+            invokeSurefire();
+        } else {
+            getLog().info("No specs to monitor for background phase, terminating...");
+        }
     }
 
 }
