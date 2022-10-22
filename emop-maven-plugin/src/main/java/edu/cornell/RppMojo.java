@@ -25,6 +25,7 @@ public class RppMojo extends RppHandlerMojo {
         PrintStream stderr = System.err;
         try {
             PrintStream ps = new PrintStream(new FileOutputStream(getArtifactsDir() + File.separator + "background-surefire-run.txt"));
+            // FIXME: this somehow doesn't redirect the entire surefire output. Debug while PR is ongoing
             System.setOut(ps);
             System.setErr(ps);
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
@@ -59,6 +60,8 @@ public class RppMojo extends RppHandlerMojo {
         moveViolationCounts("critical");
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
+            String previousJavamopAgent = System.getProperty("rpp-agent");
+            System.setProperty("previous-javamop-agent", previousJavamopAgent);
             System.setProperty("rpp-agent", backgroundAgent);
             invokeSurefire();
             moveViolationCounts("background");

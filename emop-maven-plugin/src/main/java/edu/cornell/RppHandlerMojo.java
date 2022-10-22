@@ -114,6 +114,7 @@ public class RppHandlerMojo extends MonitorMojo {
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
         }
+        System.setProperty("previous-javamop-agent", javamopAgent);
         setupSpecFiles();
         computeSpecSets();
         String criticalRunAgentPath = setUpSingleJar("critical", criticalSpecsSet);
@@ -124,6 +125,7 @@ public class RppHandlerMojo extends MonitorMojo {
         } else {
             getLog().info("Critical phase had no specs, skipping and running background phase...");
             System.setProperty("rpp-agent", backgroundRunAgentPath);
+            System.setProperty("background-agent", ""); // prevent RppMojo from running a second time
         }
     }
 
