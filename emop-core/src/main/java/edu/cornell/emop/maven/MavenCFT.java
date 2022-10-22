@@ -1,16 +1,18 @@
 package edu.cornell.emop.maven;
 
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.ProtectionDomain;
+
 import edu.cornell.emop.maven.asm.ClassReader;
 import edu.cornell.emop.maven.asm.ClassVisitor;
 import edu.cornell.emop.maven.asm.ClassWriter;
 import edu.cornell.emop.maven.asm.MethodVisitor;
 import edu.cornell.emop.maven.asm.Opcodes;
 
-import java.lang.instrument.ClassFileTransformer;
-import java.lang.instrument.IllegalClassFormatException;
-import java.security.ProtectionDomain;
-
-/** This class is from STARTS. **/
+/**
+ * This class is from STARTS.
+ **/
 
 public final class MavenCFT implements ClassFileTransformer {
 
@@ -68,7 +70,7 @@ public final class MavenCFT implements ClassFileTransformer {
      */
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
                             ProtectionDomain protectionDomain, byte[] classfileBuffer)
-                            throws IllegalClassFormatException {
+            throws IllegalClassFormatException {
         String abstractSurefireMojo = "org/apache/maven/plugin/surefire/AbstractSurefireMojo";
         String surefirePlugin = "org/apache/maven/plugin/surefire/SurefirePlugin";
         String surefireMojoInterceptor = "edu/cornell/emop/maven/SurefireMojoInterceptor";

@@ -1,12 +1,5 @@
 package edu.cornell;
 
-import edu.cornell.emop.maven.SurefireMojoInterceptor;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Execute;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -16,6 +9,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
+import edu.cornell.emop.maven.SurefireMojoInterceptor;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Execute;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+
 @Mojo(name = "rpp", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
@@ -24,21 +24,22 @@ public class RppMojo extends RppHandlerMojo {
         PrintStream stdout = System.out;
         PrintStream stderr = System.err;
         try {
-            PrintStream ps = new PrintStream(new FileOutputStream(getArtifactsDir() + File.separator + "background-surefire-run.txt"));
+            PrintStream ps = new PrintStream(new FileOutputStream(
+                    getArtifactsDir() + File.separator + "background-surefire-run.txt"));
             // FIXME: this somehow doesn't redirect the entire surefire output. Debug while PR is ongoing
             System.setOut(ps);
             System.setErr(ps);
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
             System.setOut(stdout);
             System.setErr(stderr);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
+        } catch (IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        } catch (InvocationTargetException ex) {
+            throw new RuntimeException(ex);
+        } catch (NoSuchMethodException ex) {
+            throw new RuntimeException(ex);
+        } catch (FileNotFoundException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -51,8 +52,8 @@ public class RppMojo extends RppHandlerMojo {
         File newViolationCounts = new File(getArtifactsDir() + File.separator + mode + "-violation-counts.txt");
         try {
             Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
     }
 

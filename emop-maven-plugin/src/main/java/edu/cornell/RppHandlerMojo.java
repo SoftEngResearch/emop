@@ -1,16 +1,5 @@
 package edu.cornell;
 
-import com.google.common.collect.Sets;
-import edu.cornell.emop.maven.AgentLoader;
-import edu.cornell.emop.util.Util;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.surefire.AbstractSurefireMojo;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,9 +8,21 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.google.common.collect.Sets;
+import edu.cornell.emop.maven.AgentLoader;
+import edu.cornell.emop.util.Util;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+
 @Mojo(name = "rpp-handler", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class RppHandlerMojo extends MonitorMojo {
 
+    Set<String> criticalSpecsSet;
+    Set<String> backgroundSpecsSet;
+
+    File metaInfoDirectory;
     @Parameter(property = "criticalSpecsFile", defaultValue = "")
     private String criticalSpecsFile;
 
@@ -29,20 +30,16 @@ public class RppHandlerMojo extends MonitorMojo {
     private String backgroundSpecsFile;
 
     @Parameter(property = "javamopAgent")
-    protected String javamopAgent;
-
-    Set<String> criticalSpecsSet;
-    Set<String> backgroundSpecsSet;
-
-    File metaInfoDirectory;
+    private String javamopAgent;
 
     protected Set<String> parseSpecsFile(String specsFilePath) {
         try {
             // FIXME: clean this up
             return new HashSet<>(Files.readAllLines(new File(specsFilePath).toPath()))
                     .stream()
-                    .map(spec -> spec.endsWith("MonitorAspect") ? spec : spec + "MonitorAspect").collect(Collectors.toSet());
-        } catch (IOException e) {
+                    .map(spec -> spec.endsWith("MonitorAspect") ? spec :
+                            spec + "MonitorAspect").collect(Collectors.toSet());
+        } catch (IOException ex) {
             return new HashSet<>();
         }
     }
@@ -98,10 +95,10 @@ public class RppHandlerMojo extends MonitorMojo {
                         metaInfoDirectory + File.separator + mode + "-ajc.xml", specsToMonitor);
                 Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
                         metaInfoDirectory + File.separator + mode + "-ajc.xml");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (MojoExecutionException e) {
-                throw new RuntimeException(e);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            } catch (MojoExecutionException ex) {
+                throw new RuntimeException(ex);
             }
             return createdJar.getAbsolutePath();
         }
@@ -130,8 +127,6 @@ public class RppHandlerMojo extends MonitorMojo {
     }
 
     public void execute() throws MojoExecutionException {
-        System.out.println("criticalSpecsFile: " + criticalSpecsFile);
-        System.out.println("backgroundSpecsFile: " + backgroundSpecsFile);
         metaInfoDirectory = new File(getArtifactsDir());
         // prepare the two jars
         setupJars();

@@ -47,6 +47,7 @@
           <artifactId>maven-checkstyle-plugin</artifactId>
           <version>3.0.0</version>
           <configuration>
+            <excludes>**/asm/*</excludes>
             <configLocation>checkstyle.xml</configLocation>
             <encoding>UTF-8</encoding>
             <consoleOutput>true</consoleOutput>

@@ -1,12 +1,10 @@
 package edu.cornell.emop.util;
 
-import org.apache.maven.plugin.MojoExecutionException;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
@@ -24,6 +22,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.maven.plugin.MojoExecutionException;
 
 public class Util {
     public static List<String> findFilesOfType(File path, String extension) {
@@ -65,16 +65,15 @@ public class Util {
         URL specsFileInJar = null;
         try {
             specsFileInJar = new URL("jar:file:" + jarPath + "!/specs.txt");
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
+        } catch (MalformedURLException ex) {
+            throw new RuntimeException(ex);
         }
-        System.out.println("specsFileInJar: " + specsFileInJar);
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(specsFileInJar.openStream()))) {
             while (reader.ready()) {
                 specs.add(reader.readLine());
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
         return specs;
     }
@@ -131,7 +130,8 @@ public class Util {
         return fullSet;
     }
 
-    public static void generateNewMonitorFile(String monitorFilePath, Set<String> specsToMonitor) throws MojoExecutionException {
+    public static void generateNewMonitorFile(String monitorFilePath, Set<String> specsToMonitor)
+            throws MojoExecutionException {
         try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
             // Write header
             writer.println("<aspectj>");
