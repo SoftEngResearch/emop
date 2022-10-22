@@ -29,7 +29,6 @@ public class RunRppMojo extends RppHandlerMojo {
             PrintStream ps = new PrintStream(new FileOutputStream(getArtifactsDir() + File.separator + "background-surefire-run.txt"));
             System.setOut(ps);
             System.setErr(ps);
-            System.out.println("starting execution hehe");
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
             System.setOut(stdout);
             System.setErr(stderr);
@@ -44,12 +43,27 @@ public class RunRppMojo extends RppHandlerMojo {
         }
     }
 
+    private void moveViolationCounts(String mode) throws MojoExecutionException {
+        // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
+        File violationCounts = new File(getBasedir() + File.separator + "violation-counts");
+        if (!violationCounts.exists()) {
+            getLog().info("violation-counts file was not produced, skipping moving...");
+        }
+        File newViolationCounts = new File(getArtifactsDir() + File.separator + mode + "-violation-counts.txt");
+        try {
+            Files.move(violationCounts.toPath(), newViolationCounts.toPath());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void execute() throws MojoExecutionException {
-        // FIXME: move violation-counts file
+        moveViolationCounts("critical");
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
             System.setProperty("rpp-agent", backgroundAgent);
             invokeSurefire();
+            moveViolationCounts("background");
         } else {
             getLog().info("No specs to monitor for background phase, terminating...");
         }
