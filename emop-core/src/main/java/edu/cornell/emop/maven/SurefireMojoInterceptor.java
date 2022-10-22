@@ -13,12 +13,16 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
      */
     public static void execute(Object mojo) throws Exception {
         sfMojo = mojo;
-        System.out.println("SFMOJO!!!!" + sfMojo);
         String currentArgs = checkSurefireVersion(mojo); // check if the version of surefire is good
         manipulateArgs(mojo, currentArgs);
-        System.out.println("2SFMOJO!!!!" + sfMojo);
     }
 
+    /**
+     * Checks the version of surefire used, and returns the current argline.
+     * @param mojo the
+     * @return
+     * @throws Exception
+     */
     private static String checkSurefireVersion(Object mojo) throws Exception {
         String argLineString = "";
         try {
@@ -42,22 +46,12 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
                 }
             }
         }
-        System.out.println("original args: " + currentArgs);
         String agentPathString = System.getProperty("rpp-agent");
         if (agentPathString != null) {
             String newArgLine = "-javaagent:" + agentPathString + " " + argsToAppend;
             setField("argLine", mojo, newArgLine);
-            System.out.println("Running with argument: " + getField("argLine", mojo));
+            System.out.println("Running surefire with argument: " + getField("argLine", mojo));
         }
     }
 
-    private static String getOriginalArgs() {
-        // get original arguments from system property
-        String originalArgs = System.getProperty("originalArgs");
-        if (!originalArgs.equals("none")) {
-            return originalArgs;
-        } else {
-            return "";
-        }
-    }
 }
