@@ -1,5 +1,15 @@
 package edu.cornell;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -17,12 +27,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.eclipse.jgit.util.io.NullOutputStream;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
@@ -57,6 +61,26 @@ public class VmsMojo extends MonitorMojo {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void saveViolationCounts() throws MojoExecutionException {
+        Path savedVC = Paths.get(getArtifactsDir(), "violation-counts");
+        Path savedVCOld = Paths.get(getArtifactsDir(), "violation-counts-old");
+        Path newVC = Paths.get(System.getProperty("user.dir"), "violation-counts");
+
+        try {
+            getLog().info("Saving previous violation-counts to violation-counts-old...");
+            savedVC.toFile().createNewFile();
+            Files.move(savedVC, savedVCOld, StandardCopyOption.REPLACE_EXISTING);
+
+            getLog().info("Saving current violation-counts to violation-counts...");
+            newVC.toFile().createNewFile();
+            Files.move(newVC, savedVC);
+        }
+        catch (IOException ex) {
+            ex.printStackTrace();
+            throw new MojoExecutionException("Failed to save violation-counts", ex);
         }
     }
 }
