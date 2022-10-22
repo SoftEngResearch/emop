@@ -53,8 +53,6 @@ public class VmsMojo extends MonitorMojo {
                 diffFormatter.format(diff);
                 String diffText = outputStream.toString("UTF-8");
                 getLog().info("Diff: " + diffText);
-                getLog().info("Diff Change Type: " + diff.getChangeType().toString());
-                getLog().info("Diff Change Type: " + diff.;
                 outputStream.reset();
             }
         } catch (Exception e) {
