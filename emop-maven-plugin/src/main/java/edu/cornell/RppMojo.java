@@ -20,7 +20,11 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
 
-    public void invokeSurefire() throws MojoExecutionException {
+    /**
+     * Runs maven surefire.
+     * @throws MojoExecutionException
+     */
+    private void invokeSurefire() throws MojoExecutionException {
         PrintStream stdout = System.out;
         PrintStream stderr = System.err;
         try {
@@ -43,6 +47,11 @@ public class RppMojo extends RppHandlerMojo {
         }
     }
 
+    /**
+     * Relocates the generated violation-counts file.
+     * @param mode the identifier for the relocated violation-counts file (either "critical" or "background")
+     * @throws MojoExecutionException
+     */
     private void moveViolationCounts(String mode) throws MojoExecutionException {
         // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
         File violationCounts = new File(getBasedir() + File.separator + "violation-counts");
@@ -57,7 +66,12 @@ public class RppMojo extends RppHandlerMojo {
         }
     }
 
+    /**
+     * This mojo runs RPP.
+     * @throws MojoExecutionException
+     */
     public void execute() throws MojoExecutionException {
+        // by the time this method is invoked, we have finished invoking the critical specs surefire run
         moveViolationCounts("critical");
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
@@ -66,7 +80,7 @@ public class RppMojo extends RppHandlerMojo {
             System.setProperty("rpp-agent", backgroundAgent);
             invokeSurefire();
             moveViolationCounts("background");
-        } else {
+        } else { // edge case where critical phase runs all specs
             getLog().info("No specs to monitor for background phase, terminating...");
         }
     }

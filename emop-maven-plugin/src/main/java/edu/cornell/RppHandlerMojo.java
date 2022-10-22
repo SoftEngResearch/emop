@@ -32,11 +32,16 @@ public class RppHandlerMojo extends MonitorMojo {
     @Parameter(property = "javamopAgent")
     private String javamopAgent;
 
+    /**
+     * Reads a file containing specifications (one on each line), and outputs the set contained in the file.
+     * @param specsFilePath The path to the specifications file.
+     * @return Set of specifications.
+     */
     protected Set<String> parseSpecsFile(String specsFilePath) {
         try {
-            // FIXME: clean this up
             return new HashSet<>(Files.readAllLines(new File(specsFilePath).toPath()))
                     .stream()
+                    .filter(spec -> !spec.isEmpty())
                     .map(spec -> spec.endsWith("MonitorAspect") ? spec :
                             spec + "MonitorAspect").collect(Collectors.toSet());
         } catch (IOException ex) {
@@ -44,6 +49,12 @@ public class RppHandlerMojo extends MonitorMojo {
         }
     }
 
+    /**
+     * Deduces what files we will read for critical and background phase specs.
+     * If the user provides either the criticalSpecsFile or backgroundSpecsFile argument, then we will compute our
+     * critical and background specs based off of the user's choice. Otherwise, we will check whether there were
+     * pre-recorded critical and background specs files from previous runs.
+     */
     private void setupSpecFiles() {
         if (criticalSpecsFile == null && backgroundSpecsFile == null) {
             // if the user didn't provide any
@@ -58,6 +69,9 @@ public class RppHandlerMojo extends MonitorMojo {
         }
     }
 
+    /**
+     * Computes both the critical specs set and the background specs set.
+     */
     private void computeSpecSets() {
         Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent);
         // if we still don't have any spec files, then we'd just need to obtain all specs and run it in critical
@@ -83,6 +97,12 @@ public class RppHandlerMojo extends MonitorMojo {
         }
     }
 
+    /**
+     * Creates a JavaMOP agent JAR configured to only monitor the specified set of specifications.
+     * @param mode an identifier for the jar (either "critical" or "background").
+     * @param specsToMonitor the list of specifications the agent should record.
+     * @return The path to the created JAR.
+     */
     private String setUpSingleJar(String mode, Set<String> specsToMonitor) {
         if (specsToMonitor.isEmpty()) {
             return "";
@@ -104,6 +124,10 @@ public class RppHandlerMojo extends MonitorMojo {
         }
     }
 
+    /**
+     * Creates new agent JARs for running critical and background phases, and sets up System properties to record
+     * paths to critical and background phase JARs.
+     */
     private void setupJars() {
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
@@ -126,11 +150,15 @@ public class RppHandlerMojo extends MonitorMojo {
         }
     }
 
+    /**
+     * This mojo performs setup for RPP, and configures surefire to monitor the set of critical specs.
+     * @throws MojoExecutionException
+     */
     public void execute() throws MojoExecutionException {
         metaInfoDirectory = new File(getArtifactsDir());
         // prepare the two jars
         setupJars();
-        // record path to jars in system properties
+        // load agent that will harness surefire and manipulate arguments to surefire before test execution
         if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
             throw new MojoExecutionException("Could not attach agent");
         }
