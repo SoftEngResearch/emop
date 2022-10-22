@@ -152,7 +152,7 @@ public class RppHandlerMojo extends MonitorMojo {
 
     /**
      * This mojo performs setup for RPP, and configures surefire to monitor the set of critical specs.
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException where instrumentation for surefire did not succeed.
      */
     public void execute() throws MojoExecutionException {
         metaInfoDirectory = new File(getArtifactsDir());

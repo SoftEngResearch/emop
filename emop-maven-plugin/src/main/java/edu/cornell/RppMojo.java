@@ -22,7 +22,7 @@ public class RppMojo extends RppHandlerMojo {
 
     /**
      * Runs maven surefire.
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException when the surefire invocation fails.
      */
     private void invokeSurefire() throws MojoExecutionException {
         PrintStream stdout = System.out;
@@ -50,7 +50,7 @@ public class RppMojo extends RppHandlerMojo {
     /**
      * Relocates the generated violation-counts file.
      * @param mode the identifier for the relocated violation-counts file (either "critical" or "background")
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException when obtaining directory information fails.
      */
     private void moveViolationCounts(String mode) throws MojoExecutionException {
         // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
@@ -68,7 +68,7 @@ public class RppMojo extends RppHandlerMojo {
 
     /**
      * This mojo runs RPP.
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException if RPP fails.
      */
     public void execute() throws MojoExecutionException {
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
