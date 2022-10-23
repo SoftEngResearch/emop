@@ -19,4 +19,22 @@
       </phase>
     </phases>
   </lifecycle>
+  <lifecycle>
+    <id>rpp</id>
+    <phases>
+      <phase>
+        <id>process-test-classes</id>
+        <executions>
+          <execution>
+            <goals>
+              <goal>rpp-handler</goal>
+            </goals>
+          </execution>
+        </executions>
+      </phase>
+      <phase>
+        <id>test</id>
+      </phase>
+    </phases>
+  </lifecycle>
 </lifecycles>
