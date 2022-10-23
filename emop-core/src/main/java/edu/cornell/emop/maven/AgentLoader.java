@@ -27,9 +27,6 @@ public final class AgentLoader {
             if (System.getProperty(AGENT_INIT) == null) {
                 URL agentJarURL = AgentLoader.class.getResource(classname);
                 URL agentJarURLConnection = extractJarURL(agentJarURL);
-                System.out.println("================================");
-                System.out.println(agentJarURLConnection.getPath());
-                System.out.println("================================");
                 boolean isLoadAgentSuccessful = loadAgent(agentJarURLConnection);
                 if (isLoadAgentSuccessful) {
                     System.setProperty(AGENT_INIT, "");

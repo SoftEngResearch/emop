@@ -1,5 +1,5 @@
 <lifecycles xmlns="http://maven.apache.org/LIFECYCLE/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/LIFECYCLE/1.0.0 http://maven.apache.org/xsd/lifecycle-1.0.0.xsd">
+            xsi:schemaLocation="http://maven.apache.org/LIFECYCLE/1.0.0 http://maven.apache.org/xsd/lifecycle-1.0.0.xsd">
   <lifecycle>
     <id>rps</id>
     <phases>
@@ -12,7 +12,24 @@
             </goals>
           </execution>
         </executions>
-        <configuration/>
+      </phase>
+      <phase>
+        <id>test</id>
+      </phase>
+    </phases>
+  </lifecycle>
+  <lifecycle>
+    <id>rpp</id>
+    <phases>
+      <phase>
+        <id>process-test-classes</id>
+        <executions>
+          <execution>
+            <goals>
+              <goal>rpp-handler</goal>
+            </goals>
+          </execution>
+        </executions>
       </phase>
       <phase>
         <id>test</id>

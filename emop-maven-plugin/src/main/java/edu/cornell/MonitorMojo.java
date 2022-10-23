@@ -44,12 +44,12 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
-        generateNewMonitorFile();
+        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs);
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
-                + File.separator + "javamop-agent"
-                + File.separator + "1.0"
-                + File.separator + "javamop-agent-1.0.jar";
+                    + File.separator + "javamop-agent"
+                    + File.separator + "1.0"
+                    + File.separator + "javamop-agent-1.0.jar";
         }
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + monitorFile);
         long end = System.currentTimeMillis();
@@ -63,7 +63,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             MessageHandler mh = new MessageHandler();
             String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
             String[] ajcArgs = {"-d", getArtifactsDir(), "-classpath", classpath,
-                                getArtifactsDir() + File.separator + baseAspectFile};
+                    getArtifactsDir() + File.separator + baseAspectFile};
             compiler.run(ajcArgs, mh);
             IMessage[] ms = mh.getMessages(null, true);
             for (IMessage i : ms) {
@@ -74,7 +74,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             }
             // Replace compiled BaseAspect in javamop-agent's jar
             Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
-                                  getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
+                    getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
         }
@@ -114,25 +114,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
         return stringBuilder.toString();
     }
 
-    private void generateNewMonitorFile() throws MojoExecutionException {
-        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + monitorFile)) {
-            // Write header
-            writer.println("<aspectj>");
-            writer.println("<aspects>");
-            // Write body
-            for (String affectedSpec : affectedSpecs) {
-                writer.println("<aspect name=\"mop." + affectedSpec + "\"/>");
-            }
-            // Write footer
-            writer.println("</aspects>");
-            // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
-            writer.println("<weaver options=\"-nowarn -Xlint:ignore\"></weaver>");
-            writer.println("</aspectj>");
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
-
     private void generateNewBaseAspect() throws MojoExecutionException {
         try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + baseAspectFile)) {
             writer.println("package mop;");
@@ -167,3 +148,4 @@ public class MonitorMojo extends AffectedSpecsMojo {
         }
     }
 }
+
