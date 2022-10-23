@@ -14,3 +14,5 @@ emop-plugin/target/
 .classpath
 .project
 .settings/
+
+scripts/javamop-agent-bundle/specs.txt

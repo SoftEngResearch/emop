@@ -33,6 +33,9 @@ function build_agent() {
         echo "AGENT IS QUIET!"
         javamopagent -emop ${props_dir}/ ${props_dir}/classes -n ${agent_name} -v
     fi
+    # recording the list of specs for fast access by RPP mojo
+    find props -name "*.aj" | grep -v BaseAspect.aj | cut -d/ -f2 | cut -d. -f1 > specs.txt
+    jar -uf ${agent_name}.jar specs.txt
     mv ${agent_name}.jar ${out_dir}
 }
 
