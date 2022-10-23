@@ -1,5 +1,6 @@
 package edu.cornell;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +25,7 @@ import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.util.FileUtils;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
@@ -49,8 +51,9 @@ public class VmsMojo extends MonitorMojo {
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
+        saveViolationCounts();
         if (repo == null) {
-            throw new MojoExecutionException("Valid GitHub repository necessary for VMS. Please use the `repo` option");
+            throw new MojoExecutionException("A GitHub repository is necessary for VMS");
         }
         List<DiffEntry> diffs = getDiffs();
         findLineChangesAndRenames(diffs);
@@ -70,10 +73,11 @@ public class VmsMojo extends MonitorMojo {
         ObjectReader objectReader;
         List<DiffEntry> diffs;
 
-        // Sets up repository and fetches commits
+        // Sets up repository and fetches commits, currently assumes remote-repo is empty
         try {
             git = Git.cloneRepository()
                     .setURI(repo)
+                    .setDirectory(new File(getArtifactsDir() + File.separator + "remote-repo"))
                     .call();
             commits = git.log().setMaxCount(2).call();
             objectReader = git.getRepository().newObjectReader();
@@ -100,6 +104,7 @@ public class VmsMojo extends MonitorMojo {
             throw new MojoExecutionException("Encountered an error when analyzing for differences between commits");
         }
 
+        git.close();
         return diffs;
     }
 
