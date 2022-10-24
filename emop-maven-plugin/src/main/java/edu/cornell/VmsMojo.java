@@ -57,8 +57,8 @@ public class VmsMojo extends MonitorMojo {
         findLineChangesAndRenames(getDiffs());
         getLog().info("Number of files renamed: " + renames.size());
         getLog().info("Number of changed files found: " + lineChanges.size());
-        oldViolations = parseViolations(".starts/violation-counts-old");
-        newViolations = parseViolations(".starts/violation-counts");
+        oldViolations = parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
+        newViolations = parseViolations(getArtifactsDir() + File.separator + "violation-counts");
         getLog().info("Number of total violations found: " + newViolations.size());
         removeDuplicateViolations();
         getLog().info("Number of unique violations found: " + newViolations.size());
@@ -79,7 +79,7 @@ public class VmsMojo extends MonitorMojo {
 
         // Sets up repository and fetches commits
         try {
-            git = Git.open(new File(".git"));
+            git = Git.open(new File(System.getProperty("user.dir") + File.separator + ".git"));
             commits = git.log().setMaxCount(2).call();
             objectReader = git.getRepository().newObjectReader();
         } catch (GitAPIException | IOException exception) {
@@ -217,7 +217,7 @@ public class VmsMojo extends MonitorMojo {
                         offset += lineChanges.get(className).get(originalLine);
                     }
                 }
-                if (newLine - oldLine <= offset) {
+                if (Math.abs(newLine - oldLine) <= offset) {
                     return true;
                 } else {
                     return false;
@@ -233,7 +233,8 @@ public class VmsMojo extends MonitorMojo {
     private void rewriteViolationCounts() throws MojoExecutionException {
         // for each line of violation-counts, if it can be mapped to a new violation it gets to stay (else it goes)
         try {
-            List<String> lines = Files.readAllLines(new File(".starts/violation-counts").toPath());
+            List<String> lines = Files.readAllLines(new File(getArtifactsDir() + File.separator + "violation-counts")
+                                      .toPath());
             PrintWriter writer = new PrintWriter(".starts/violation-counts");
             for (String line : lines) {
                 if (isNewViolation(line)) {
