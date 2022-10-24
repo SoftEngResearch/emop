@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
@@ -42,8 +43,8 @@ public class VmsMojo extends MonitorMojo {
     // Describes new classes which have been made between commits
     private Set<String> newClasses = new HashSet<>();
 
-    private List<List<String>> oldViolations;
-    private List<List<String>> newViolations;
+    private Set<List<String>> oldViolations;
+    private Set<List<String>> newViolations;
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
@@ -58,8 +59,10 @@ public class VmsMojo extends MonitorMojo {
         getLog().info("Found renames: " + renames.toString());
         getLog().info("Found line changes: " + lineChanges.toString());
         getLog().info("New classes: " + newClasses.toString());
-//        oldViolations = parseViolations(...);
-//        newViolations = parseViolations(...);
+        oldViolations = parseViolations(".starts/violation-counts-old");
+        getLog().info("Old violations: " + oldViolations.toString());
+        newViolations = parseViolations(".starts/violation-counts");
+        getLog().info("New violations: " + newViolations.toString());
         removeDuplicateViolations();
         rewriteViolationCounts();
     }
@@ -149,11 +152,18 @@ public class VmsMojo extends MonitorMojo {
     /**
      * Analyzes a violations file and returns a list of violations
      *
-     * @param violations The file where violations are located
+     * @param violationsPath The file where violations are located
      * @return A list of violations, each violation is made up of a specification, a class, and a line number
      */
-    private List<List<String>> parseViolations(File violations) {
-        return null;
+    private Set<List<String>> parseViolations(String violationsPath) {
+        try {
+            return Files.readAllLines(new File(violationsPath).toPath())
+                    .stream()
+                    .map(this::parseViolation)
+                    .collect(Collectors.toSet());
+        } catch (IOException e) {
+            return new HashSet<>();
+        }
     }
 
     /**
@@ -196,12 +206,30 @@ public class VmsMojo extends MonitorMojo {
     }
 
     /**
-     * If a class is written in p1.p2.p3.java format, convert to p1/p2/p3.java and vice versa
+     * Parses the string form of a violation from the file into a list containing the specification, class, and line number
      *
-     * @param oldClass Name of class to be reformatted
-     * @return Reformatted name of the class
+     * @param violation Violation line to parse
+     * @return Triple of violation specification, class, and line number
      */
-    private String changeClassFormat(String oldClass) {
-        return null;
+    private List<String> parseViolation(String violation) {
+        List<String> result = new ArrayList<>();
+        String[] parsedViolation = violation.split(" ");
+        result.add(parsedViolation[2]); // name of specification
+
+        String[] classAndLineNum = parsedViolation[8].split(":");
+        String classInfo = classAndLineNum[0];
+        String[] classLocationAndNameExt = classInfo.split("\\(");
+        String classNameExt = classLocationAndNameExt[1];
+        String classLocation = classLocationAndNameExt[0];
+        String[] classLocationFragments = classLocation.split("\\.");
+        classLocationFragments[classLocationFragments.length - 1] = null; // remove function name
+        classLocationFragments[classLocationFragments.length - 2] = classNameExt; // add extension to class name
+        String classResult = String.join("/", classLocationFragments);
+        classResult = classResult.substring(0, classResult.length() - 5); // remove function and final /
+        result.add(classResult); // class, formatted as the diff will expect it to be
+
+        String lineNum = classAndLineNum[1];
+        result.add(lineNum.substring(0, lineNum.indexOf(")"))); // line number
+        return result;
     }
 }
