@@ -6,10 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
@@ -25,7 +22,6 @@ import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-import org.eclipse.jgit.util.FileUtils;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
@@ -43,22 +39,29 @@ public class VmsMojo extends MonitorMojo {
     // Represents the renaming of one file to another
     private Map<String, String> renames = new HashMap<>();
 
-    /**
-     * The URI of the GitHub repository VMS is to be performed on
-     */
-    @Parameter(property = "repo")
-    private String repo;
+    // Describes new classes which have been made between commits
+    private Set<String> newClasses = new HashSet<>();
+
+    private List<List<String>> oldViolations;
+    private List<List<String>> newViolations;
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
         saveViolationCounts();
-        if (repo == null) {
-            throw new MojoExecutionException("A GitHub repository is necessary for VMS");
+        List<DiffEntry> diffs = null;
+        try {
+            diffs = getDiffs();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        List<DiffEntry> diffs = getDiffs();
         findLineChangesAndRenames(diffs);
-        getLog().info("Found renames:\n" + renames.toString());
-        getLog().info("Found line changes:\n" + lineChanges.toString());
+        getLog().info("Found renames: " + renames.toString());
+        getLog().info("Found line changes: " + lineChanges.toString());
+        getLog().info("New classes: " + newClasses.toString());
+//        oldViolations = parseViolations(...);
+//        newViolations = parseViolations(...);
+        removeDuplicateViolations();
+        rewriteViolationCounts();
     }
 
     /**
@@ -67,18 +70,15 @@ public class VmsMojo extends MonitorMojo {
      * @return List of differences between two most recent commits of the repository
      * @throws MojoExecutionException
      */
-    private List<DiffEntry> getDiffs() throws MojoExecutionException {
+    private List<DiffEntry> getDiffs() throws MojoExecutionException, IOException {
         Git git;
         Iterable<RevCommit> commits;
         ObjectReader objectReader;
         List<DiffEntry> diffs;
 
-        // Sets up repository and fetches commits, currently assumes remote-repo is empty
+        // Sets up repository and fetches commits
         try {
-            git = Git.cloneRepository()
-                    .setURI(repo)
-                    .setDirectory(new File(getArtifactsDir() + File.separator + "remote-repo"))
-                    .call();
+            git = Git.open(new File(".git"));
             commits = git.log().setMaxCount(2).call();
             objectReader = git.getRepository().newObjectReader();
         } catch (GitAPIException e) {
@@ -97,9 +97,10 @@ public class VmsMojo extends MonitorMojo {
 
         // Sets up diffFormatter and analyzes for differences between the two trees
         diffFormatter.setRepository(git.getRepository());
+        diffFormatter.setContext(0);
         diffFormatter.setDetectRenames(true);
         try {
-            diffs = diffFormatter.scan(trees.get(0), trees.get(1));
+            diffs = diffFormatter.scan(trees.get(1), trees.get(0));
         } catch (IOException e) {
             throw new MojoExecutionException("Encountered an error when analyzing for differences between commits");
         }
@@ -117,23 +118,61 @@ public class VmsMojo extends MonitorMojo {
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                // If the paths of the found change is different, the file has been renamed
-                if (!diff.getOldPath().equals(diff.getNewPath())) {
-                    renames.put(diff.getOldPath(), diff.getNewPath());
+                // If the old path is /dev/null, then the file has been created between commits
+                if (diff.getOldPath().equals("/dev/null")) {
+                    newClasses.add(diff.getNewPath());
                 }
-                // For each file, find the replacements, additions, and deletions at each line
-                for (Edit edit : diffFormatter.toFileHeader(diff).toEditList()) {
-                    Map<Integer, Integer> lineChange = new HashMap<>();
-                    if (lineChanges.containsKey(diff.getOldPath())) {
-                        lineChange = lineChanges.get(diff.getOldPath());
+
+                // Ignore if a deleted class
+                else if(!diff.getNewPath().equals("/dev/null")) {
+                    // Gets renamed classes
+                    if (!diff.getOldPath().equals(diff.getNewPath())) {
+                        renames.put(diff.getOldPath(), diff.getNewPath());
                     }
-                    lineChange.put(edit.getBeginA(), edit.getEndB() - edit.getEndA());
-                    lineChanges.put(diff.getOldPath(), lineChange);
+
+                    // For each file, find the replacements, additions, and deletions at each line
+                    for (Edit edit : diffFormatter.toFileHeader(diff).toEditList()) {
+                        Map<Integer, Integer> lineChange = new HashMap<>();
+                        if (lineChanges.containsKey(diff.getOldPath())) {
+                            lineChange = lineChanges.get(diff.getOldPath());
+                        }
+                        lineChange.put(edit.getBeginA() + 1, edit.getLengthB() - edit.getLengthA());
+                        lineChanges.put(diff.getOldPath(), lineChange);
+                    }
                 }
             }
         } catch (IOException e) {
             throw new MojoExecutionException("Encountered an error when comparing different files");
         }
+    }
+
+    /**
+     * Analyzes a violations file and returns a list of violations
+     *
+     * @param violations The file where violations are located
+     * @return A list of violations, each violation is made up of a specification, a class, and a line number
+     */
+    private List<List<String>> parseViolations(File violations) {
+        return null;
+    }
+
+    /**
+     * Scrubs newViolations of violations believed to be duplicates from violation-counts-old
+     */
+    private void removeDuplicateViolations() {
+        // for each new violation, get all old violations of the same specification
+        // then, filter the old violations for those of the same class (take renames into account)
+        // fetch the linechanges associated with the (old) class
+        // sort linechanges by line number, add or subtract as necessary to determine if the line number of the old
+        //     violation is the same as the new
+        // if so, remove the new violation
+    }
+
+    /**
+     * Rewrites violation-counts to only include violations in newViolations
+     */
+    private void rewriteViolationCounts() {
+
     }
 
     private void saveViolationCounts() throws MojoExecutionException {
@@ -154,5 +193,15 @@ public class VmsMojo extends MonitorMojo {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
         }
+    }
+
+    /**
+     * If a class is written in p1.p2.p3.java format, convert to p1/p2/p3.java and vice versa
+     *
+     * @param oldClass Name of class to be reformatted
+     * @return Reformatted name of the class
+     */
+    private String changeClassFormat(String oldClass) {
+        return null;
     }
 }
