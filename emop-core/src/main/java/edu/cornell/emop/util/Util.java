@@ -137,8 +137,8 @@ public class Util {
             writer.println("<aspectj>");
             writer.println("<aspects>");
             // Write body
-            for (String affectedSpec : specsToMonitor) {
-                writer.println("<aspect name=\"mop." + affectedSpec + "\"/>");
+            for (String spec : specsToMonitor) {
+                writer.println("<aspect name=\"mop." + spec + "\"/>");
             }
             // Write footer
             writer.println("</aspects>");

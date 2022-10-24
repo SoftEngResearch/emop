@@ -90,6 +90,7 @@ public class RppHandlerMojo extends MonitorMojo {
             // we have both files, so all we need to do is read from them.
             criticalSpecsSet = parseSpecsFile(criticalSpecsFile);
             backgroundSpecsSet = parseSpecsFile(backgroundSpecsFile);
+            backgroundSpecsSet.removeAll(criticalSpecsSet);
             if (criticalSpecsSet.isEmpty() && backgroundSpecsSet.isEmpty()) {
                 getLog().error("Both critical sets and background sets were empty!");
                 System.exit(1);
