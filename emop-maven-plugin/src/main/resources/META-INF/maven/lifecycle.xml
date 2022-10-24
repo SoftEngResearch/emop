@@ -23,17 +23,6 @@
     <id>vms</id>
     <phases>
       <phase>
-        <id>process-test-classes</id>
-        <executions>
-          <execution>
-            <goals>
-              <goal>monitor</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration/>
-      </phase>
-      <phase>
         <id>test</id>
       </phase>
     </phases>

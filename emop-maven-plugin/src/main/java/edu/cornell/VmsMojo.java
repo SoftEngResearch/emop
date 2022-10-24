@@ -55,15 +55,13 @@ public class VmsMojo extends MonitorMojo {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
         saveViolationCounts();
         findLineChangesAndRenames(getDiffs());
-        getLog().info("Found renames: " + renames.toString());
-        getLog().info("Found line changes: " + lineChanges.toString());
-        getLog().info("New classes: " + newClasses.toString());
+        getLog().info("Number of files renamed: " + renames.size());
+        getLog().info("Number of changed files found: " + lineChanges.size());
         oldViolations = parseViolations(".starts/violation-counts-old");
-        getLog().info("Old violations: " + oldViolations.toString());
         newViolations = parseViolations(".starts/violation-counts");
-        getLog().info("New violations (before filtering): " + newViolations.toString());
+        getLog().info("Number of total violations found: " + newViolations.size());
         removeDuplicateViolations();
-        getLog().info("New violations (after filtering): " + newViolations.toString());
+        getLog().info("Number of unique violations found: " + newViolations.size());
         rewriteViolationCounts();
     }
 
@@ -167,6 +165,7 @@ public class VmsMojo extends MonitorMojo {
      * Scrubs newViolations of violations believed to be duplicates from violation-counts-old.
      */
     private void removeDuplicateViolations() {
+        Set<List<String>> violationsToRemove = new HashSet<>();
         for (List<String> newViolation : newViolations) {
             Set<List<String>> relevantOldViolations = oldViolations.stream()
                     .filter(oldViolation -> oldViolation.get(0).equals(newViolation.get(0))) // same spec
@@ -177,8 +176,11 @@ public class VmsMojo extends MonitorMojo {
                     .collect(Collectors.toSet());
 
             if (!relevantOldViolations.isEmpty()) {
-                newViolations.remove(newViolation);
+                violationsToRemove.add(newViolation);
             }
+        }
+        for (List<String> violationToRemove : violationsToRemove) {
+            newViolations.remove(violationToRemove);
         }
     }
 
