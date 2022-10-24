@@ -149,4 +149,26 @@ public class Util {
             ex.printStackTrace();
         }
     }
+
+    /**
+     * Relocates the generated violation-counts file.
+     * @param originalDir directory that should contain the original violation-counts
+     * @param newDir location of directory where violation-counts should be moved to
+     * @param mode the identifier for the relocated violation-counts file (either "critical" or "background")
+     * @return whether the original violation counts file existed
+     */
+    public static boolean moveViolationCounts(File originalDir, String newDir, String mode) {
+        // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
+        File violationCounts = new File(originalDir + File.separator + "violation-counts");
+        if (!violationCounts.exists()) {
+            return false;
+        }
+        File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
+        try {
+            Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+        return true;
+    }
 }

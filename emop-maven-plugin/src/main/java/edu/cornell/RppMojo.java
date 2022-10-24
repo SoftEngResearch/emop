@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
 import edu.cornell.emop.maven.SurefireMojoInterceptor;
+import edu.cornell.emop.util.Util;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -48,38 +49,25 @@ public class RppMojo extends RppHandlerMojo {
     }
 
     /**
-     * Relocates the generated violation-counts file.
-     * @param mode the identifier for the relocated violation-counts file (either "critical" or "background")
-     * @throws MojoExecutionException when obtaining directory information fails.
-     */
-    private void moveViolationCounts(String mode) throws MojoExecutionException {
-        // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
-        File violationCounts = new File(getBasedir() + File.separator + "violation-counts");
-        if (!violationCounts.exists()) {
-            getLog().info("violation-counts file was not produced, skipping moving...");
-        }
-        File newViolationCounts = new File(getArtifactsDir() + File.separator + mode + "-violation-counts.txt");
-        try {
-            Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    /**
      * This mojo runs RPP.
      * @throws MojoExecutionException if RPP fails.
      */
     public void execute() throws MojoExecutionException {
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
-        moveViolationCounts("critical");
+        boolean criticalCountsExist = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
+        if (!criticalCountsExist) {
+            getLog().info("violation-counts file for critical run was not produced, skipping moving...");
+        }
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
             String previousJavamopAgent = System.getProperty("rpp-agent");
             System.setProperty("previous-javamop-agent", previousJavamopAgent);
             System.setProperty("rpp-agent", backgroundAgent);
             invokeSurefire();
-            moveViolationCounts("background");
+            boolean backgroundCountsExist = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
+            if (!backgroundCountsExist) {
+                getLog().info("violation-counts file for background run was not produced, skipping moving...");
+            }
         } else { // edge case where critical phase runs all specs
             getLog().info("No specs to monitor for background phase, terminating...");
         }
