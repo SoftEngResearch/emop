@@ -6,14 +6,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -37,7 +41,7 @@ public class VmsMojo extends MonitorMojo {
     //          file        line     lines modified
     private Map<String, Map<Integer, Integer>> lineChanges = new HashMap<>();
 
-    // Represents the renaming of one file to another
+    // Represents the renamed file's original name
     private Map<String, String> renames = new HashMap<>();
 
     // Describes new classes which have been made between commits
@@ -49,7 +53,7 @@ public class VmsMojo extends MonitorMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
         saveViolationCounts();
-        List<DiffEntry> diffs = null;
+        List<DiffEntry> diffs;
         try {
             diffs = getDiffs();
         } catch (IOException e) {
@@ -62,8 +66,9 @@ public class VmsMojo extends MonitorMojo {
         oldViolations = parseViolations(".starts/violation-counts-old");
         getLog().info("Old violations: " + oldViolations.toString());
         newViolations = parseViolations(".starts/violation-counts");
-        getLog().info("New violations: " + newViolations.toString());
+        getLog().info("New violations (before filtering): " + newViolations.toString());
         removeDuplicateViolations();
+        getLog().info("New violations (after filtering): " + newViolations.toString());
         rewriteViolationCounts();
     }
 
@@ -130,7 +135,7 @@ public class VmsMojo extends MonitorMojo {
                 else if(!diff.getNewPath().equals("/dev/null")) {
                     // Gets renamed classes
                     if (!diff.getOldPath().equals(diff.getNewPath())) {
-                        renames.put(diff.getOldPath(), diff.getNewPath());
+                        renames.put(diff.getNewPath(), diff.getOldPath());
                     }
 
                     // For each file, find the replacements, additions, and deletions at each line
@@ -170,12 +175,62 @@ public class VmsMojo extends MonitorMojo {
      * Scrubs newViolations of violations believed to be duplicates from violation-counts-old
      */
     private void removeDuplicateViolations() {
-        // for each new violation, get all old violations of the same specification
-        // then, filter the old violations for those of the same class (take renames into account)
-        // fetch the linechanges associated with the (old) class
-        // sort linechanges by line number, add or subtract as necessary to determine if the line number of the old
-        //     violation is the same as the new
-        // if so, remove the new violation
+        for (List<String> newViolation : newViolations) {
+            Set<List<String>> relevantOldViolations = oldViolations.stream()
+                    .filter(oldViolation -> oldViolation.get(0).equals(newViolation.get(0))) // same spec
+                    .filter(oldViolation -> oldViolation.get(1).equals(newViolation.get(1))
+                                         || isRenamed(oldViolation.get(1), newViolation.get(1))) // same class
+                    .filter(oldViolation -> hasSameLineNumber(oldViolation.get(1), Integer.parseInt(oldViolation.get(2)),
+                            Integer.parseInt(newViolation.get(2)))) // same line number
+                    .collect(Collectors.toSet());
+
+            if (!relevantOldViolations.isEmpty()) {
+                newViolations.remove(newViolation);
+            }
+        }
+    }
+
+    /**
+     * Determines whether an old class has been renamed to the new one or not
+     *
+     * @param oldClass Previous possible name of a class
+     * @param newClass Rename being considered
+     * @return Whether the old class name was renamed to the new one
+     */
+    private boolean isRenamed(String oldClass, String newClass) {
+        for (String renamedClass : renames.keySet()) {
+            if (renamedClass.contains(newClass) && renames.get(renamedClass).contains(oldClass)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determines whether an old line in a file can be mapped to the new line
+     *
+     * @param classInfo Particular class being considered (if the class was renamed, this is the old name)
+     * @param oldLine Original line number
+     * @param newLine New line number
+     * @return Whether the original line number can be mapped to the new line number in the updated version
+     */
+    private boolean hasSameLineNumber(String classInfo, int oldLine, int newLine) {
+        for (String className : lineChanges.keySet()) {
+            if (className.contains(classInfo)) {
+                int offset = 0;
+                for (Integer originalLine : lineChanges.get(className).keySet()) {
+                    if (originalLine <= oldLine) {
+                        offset += lineChanges.get(className).get(originalLine);
+                    }
+                }
+                if (newLine - oldLine <= offset) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        return oldLine == newLine;
     }
 
     /**
