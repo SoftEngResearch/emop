@@ -2,6 +2,7 @@ package edu.cornell;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -53,13 +54,7 @@ public class VmsMojo extends MonitorMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
         saveViolationCounts();
-        List<DiffEntry> diffs;
-        try {
-            diffs = getDiffs();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        findLineChangesAndRenames(diffs);
+        findLineChangesAndRenames(getDiffs());
         getLog().info("Found renames: " + renames.toString());
         getLog().info("Found line changes: " + lineChanges.toString());
         getLog().info("New classes: " + newClasses.toString());
@@ -73,12 +68,12 @@ public class VmsMojo extends MonitorMojo {
     }
 
     /**
-     * Fetches the two most recent commits of the repository and finds the differences between them
+     * Fetches the two most recent commits of the repository and finds the differences between them.
      *
      * @return List of differences between two most recent commits of the repository
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException if error is encountered during runtime
      */
-    private List<DiffEntry> getDiffs() throws MojoExecutionException, IOException {
+    private List<DiffEntry> getDiffs() throws MojoExecutionException {
         Git git;
         Iterable<RevCommit> commits;
         ObjectReader objectReader;
@@ -89,7 +84,7 @@ public class VmsMojo extends MonitorMojo {
             git = Git.open(new File(".git"));
             commits = git.log().setMaxCount(2).call();
             objectReader = git.getRepository().newObjectReader();
-        } catch (GitAPIException e) {
+        } catch (GitAPIException | IOException exception) {
             throw new MojoExecutionException("Failed to fetch two previous commits from repository");
         }
 
@@ -99,7 +94,7 @@ public class VmsMojo extends MonitorMojo {
             for (RevCommit commit : commits) {
                 trees.add(new CanonicalTreeParser(null, objectReader, commit.getTree().getId()));
             }
-        } catch (IOException e) {
+        } catch (IOException exception) {
             throw new MojoExecutionException("Encountered an error when creating trees from commits");
         }
 
@@ -109,7 +104,7 @@ public class VmsMojo extends MonitorMojo {
         diffFormatter.setDetectRenames(true);
         try {
             diffs = diffFormatter.scan(trees.get(1), trees.get(0));
-        } catch (IOException e) {
+        } catch (IOException exception) {
             throw new MojoExecutionException("Encountered an error when analyzing for differences between commits");
         }
 
@@ -118,10 +113,10 @@ public class VmsMojo extends MonitorMojo {
     }
 
     /**
-     * Updates the lineChanges and renames based on found differences
+     * Updates the lineChanges and renames based on found differences.
      *
      * @param diffs List of differences between two versions of the same program
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException if error is encountered during runtime
      */
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
@@ -129,10 +124,7 @@ public class VmsMojo extends MonitorMojo {
                 // If the old path is /dev/null, then the file has been created between commits
                 if (diff.getOldPath().equals("/dev/null")) {
                     newClasses.add(diff.getNewPath());
-                }
-
-                // Ignore if a deleted class
-                else if(!diff.getNewPath().equals("/dev/null")) {
+                } else if (!diff.getNewPath().equals("/dev/null")) { // Ignore if a deleted class
                     // Gets renamed classes
                     if (!diff.getOldPath().equals(diff.getNewPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
@@ -149,13 +141,13 @@ public class VmsMojo extends MonitorMojo {
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException exception) {
             throw new MojoExecutionException("Encountered an error when comparing different files");
         }
     }
 
     /**
-     * Analyzes a violations file and returns a list of violations
+     * Analyzes a violations file and returns a list of violations.
      *
      * @param violationsPath The file where violations are located
      * @return A list of violations, each violation is made up of a specification, a class, and a line number
@@ -166,13 +158,13 @@ public class VmsMojo extends MonitorMojo {
                     .stream()
                     .map(this::parseViolation)
                     .collect(Collectors.toSet());
-        } catch (IOException e) {
+        } catch (IOException exception) {
             return new HashSet<>();
         }
     }
 
     /**
-     * Scrubs newViolations of violations believed to be duplicates from violation-counts-old
+     * Scrubs newViolations of violations believed to be duplicates from violation-counts-old.
      */
     private void removeDuplicateViolations() {
         for (List<String> newViolation : newViolations) {
@@ -191,7 +183,7 @@ public class VmsMojo extends MonitorMojo {
     }
 
     /**
-     * Determines whether an old class has been renamed to the new one or not
+     * Determines whether an old class has been renamed to the new one or not.
      *
      * @param oldClass Previous possible name of a class
      * @param newClass Rename being considered
@@ -207,7 +199,7 @@ public class VmsMojo extends MonitorMojo {
     }
 
     /**
-     * Determines whether an old line in a file can be mapped to the new line
+     * Determines whether an old line in a file can be mapped to the new line. There's room for optimization.
      *
      * @param classInfo Particular class being considered (if the class was renamed, this is the old name)
      * @param oldLine Original line number
@@ -234,10 +226,38 @@ public class VmsMojo extends MonitorMojo {
     }
 
     /**
-     * Rewrites violation-counts to only include violations in newViolations
+     * Rewrites violation-counts to only include violations in newViolations.
      */
-    private void rewriteViolationCounts() {
+    private void rewriteViolationCounts() throws MojoExecutionException {
+        // for each line of violation-counts, if it can be mapped to a new violation it gets to stay (else it goes)
+        try {
+            List<String> lines = Files.readAllLines(new File(".starts/violation-counts").toPath());
+            PrintWriter writer = new PrintWriter(".starts/violation-counts");
+            for (String line : lines) {
+                if (isNewViolation(line)) {
+                    writer.println(line);
+                }
+            }
+            writer.close();
+        } catch (IOException exception) {
+            throw new MojoExecutionException("Failure encountered when rewriting violation-counts");
+        }
+    }
 
+    /**
+     * Whether a violation line is a new violation.
+     *
+     * @param violation Violation line being considered
+     * @return Whether the violation is a new violation
+     */
+    private boolean isNewViolation(String violation) {
+        List<String> parsedViolation = parseViolation(violation);
+        for (List<String> newViolation : newViolations) {
+            if (newViolation.equals(parsedViolation)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void saveViolationCounts() throws MojoExecutionException {
@@ -253,15 +273,14 @@ public class VmsMojo extends MonitorMojo {
             getLog().info("Saving current violation-counts to violation-counts...");
             newVC.toFile().createNewFile();
             Files.move(newVC, savedVC);
-        }
-        catch (IOException ex) {
+        } catch (IOException ex) {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
         }
     }
 
     /**
-     * Parses the string form of a violation from the file into a list containing the specification, class, and line number
+     * Parses the string form of a violation from the file into a list containing the specification, class, and line number.
      *
      * @param violation Violation line to parse
      * @return Triple of violation specification, class, and line number
