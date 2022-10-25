@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import edu.illinois.starts.jdeps.DiffMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -34,7 +35,7 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
-public class VmsMojo extends MonitorMojo {
+public class VmsMojo extends DiffMojo {
 
     private final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
@@ -81,7 +82,7 @@ public class VmsMojo extends MonitorMojo {
 
         // Sets up repository and fetches commits
         try {
-            git = Git.open(new File(System.getProperty("user.dir") + File.separator + ".git"));
+            git = Git.open(basedir.toPath().resolve(".git").toFile());
             commits = git.log().setMaxCount(1).call();
             objectReader = git.getRepository().newObjectReader();
         } catch (GitAPIException | IOException exception) {
@@ -236,9 +237,9 @@ public class VmsMojo extends MonitorMojo {
     private void rewriteViolationCounts() throws MojoExecutionException {
         // for each line of violation-counts, if it can be mapped to a new violation it gets to stay (else it goes)
         try {
-            List<String> lines = Files.readAllLines(new File(getArtifactsDir() + File.separator + "violation-counts")
-                                      .toPath());
-            PrintWriter writer = new PrintWriter(".starts/violation-counts");
+            Path vc = Paths.get(System.getProperty("user.dir"), "violation-counts");
+            List<String> lines = Files.readAllLines(vc);
+            PrintWriter writer = new PrintWriter(vc.toFile());
             for (String line : lines) {
                 if (isNewViolation(line)) {
                     writer.println(line);
@@ -266,6 +267,11 @@ public class VmsMojo extends MonitorMojo {
         return false;
     }
 
+    /**
+     * Saves the most recent <code>violation-counts</code> created by RV-Monitor
+     * into the artifacts directory, and backs up the previously saved violations
+     * to <code>violation-counts-old</code>.
+     */
     private void saveViolationCounts() throws MojoExecutionException {
         Path savedVC = Paths.get(getArtifactsDir(), "violation-counts");
         Path savedVCOld = Paths.get(getArtifactsDir(), "violation-counts-old");
@@ -278,7 +284,7 @@ public class VmsMojo extends MonitorMojo {
 
             getLog().info("Saving current violation-counts to violation-counts...");
             newVC.toFile().createNewFile();
-            Files.move(newVC, savedVC);
+            Files.copy(newVC, savedVC);
         } catch (IOException ex) {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
