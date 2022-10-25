@@ -27,7 +27,9 @@ import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
@@ -61,7 +63,7 @@ public class VmsMojo extends MonitorMojo {
         newViolations = parseViolations(getArtifactsDir() + File.separator + "violation-counts");
         getLog().info("Number of total violations found: " + newViolations.size());
         removeDuplicateViolations();
-        getLog().info("Number of unique violations found: " + newViolations.size());
+        getLog().info("Number of \"new\" violations found: " + newViolations.size());
         rewriteViolationCounts();
     }
 
@@ -80,14 +82,15 @@ public class VmsMojo extends MonitorMojo {
         // Sets up repository and fetches commits
         try {
             git = Git.open(new File(System.getProperty("user.dir") + File.separator + ".git"));
-            commits = git.log().setMaxCount(2).call();
+            commits = git.log().setMaxCount(1).call();
             objectReader = git.getRepository().newObjectReader();
         } catch (GitAPIException | IOException exception) {
             throw new MojoExecutionException("Failed to fetch two previous commits from repository");
         }
 
         // Creates trees to parse through to analyze for differences
-        List<CanonicalTreeParser> trees = new ArrayList<>();
+        List<AbstractTreeIterator> trees = new ArrayList<>();
+        trees.add(new FileTreeIterator(git.getRepository()));
         try {
             for (RevCommit commit : commits) {
                 trees.add(new CanonicalTreeParser(null, objectReader, commit.getTree().getId()));
@@ -217,10 +220,10 @@ public class VmsMojo extends MonitorMojo {
                         offset += lineChanges.get(className).get(originalLine);
                     }
                 }
-                if (Math.abs(newLine - oldLine) <= offset) {
-                    return true;
-                } else {
-                    return false;
+                if (newLine >= oldLine) { // if lines have been inserted
+                    return offset >= 0 && offset >= newLine - oldLine;
+                } else { // if lines have been removed
+                    return offset <= 0 && offset <= newLine - oldLine;
                 }
             }
         }
