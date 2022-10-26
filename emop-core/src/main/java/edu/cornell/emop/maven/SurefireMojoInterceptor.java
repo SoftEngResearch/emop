@@ -1,7 +1,11 @@
 package edu.cornell.emop.maven;
 
 /**
- * This class is adapted from STARTS's SurefireMojoInterceptor.
+ * This class is adapted from STARTS's SurefireMojoInterceptor
+ * (https://github.com/TestingResearchIllinois/starts/blob/master/...
+ * starts-core/src/main/java/edu/illinois/starts/maven/SurefireMojoInterceptor.java).
+ * This class manipulates the argLine field of SurefirePlugin, where STARTS's SurefireMojoInterceptor manipulates the
+ * excludes field of SurefirePlugin.
  **/
 
 public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
@@ -13,18 +17,14 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
      */
     public static void execute(Object mojo) throws Exception {
         sfMojo = mojo;
-        String currentArgs = checkSurefireVersion(mojo); // check if the version of surefire is good
+        String currentArgs = checkSurefireVersion(mojo);
         manipulateArgs(mojo, currentArgs);
     }
 
     private static String checkSurefireVersion(Object mojo) throws Exception {
         String argLineString = "";
-        try {
-            // modern versions of surefire have both of these fields. skip if we don't have these fields
-            argLineString = (String) getField("argLine", mojo);
-        } catch (NoSuchMethodException ex) {
-            throwMojoExecutionException(mojo, UNSUPPORTED_SUREFIRE_VERSION_EXCEPTION, ex);
-        }
+            // Modern versions of surefire have both of these fields. Skip if we don't have these fields.
+        argLineString = (String) getField("argLine", mojo);
         return argLineString;
     }
 
@@ -33,12 +33,7 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
         if (currentArgs != null) {
             // we want to preserve all preexisting arguments besides -javaagent:${previousJavamopAgent}
             String previousJavamopAgent = System.getProperty("previous-javamop-agent");
-            String[] currentArgComponents = currentArgs.split("\\s+");
-            for (String arg : currentArgComponents) {
-                if (!arg.equals("-javaagent:" + previousJavamopAgent)) {
-                    argsToAppend += arg + " ";
-                }
-            }
+            argsToAppend = currentArgs.replace("-javaagent:" + previousJavamopAgent, "");
         }
         String agentPathString = System.getProperty("rpp-agent");
         if (agentPathString != null) {
