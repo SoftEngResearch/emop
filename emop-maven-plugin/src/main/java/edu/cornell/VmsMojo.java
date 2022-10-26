@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import edu.cornell.emop.util.Util;
+import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
@@ -52,8 +52,8 @@ public class VmsMojo extends DiffMojo {
     // Describes new classes which have been made between commits
     private Set<String> newClasses = new HashSet<>();
 
-    private Set<List<String>> oldViolations;
-    private Set<List<String>> newViolations;
+    private Set<Violation> oldViolations;
+    private Set<Violation> newViolations;
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
@@ -61,8 +61,8 @@ public class VmsMojo extends DiffMojo {
         findLineChangesAndRenames(getDiffs());
         getLog().info("Number of files renamed: " + renames.size());
         getLog().info("Number of changed files found: " + lineChanges.size());
-        oldViolations = Util.parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
-        newViolations = Util.parseViolations(getArtifactsDir() + File.separator + "violation-counts");
+        oldViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
+        newViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts");
         getLog().info("Number of total violations found: " + newViolations.size());
         removeDuplicateViolations();
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
@@ -153,21 +153,21 @@ public class VmsMojo extends DiffMojo {
      * Scrubs newViolations of violations believed to be duplicates from violation-counts-old.
      */
     private void removeDuplicateViolations() {
-        Set<List<String>> violationsToRemove = new HashSet<>();
-        for (List<String> newViolation : newViolations) {
-            Set<List<String>> relevantOldViolations = oldViolations.stream()
-                    .filter(oldViolation -> oldViolation.get(0).equals(newViolation.get(0))) // same spec
-                    .filter(oldViolation -> oldViolation.get(1).equals(newViolation.get(1))
-                                         || isRenamed(oldViolation.get(1), newViolation.get(1))) // same class
-                    .filter(oldViolation -> hasSameLineNumber(oldViolation.get(1), Integer.parseInt(oldViolation.get(2)),
-                            Integer.parseInt(newViolation.get(2)))) // same line number
+        Set<Violation> violationsToRemove = new HashSet<>();
+        for (Violation newViolation : newViolations) {
+            Set<Violation> relevantOldViolations = oldViolations.stream()
+                    .filter(oldViolation -> oldViolation.getSpecification().equals(newViolation.getSpecification()))
+                    .filter(oldViolation -> oldViolation.getClassInfo().equals(newViolation.getClassInfo())
+                                         || isRenamed(oldViolation.getClassInfo(), newViolation.getClassInfo()))
+                    .filter(oldViolation -> hasSameLineNumber(oldViolation.getClassInfo(), oldViolation.getLineNum(),
+                            newViolation.getLineNum()))
                     .collect(Collectors.toSet());
 
             if (!relevantOldViolations.isEmpty()) {
                 violationsToRemove.add(newViolation);
             }
         }
-        for (List<String> violationToRemove : violationsToRemove) {
+        for (Violation violationToRemove : violationsToRemove) {
             newViolations.remove(violationToRemove);
         }
     }
@@ -242,8 +242,8 @@ public class VmsMojo extends DiffMojo {
      * @return Whether the violation is a new violation
      */
     private boolean isNewViolation(String violation) {
-        List<String> parsedViolation = Util.parseViolation(violation);
-        for (List<String> newViolation : newViolations) {
+        Violation parsedViolation = Violation.parseViolation(violation);
+        for (Violation newViolation : newViolations) {
             if (newViolation.equals(parsedViolation)) {
                 return true;
             }
