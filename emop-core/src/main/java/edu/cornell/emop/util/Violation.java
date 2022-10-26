@@ -1,9 +1,10 @@
 package edu.cornell.emop.util;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -37,9 +38,9 @@ public class Violation {
      * @param violationsPath The file where violations are located
      * @return A set of violations, each violation is a list containing the specification, a class, and a line number
      */
-    public static Set<Violation> parseViolations(String violationsPath) {
+    public static Set<Violation> parseViolations(Path violationsPath) {
         try {
-            return Files.readAllLines(new File(violationsPath).toPath())
+            return Files.readAllLines(violationsPath)
                     .stream()
                     .map(Violation::parseViolation)
                     .collect(Collectors.toSet());
@@ -54,7 +55,7 @@ public class Violation {
      * @param violationsPath The file where violations are located
      * @return A set of violation specifications
      */
-    public static Set<String> parseViolationSpecs(String violationsPath) {
+    public static Set<String> parseViolationSpecs(Path violationsPath) {
         return parseViolations(violationsPath).stream().map(Violation::getSpecification).collect(Collectors.toSet());
     }
 
@@ -84,5 +85,23 @@ public class Violation {
     @Override
     public String toString() {
         return "(" + specification + ", " + classInfo + ", " + lineNum + ")";
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+
+        Violation other = (Violation)object;
+
+        return Objects.equals(this.specification, other.specification)
+                && Objects.equals(this.classInfo, other.classInfo)
+                && lineNum == other.lineNum;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(specification, classInfo, lineNum);
     }
 }

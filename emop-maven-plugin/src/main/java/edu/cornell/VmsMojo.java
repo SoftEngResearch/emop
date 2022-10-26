@@ -1,6 +1,5 @@
 package edu.cornell;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -27,6 +26,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
@@ -37,6 +37,10 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
+
+    private Path gitDir;
+    private Path oldVC;
+    private Path newVC;
 
     private final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
@@ -57,15 +61,19 @@ public class VmsMojo extends DiffMojo {
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
-        saveViolationCounts();
+        gitDir = basedir.toPath().resolve(".git");
+        oldVC = Paths.get(getArtifactsDir(), "violation-counts-old");
+        newVC = Paths.get(System.getProperty("user.dir"), "violation-counts");
+        touchViolationCounts();
         findLineChangesAndRenames(getDiffs());
         getLog().info("Number of files renamed: " + renames.size());
         getLog().info("Number of changed files found: " + lineChanges.size());
-        oldViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
-        newViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts");
+        oldViolations = Violation.parseViolations(oldVC);
+        newViolations = Violation.parseViolations(newVC);
         getLog().info("Number of total violations found: " + newViolations.size());
         removeDuplicateViolations();
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
+        saveViolationCounts();
         rewriteViolationCounts();
     }
 
@@ -83,7 +91,7 @@ public class VmsMojo extends DiffMojo {
 
         // Sets up repository and fetches commits
         try {
-            git = Git.open(basedir.toPath().resolve(".git").toFile());
+            git = Git.open(gitDir.toFile());
             commits = git.log().setMaxCount(1).call();
             objectReader = git.getRepository().newObjectReader();
         } catch (GitAPIException | IOException exception) {
@@ -216,14 +224,13 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Rewrites violation-counts to only include violations in newViolations.
+     * Rewrites <code>violation-counts</code> to only include violations in newViolations.
      */
     private void rewriteViolationCounts() throws MojoExecutionException {
         // for each line of violation-counts, if it can be mapped to a new violation it gets to stay (else it goes)
         try {
-            Path vc = Paths.get(System.getProperty("user.dir"), "violation-counts");
-            List<String> lines = Files.readAllLines(vc);
-            PrintWriter writer = new PrintWriter(vc.toFile());
+            List<String> lines = Files.readAllLines(newVC);
+            PrintWriter writer = new PrintWriter(newVC.toFile());
             for (String line : lines) {
                 if (isNewViolation(line)) {
                     writer.println(line);
@@ -252,24 +259,33 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Saves the most recent <code>violation-counts</code> created by RV-Monitor
-     * into the artifacts directory, and backs up the previously saved violations
-     * to <code>violation-counts-old</code>.
+     * Ensures that <code>violation-counts</code> and <code>violation-counts-old</code>
+     * both exist, creating empty files if not.
+     */
+    private void touchViolationCounts() throws MojoExecutionException {
+        try {
+            oldVC.toFile().createNewFile();
+            newVC.toFile().createNewFile();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            throw new MojoExecutionException("Failed to create violation-counts", ex);
+        }
+    }
+
+    /**
+     * If the working tree is clean, saves the most recent <code>violation-counts</code>
+     * created by RV-Monitor in <code>violation-counts-old</code>.
      */
     private void saveViolationCounts() throws MojoExecutionException {
-        Path savedVC = Paths.get(getArtifactsDir(), "violation-counts");
-        Path savedVCOld = Paths.get(getArtifactsDir(), "violation-counts-old");
-        Path newVC = Paths.get(System.getProperty("user.dir"), "violation-counts");
+        try (Git git = Git.open(gitDir.toFile())) {
+            if (git.status().call().isClean()) {
+                Files.copy(newVC, oldVC, StandardCopyOption.REPLACE_EXISTING);
 
-        try {
-            getLog().info("Saving previous violation-counts to violation-counts-old...");
-            savedVC.toFile().createNewFile();
-            Files.move(savedVC, savedVCOld, StandardCopyOption.REPLACE_EXISTING);
-
-            getLog().info("Saving current violation-counts to violation-counts...");
-            newVC.toFile().createNewFile();
-            Files.copy(newVC, savedVC);
-        } catch (IOException ex) {
+                try (PrintWriter out = new PrintWriter(Paths.get(getArtifactsDir(), "last-SHA").toFile())) {
+                    out.println(git.getRepository().resolve(Constants.HEAD).name());
+                }
+            }
+        } catch (IOException | GitAPIException ex) {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
         }
