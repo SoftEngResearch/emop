@@ -38,18 +38,22 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
 
+    // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
+    // and deletions
     private final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
-    // Represents the map between a file and a map representing the number of lines added or deleted at each line
-    // of the file. If the value is 0, the line has been modified in place.
+    // Map from a file to a map representing the number of additional lines added or deleted at each line
+    // of the original file. If the value is 0, the line has been modified in place.
     // Note: If renames are involved, the old name of the file is used.
+    // More information about how differences are represented in JGit can be found here:
+    // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/Edit.html
     //          file        line     lines modified
     private Map<String, Map<Integer, Integer>> lineChanges = new HashMap<>();
 
-    // Represents the renamed file's original name
+    // Maps renamed files to the original names
     private Map<String, String> renames = new HashMap<>();
 
-    // Describes new classes which have been made between commits
+    // Contains new classes which have been made between commits
     private Set<String> newClasses = new HashSet<>();
 
     private Set<Violation> oldViolations;
@@ -58,7 +62,7 @@ public class VmsMojo extends DiffMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
         saveViolationCounts();
-        findLineChangesAndRenames(getDiffs());
+        findLineChangesAndRenames(getCommitDiffs());
         getLog().info("Number of files renamed: " + renames.size());
         getLog().info("Number of changed files found: " + lineChanges.size());
         oldViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
@@ -73,9 +77,9 @@ public class VmsMojo extends DiffMojo {
      * Fetches the two most recent commits of the repository and finds the differences between them.
      *
      * @return List of differences between two most recent commits of the repository
-     * @throws MojoExecutionException if error is encountered during runtime
+     * @throws MojoExecutionException if error is encountered at runtime
      */
-    private List<DiffEntry> getDiffs() throws MojoExecutionException {
+    private List<DiffEntry> getCommitDiffs() throws MojoExecutionException {
         Git git;
         Iterable<RevCommit> commits;
         ObjectReader objectReader;
@@ -119,15 +123,15 @@ public class VmsMojo extends DiffMojo {
      * Updates the lineChanges and renames based on found differences.
      *
      * @param diffs List of differences between two versions of the same program
-     * @throws MojoExecutionException if error is encountered during runtime
+     * @throws MojoExecutionException if error is encountered at runtime
      */
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                // If the old path is /dev/null, then the file has been created between commits
-                if (diff.getOldPath().equals("/dev/null")) {
+                // Determines if the file is new, read more here: https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/DiffEntry.html
+                if (diff.getOldPath().equals(DiffEntry.DEV_NULL)) {
                     newClasses.add(diff.getNewPath());
-                } else if (!diff.getNewPath().equals("/dev/null")) { // Ignore if a deleted class
+                } else if (!diff.getNewPath().equals(DiffEntry.DEV_NULL)) { // Ignore if a deleted class
                     // Gets renamed classes
                     if (!diff.getOldPath().equals(diff.getNewPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
@@ -150,26 +154,34 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Scrubs newViolations of violations believed to be duplicates from violation-counts-old.
+     * Removes newViolations of violations believed to be duplicates from violation-counts-old.
      */
     private void removeDuplicateViolations() {
         Set<Violation> violationsToRemove = new HashSet<>();
         for (Violation newViolation : newViolations) {
-            Set<Violation> relevantOldViolations = oldViolations.stream()
-                    .filter(oldViolation -> oldViolation.getSpecification().equals(newViolation.getSpecification()))
-                    .filter(oldViolation -> oldViolation.getClassInfo().equals(newViolation.getClassInfo())
-                                         || isRenamed(oldViolation.getClassInfo(), newViolation.getClassInfo()))
-                    .filter(oldViolation -> hasSameLineNumber(oldViolation.getClassInfo(), oldViolation.getLineNum(),
-                            newViolation.getLineNum()))
-                    .collect(Collectors.toSet());
-
-            if (!relevantOldViolations.isEmpty()) {
-                violationsToRemove.add(newViolation);
+            for (Violation oldViolation : oldViolations) {
+                if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
+                    violationsToRemove.add(newViolation);
+                    break;
+                }
             }
         }
-        for (Violation violationToRemove : violationsToRemove) {
-            newViolations.remove(violationToRemove);
-        }
+        newViolations.removeAll(violationsToRemove);
+    }
+
+    /**
+     * Determines if an old violation in a class could be mapped to the new violation after accounting for differences
+     * in code and renames.
+     *
+     * @param oldViolation Original violation to compare
+     * @param newViolation New violation to compare
+     * @return Whether the old violation can be mapped to the new violation, after code changes and renames
+     */
+    private boolean isSameViolationAfterDifferences(Violation oldViolation, Violation newViolation) {
+        return oldViolation.getSpecification().equals(newViolation.getSpecification())
+                && (oldViolation.getClassName().equals(newViolation.getClassName())
+                    || isRenamed(oldViolation.getClassName(), newViolation.getClassName()))
+                && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum());
     }
 
     /**
@@ -189,7 +201,27 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Determines whether an old line in a file can be mapped to the new line. There's room for optimization.
+     * Determines whether an old line in a file can be mapped to the new line. An offset is calculated which determines
+     * the maximum boundary of the distance a line has moved based off of differences between code versions. If two
+     * lines are within this offset of each other (in the correct direction), they are considered mappable.
+     * Take the following example:
+     * Old code          New code
+     * line 1            line 1
+     * line 2            line 2
+     * line 3            new line
+     * line 4            line 3
+     *                   line 4
+     * Lines 1 and 2 do not see any differences, so their offset is 0 and they will only map to lines 1 and 2 in the new
+     * code, respectively. Line 3 sees an addition of one line, so the offset here is 1 and both the new line and line 3
+     * in the new code will map to the previous line 3. Similarly, line 4 also takes the previous addition of a line
+     * into account and have an offset of 1, and both lines 3 and 4 in the new code will map to the previous line 4.
+     * Deletions work similarly, and are represented by a negative offset.
+     * TODO: The current implementation is generous with finding the "same" violation. The offset is very accurate in
+     *  finding the precise location unmodified code has been moved to. This information can be leveraged for more
+     *  accuracy when differentiating which violations are new or old when they occur close together and the line
+     *  itself where the violation occurred is not a part of any direct differences in code. There are also errors that
+     *  can arise because of differences between the last commit and the previous run of violation-counts (whose
+     *  violations we keep track of) this can be fixed by incorporating sha information.
      *
      * @param classInfo Particular class being considered (if the class was renamed, this is the old name)
      * @param oldLine Original line number
@@ -219,7 +251,6 @@ public class VmsMojo extends DiffMojo {
      * Rewrites violation-counts to only include violations in newViolations.
      */
     private void rewriteViolationCounts() throws MojoExecutionException {
-        // for each line of violation-counts, if it can be mapped to a new violation it gets to stay (else it goes)
         try {
             Path vc = Paths.get(System.getProperty("user.dir"), "violation-counts");
             List<String> lines = Files.readAllLines(vc);

@@ -44,8 +44,7 @@ $ps_i$ and $ps_i^c$ needs to modify `STARTS` to include third-party libraries, a
 - [ ] Store violations from $P_1$ and $P_2$
   - Violations should store the specification violated along with the file and line number where it occurred
 - [ ] For every violation in $P_2$, look at the same violations in $P_1$
-  - [ ] Use `diff` (via JGit, found [here](https://www.eclipse.org/jgit/download/)) to determine if these violations
-        occured in the same location in the code
+  - [ ] Use `diff` (via JGit, found [here](https://www.eclipse.org/jgit/download/)) to determine if these violations occurred in the same location in the code
     - You can interpret this as being the same line number in code, after taking account all edits in a file
     - Make sure to use the option allowing for the analysis of renames
     - JGit was chosen for its robust [documentation](https://download.eclipse.org/jgit/site/6.3.0.202209071007-r/apidocs/org/eclipse/jgit/diff/package-summary.html) 
