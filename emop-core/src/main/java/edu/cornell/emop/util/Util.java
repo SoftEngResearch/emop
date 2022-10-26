@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Util {
     public static List<String> findFilesOfType(File path, String extension) {
@@ -101,5 +102,67 @@ public class Util {
     public static Set<String> retrieveProjectPackageNames(File classesDir) {
         Set<String> fullSet = classFilesWalk(classesDir, classesDir.getAbsolutePath());
         return fullSet;
+    }
+
+    /**
+     * Analyzes a violations file and returns a set of violations.
+     *
+     * @param violationsPath The file where violations are located
+     * @return A set of violations, each violation is a list containing the specification, a class, and a line number
+     */
+    public static Set<List<String>> parseViolations(String violationsPath) {
+        try {
+            return Files.readAllLines(new File(violationsPath).toPath())
+                    .stream()
+                    .map(Util::parseViolation)
+                    .collect(Collectors.toSet());
+        } catch (IOException exception) {
+            return new HashSet<>();
+        }
+    }
+
+    /**
+     * Analyzes a violations file and returns a list of violations.
+     *
+     * @param violationsPath The file where violations are located
+     * @return A set of violation specifications
+     */
+    public static Set<String> parseViolationSpecs(String violationsPath) {
+        try {
+            return Files.readAllLines(new File(violationsPath).toPath())
+                    .stream()
+                    .map(violation -> parseViolation(violation).get(0))
+                    .collect(Collectors.toSet());
+        } catch (IOException exception) {
+            return new HashSet<>();
+        }
+    }
+
+    /**
+     * Parses the string form of a violation from the file into a list containing the specification, class, and line number.
+     *
+     * @param violation Violation line to parse
+     * @return Triple of violation specification, class, and line number
+     */
+    public static List<String> parseViolation(String violation) {
+        List<String> result = new ArrayList<>();
+        String[] parsedViolation = violation.split(" ");
+        result.add(parsedViolation[2]); // name of specification
+
+        String[] classAndLineNum = parsedViolation[8].split(":");
+        String classInfo = classAndLineNum[0];
+        String[] classLocationAndNameExt = classInfo.split("\\(");
+        String classNameExt = classLocationAndNameExt[1];
+        String classLocation = classLocationAndNameExt[0];
+        String[] classLocationFragments = classLocation.split("\\.");
+        classLocationFragments[classLocationFragments.length - 1] = null; // remove function name
+        classLocationFragments[classLocationFragments.length - 2] = classNameExt; // add extension to class name
+        String classResult = String.join("/", classLocationFragments);
+        classResult = classResult.substring(0, classResult.length() - 5); // remove function and final '/'
+        result.add(classResult); // class, formatted as the diff will expect it to be
+
+        String lineNum = classAndLineNum[1];
+        result.add(lineNum.substring(0, lineNum.indexOf(")"))); // line number
+        return result;
     }
 }

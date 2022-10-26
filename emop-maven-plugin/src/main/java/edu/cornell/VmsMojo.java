@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import edu.cornell.emop.util.Util;
 import edu.illinois.starts.jdeps.DiffMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
@@ -60,8 +61,8 @@ public class VmsMojo extends DiffMojo {
         findLineChangesAndRenames(getDiffs());
         getLog().info("Number of files renamed: " + renames.size());
         getLog().info("Number of changed files found: " + lineChanges.size());
-        oldViolations = parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
-        newViolations = parseViolations(getArtifactsDir() + File.separator + "violation-counts");
+        oldViolations = Util.parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
+        newViolations = Util.parseViolations(getArtifactsDir() + File.separator + "violation-counts");
         getLog().info("Number of total violations found: " + newViolations.size());
         removeDuplicateViolations();
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
@@ -145,23 +146,6 @@ public class VmsMojo extends DiffMojo {
             }
         } catch (IOException exception) {
             throw new MojoExecutionException("Encountered an error when comparing different files");
-        }
-    }
-
-    /**
-     * Analyzes a violations file and returns a list of violations.
-     *
-     * @param violationsPath The file where violations are located
-     * @return A list of violations, each violation is made up of a specification, a class, and a line number
-     */
-    private Set<List<String>> parseViolations(String violationsPath) {
-        try {
-            return Files.readAllLines(new File(violationsPath).toPath())
-                    .stream()
-                    .map(this::parseViolation)
-                    .collect(Collectors.toSet());
-        } catch (IOException exception) {
-            return new HashSet<>();
         }
     }
 
@@ -258,7 +242,7 @@ public class VmsMojo extends DiffMojo {
      * @return Whether the violation is a new violation
      */
     private boolean isNewViolation(String violation) {
-        List<String> parsedViolation = parseViolation(violation);
+        List<String> parsedViolation = Util.parseViolation(violation);
         for (List<String> newViolation : newViolations) {
             if (newViolation.equals(parsedViolation)) {
                 return true;
@@ -289,33 +273,5 @@ public class VmsMojo extends DiffMojo {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
         }
-    }
-
-    /**
-     * Parses the string form of a violation from the file into a list containing the specification, class, and line number.
-     *
-     * @param violation Violation line to parse
-     * @return Triple of violation specification, class, and line number
-     */
-    private List<String> parseViolation(String violation) {
-        List<String> result = new ArrayList<>();
-        String[] parsedViolation = violation.split(" ");
-        result.add(parsedViolation[2]); // name of specification
-
-        String[] classAndLineNum = parsedViolation[8].split(":");
-        String classInfo = classAndLineNum[0];
-        String[] classLocationAndNameExt = classInfo.split("\\(");
-        String classNameExt = classLocationAndNameExt[1];
-        String classLocation = classLocationAndNameExt[0];
-        String[] classLocationFragments = classLocation.split("\\.");
-        classLocationFragments[classLocationFragments.length - 1] = null; // remove function name
-        classLocationFragments[classLocationFragments.length - 2] = classNameExt; // add extension to class name
-        String classResult = String.join("/", classLocationFragments);
-        classResult = classResult.substring(0, classResult.length() - 5); // remove function and final /
-        result.add(classResult); // class, formatted as the diff will expect it to be
-
-        String lineNum = classAndLineNum[1];
-        result.add(lineNum.substring(0, lineNum.indexOf(")"))); // line number
-        return result;
     }
 }
