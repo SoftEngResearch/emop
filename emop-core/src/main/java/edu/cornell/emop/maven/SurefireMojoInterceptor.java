@@ -21,14 +21,15 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
         manipulateArgs(mojo, currentArgs);
     }
 
-    private static String checkSurefireVersion(Object mojo) throws Exception {
+    private static String checkSurefireVersion(Object mojo) throws NoSuchFieldException, IllegalAccessException {
         String argLineString = "";
-            // Modern versions of surefire have both of these fields. Skip if we don't have these fields.
+        // Modern versions of surefire have both of these fields. Skip if we don't have these fields.
         argLineString = (String) getField("argLine", mojo);
         return argLineString;
     }
 
-    private static void manipulateArgs(Object mojo, String currentArgs) throws Exception {
+    private static void manipulateArgs(Object mojo, String currentArgs)
+            throws NoSuchFieldException, IllegalAccessException {
         String argsToAppend = "";
         if (currentArgs != null) {
             // we want to preserve all preexisting arguments besides -javaagent:${previousJavamopAgent}

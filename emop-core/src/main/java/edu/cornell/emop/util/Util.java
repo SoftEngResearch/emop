@@ -75,7 +75,8 @@ public class Util {
                 specs.add(reader.readLine());
             }
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            log.error("An I/O error occurred while reading the JavaMOP agent's specs.txt.");
+            System.exit(1);
         }
         return specs;
     }

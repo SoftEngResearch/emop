@@ -37,7 +37,8 @@ public abstract class AbstractMojoInterceptor {
     /**
      * Sets a specified field in the mojo.
      */
-    public static void setField(String fieldName, Object mojo, Object value) throws Exception {
+    public static void setField(String fieldName, Object mojo, Object value)
+            throws NoSuchFieldException, IllegalAccessException {
         Field field;
         try {
             field = mojo.getClass().getDeclaredField(fieldName);
@@ -64,7 +65,7 @@ public abstract class AbstractMojoInterceptor {
     /**
      * Returns the field. returns null if there is no such field.
      */
-    public static Object getField(String fieldName, Object mojo) throws Exception {
+    public static Object getField(String fieldName, Object mojo) throws NoSuchFieldException, IllegalAccessException {
         Field field;
         try {
             field = mojo.getClass().getDeclaredField(fieldName);
