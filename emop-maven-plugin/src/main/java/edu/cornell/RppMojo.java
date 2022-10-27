@@ -59,7 +59,8 @@ public class RppMojo extends RppHandlerMojo {
         }
     }
 
-    public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath) throws MojoExecutionException {
+    public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath)
+            throws MojoExecutionException, FileNotFoundException {
         // read the violation-counts files and output the list of critical and background specs for next time
         // (in the case that the user doesn't provide files for critical and background specs)
         Set<String> violatedSpecs = Violation.parseViolationSpecs(criticalViolationsPath);
@@ -67,7 +68,7 @@ public class RppMojo extends RppHandlerMojo {
         violatedSpecs.addAll(bgViolatedSpecs);
         File artifactsDir = new File(getArtifactsDir());
         File metaCriticalSpecsFile = new File(artifactsDir, "rpp-critical-specs.txt");
-        File metaBackgroundSpecsFile = new File( artifactsDir, "rpp-background-specs.txt");
+        File metaBackgroundSpecsFile = new File(artifactsDir, "rpp-background-specs.txt");
         writeSpecsToFile(violatedSpecs, metaCriticalSpecsFile);
 
     }
@@ -96,7 +97,12 @@ public class RppMojo extends RppHandlerMojo {
         } else { // edge case where critical phase runs all specs
             getLog().info("No specs to monitor for background phase, terminating...");
         }
-        updateCriticalAndBackgroundSpecs(criticalViolationsPath, bgViolationsPath);
+        try {
+            updateCriticalAndBackgroundSpecs(criticalViolationsPath, bgViolationsPath);
+        } catch (FileNotFoundException ex) {
+            getLog().error("Failed to automatically update critical and background specs.");
+            System.exit(1);
+        }
     }
 
 }

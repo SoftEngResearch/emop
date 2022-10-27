@@ -16,7 +16,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-@Mojo(name = "rpp-handler", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
+@Mojo(name = "rpp-handler", requiresDependencyResolution = ResolutionScope.TEST)
 public class RppHandlerMojo extends MonitorMojo {
 
     Set<String> criticalSpecsSet;
@@ -70,11 +70,11 @@ public class RppHandlerMojo extends MonitorMojo {
     }
 
     /**
-     * Computes both the critical specs set and the background specs set.
+     * Computes the critical specs set and the background specs set.
      */
     private void computeSpecSets() {
-        Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent);
-        // if we still don't have any spec files, then we'd just need to obtain all specs and run it in critical
+        Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent, getLog());
+        // if we still don't have any spec files, then we'd just need to obtain all specs and run them in critical
         if (criticalSpecsFile == null && backgroundSpecsFile == null) {
             criticalSpecsSet = allSpecs;
             backgroundSpecsSet = new HashSet<>();
@@ -101,7 +101,7 @@ public class RppHandlerMojo extends MonitorMojo {
     /**
      * Creates a JavaMOP agent JAR configured to only monitor the specified set of specifications.
      * @param mode an identifier for the jar (either "critical" or "background").
-     * @param specsToMonitor the list of specifications the agent should record.
+     * @param specsToMonitor  the list of specifications that the agent should monitor.
      * @return The path to the created JAR.
      */
     private String setUpSingleJar(String mode, Set<String> specsToMonitor) {
