@@ -27,11 +27,13 @@
         <executions>
           <execution>
             <goals>
-              <goal>clean-rvm</goal>
+              <goal>clean</goal>
             </goals>
+            <configuration>
+              <mode>RVM</mode>
+            </configuration>
           </execution>
         </executions>
-        <configuration/>
       </phase>
       <phase>
         <id>test</id>
