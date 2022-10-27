@@ -1,5 +1,7 @@
 package edu.cornell;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -27,6 +29,7 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
@@ -84,42 +87,33 @@ public class VmsMojo extends DiffMojo {
      * @throws MojoExecutionException if error is encountered during runtime
      */
     private List<DiffEntry> getDiffs() throws MojoExecutionException {
-        Git git;
-        Iterable<RevCommit> commits;
         ObjectReader objectReader;
         List<DiffEntry> diffs;
-
-        // Sets up repository and fetches commits
-        try {
-            git = Git.open(gitDir.toFile());
-            commits = git.log().setMaxCount(1).call();
-            objectReader = git.getRepository().newObjectReader();
-        } catch (GitAPIException | IOException exception) {
-            throw new MojoExecutionException("Failed to fetch two previous commits from repository");
-        }
-
-        // Creates trees to parse through to analyze for differences
         List<AbstractTreeIterator> trees = new ArrayList<>();
-        trees.add(new FileTreeIterator(git.getRepository()));
-        try {
-            for (RevCommit commit : commits) {
-                trees.add(new CanonicalTreeParser(null, objectReader, commit.getTree().getId()));
+        RevCommit commit;
+
+        try (Git git = Git.open(gitDir.toFile())) {
+            // Set up diffFormatter
+            diffFormatter.setRepository(git.getRepository());
+            diffFormatter.setContext(0);
+            diffFormatter.setDetectRenames(true);
+
+            // Gets both the working tree and the tree of the last sha (or most recent commit if no last sha specified)
+            trees.add(new FileTreeIterator(git.getRepository()));
+            if (getLastSha() != null) {
+                ObjectId lastSha = git.getRepository().resolve(getLastSha());
+                commit = git.getRepository().parseCommit(lastSha);
+            } else {
+                commit = git.log().setMaxCount(1).call().iterator().next();
             }
-        } catch (IOException exception) {
-            throw new MojoExecutionException("Encountered an error when creating trees from commits");
-        }
+            objectReader = git.getRepository().newObjectReader();
+            trees.add(new CanonicalTreeParser(null, objectReader, commit.getTree().getId()));
 
-        // Sets up diffFormatter and analyzes for differences between the two trees
-        diffFormatter.setRepository(git.getRepository());
-        diffFormatter.setContext(0);
-        diffFormatter.setDetectRenames(true);
-        try {
             diffs = diffFormatter.scan(trees.get(1), trees.get(0));
-        } catch (IOException exception) {
-            throw new MojoExecutionException("Encountered an error when analyzing for differences between commits");
+        } catch (IOException | GitAPIException exception) {
+            throw new MojoExecutionException("Failed to fetch last SHA");
         }
 
-        git.close();
         return diffs;
     }
 
@@ -288,6 +282,15 @@ public class VmsMojo extends DiffMojo {
         } catch (IOException | GitAPIException ex) {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
+        }
+    }
+
+    private String getLastSha() throws MojoExecutionException {
+        Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(lastShaPath.toFile()))) {
+            return bufferedReader.readLine();
+        } catch (IOException exception) {
+            throw new MojoExecutionException("Error encountered when reading lastSha");
         }
     }
 }
