@@ -251,18 +251,23 @@ public class VmsMojo extends DiffMojo {
      * Rewrites violation-counts to only include violations in newViolations.
      */
     private void rewriteViolationCounts() throws MojoExecutionException {
+        Path vc = Paths.get(System.getProperty("user.dir"), "violation-counts");
+
+        List<String> lines = null;
         try {
-            Path vc = Paths.get(System.getProperty("user.dir"), "violation-counts");
-            List<String> lines = Files.readAllLines(vc);
-            PrintWriter writer = new PrintWriter(vc.toFile());
+            lines = Files.readAllLines(vc);
+        } catch (IOException exception) {
+            throw new MojoExecutionException("Failure encountered when reading violation-counts");
+        }
+
+        try (PrintWriter writer = new PrintWriter(vc.toFile())) {
             for (String line : lines) {
                 if (isNewViolation(line)) {
                     writer.println(line);
                 }
             }
-            writer.close();
         } catch (IOException exception) {
-            throw new MojoExecutionException("Failure encountered when rewriting violation-counts");
+            throw new MojoExecutionException("Failure encountered when writing violation-counts");
         }
     }
 
