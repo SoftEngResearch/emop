@@ -22,6 +22,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -40,6 +41,25 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
+
+    /**
+     * Specific SHA to use when analyzing differences between versions. Should correspond to the previous run of VMS.
+     */
+    @Parameter(property = "lastSha", required = false)
+    private String lastSha;
+
+    /**
+     * Whether to use the current working tree as the updated version of code or to use the most recent commit as the
+     * updated version of code when making code comparisons.
+     */
+    @Parameter(property = "useWorkingTree", required = false, defaultValue = "true")
+    private boolean useWorkingTree;
+
+    /**
+     * Whether to treat all found violations as new, regardless of previous runs.
+     */
+    @Parameter(property = "firstRun", required = false, defaultValue = "false")
+    private boolean firstRun;
 
     private Path gitDir;
     private Path oldVC;
@@ -64,17 +84,22 @@ public class VmsMojo extends DiffMojo {
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
+        lastSha = getLastSha();
         gitDir = basedir.toPath().resolve(".git");
         oldVC = Paths.get(getArtifactsDir(), "violation-counts-old");
         newVC = Paths.get(System.getProperty("user.dir"), "violation-counts");
-        touchViolationCounts();
+
+        touchVmsFiles();
+
         findLineChangesAndRenames(getDiffs());
         getLog().info("Number of files renamed: " + renames.size());
         getLog().info("Number of changed files found: " + lineChanges.size());
         oldViolations = Violation.parseViolations(oldVC);
         newViolations = Violation.parseViolations(newVC);
         getLog().info("Number of total violations found: " + newViolations.size());
-        removeDuplicateViolations();
+        if (!firstRun) {
+            removeDuplicateViolations();
+        }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
         saveViolationCounts();
         rewriteViolationCounts();
@@ -82,6 +107,7 @@ public class VmsMojo extends DiffMojo {
 
     /**
      * Fetches the two most recent commits of the repository and finds the differences between them.
+     * TODO: Update description with how the previous version is determined based on user input, lastSha file, and previous commit
      *
      * @return List of differences between two most recent commits of the repository
      * @throws MojoExecutionException if error is encountered during runtime
@@ -90,28 +116,35 @@ public class VmsMojo extends DiffMojo {
         ObjectReader objectReader;
         List<DiffEntry> diffs;
         List<AbstractTreeIterator> trees = new ArrayList<>();
-        RevCommit commit;
 
         try (Git git = Git.open(gitDir.toFile())) {
+            objectReader = git.getRepository().newObjectReader();
+
             // Set up diffFormatter
             diffFormatter.setRepository(git.getRepository());
             diffFormatter.setContext(0);
             diffFormatter.setDetectRenames(true);
 
-            // Gets both the working tree and the tree of the last sha (or most recent commit if no last sha specified)
-            trees.add(new FileTreeIterator(git.getRepository()));
-            if (getLastSha() != null) {
-                ObjectId lastSha = git.getRepository().resolve(getLastSha());
-                commit = git.getRepository().parseCommit(lastSha);
+            // Get more recent version of code (either working tree or most recent commit)
+            if (useWorkingTree) {
+                trees.add(new FileTreeIterator(git.getRepository()));
             } else {
-                commit = git.log().setMaxCount(1).call().iterator().next();
+                RevCommit mostRecentCommit = git.log().setMaxCount(1).call().iterator().next();
+                trees.add(new CanonicalTreeParser(null, objectReader, mostRecentCommit.getTree().getId()));
             }
-            objectReader = git.getRepository().newObjectReader();
-            trees.add(new CanonicalTreeParser(null, objectReader, commit.getTree().getId()));
 
+            // Get older version of code (either from user or file)
+            RevCommit olderCommit;
+            if (lastSha != null || !lastSha.isEmpty()) {
+                ObjectId shaId = git.getRepository().resolve(lastSha);
+                olderCommit = git.getRepository().parseCommit(shaId);
+                trees.add(new CanonicalTreeParser(null, objectReader, olderCommit.getTree().getId()));
+            } else {
+                return null;
+            }
             diffs = diffFormatter.scan(trees.get(1), trees.get(0));
         } catch (IOException | GitAPIException exception) {
-            throw new MojoExecutionException("Failed to fetch last SHA");
+            throw new MojoExecutionException("Failed to fetch code version");
         }
 
         return diffs;
@@ -126,17 +159,20 @@ public class VmsMojo extends DiffMojo {
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                // If the old path is /dev/null, then the file has been created between commits
-                if (diff.getOldPath().equals("/dev/null")) {
-                    newClasses.add(diff.getNewPath());
-                } else if (!diff.getNewPath().equals("/dev/null")) { // Ignore if a deleted class
+                if (!diff.getNewPath().equals("/dev/null") && !diff.getOldPath().equals(DiffEntry.DEV_NULL)) {
                     // Gets renamed classes
-                    if (!diff.getOldPath().equals(diff.getNewPath())) {
+                    if (!diff.getNewPath().equals(diff.getOldPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
                     }
 
                     // For each file, find the replacements, additions, and deletions at each line
                     for (Edit edit : diffFormatter.toFileHeader(diff).toEditList()) {
+                        getLog().info("Type of diff: " + edit.getType());
+                        getLog().info("A starts at: " + (edit.getBeginA() + 1));
+                        getLog().info("A ends at: " + (edit.getEndA() + 1));
+                        getLog().info("B starts at: " + (edit.getBeginB() + 1));
+                        getLog().info("B ends at: " + (edit.getEndB() + 1));
+                        getLog().info("Offset: " + (edit.getLengthB() - edit.getLengthA()));
                         Map<Integer, Integer> lineChange = new HashMap<>();
                         if (lineChanges.containsKey(diff.getOldPath())) {
                             lineChange = lineChanges.get(diff.getOldPath());
@@ -256,7 +292,7 @@ public class VmsMojo extends DiffMojo {
      * Ensures that <code>violation-counts</code> and <code>violation-counts-old</code>
      * both exist, creating empty files if not.
      */
-    private void touchViolationCounts() throws MojoExecutionException {
+    private void touchVmsFiles() throws MojoExecutionException {
         try {
             oldVC.toFile().createNewFile();
             newVC.toFile().createNewFile();
@@ -285,7 +321,16 @@ public class VmsMojo extends DiffMojo {
         }
     }
 
+    /**
+     * Reads and returns the last SHA VMS has been run on from file.
+     *
+     * @return String of the previous SHA, null if the file is empty
+     * @throws MojoExecutionException if error encountered at runtime
+     */
     private String getLastSha() throws MojoExecutionException {
+        if (lastSha != null && !lastSha.isEmpty()) {
+            return lastSha;
+        }
         Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(lastShaPath.toFile()))) {
             return bufferedReader.readLine();
