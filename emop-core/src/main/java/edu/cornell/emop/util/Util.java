@@ -1,6 +1,5 @@
 package edu.cornell.emop.util;
 
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
@@ -24,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
 
 public class Util {
     public static List<String> findFilesOfType(File path, String extension) {
@@ -59,14 +59,16 @@ public class Util {
         }
     }
 
-    public static Set<String> retrieveSpecListFromJar(String jarPath) {
+    public static Set<String> retrieveSpecListFromJar(String jarPath, Log log) {
         // we assume that the jar contains a specs.txt
         Set<String> specs = new HashSet<>();
         URL specsFileInJar = null;
         try {
             specsFileInJar = new URL("jar:file:" + jarPath + "!/specs.txt");
         } catch (MalformedURLException ex) {
-            throw new RuntimeException(ex);
+            log.error("JavaMOP agent used does not contain specs.txt, a list of all specs created.");
+            log.error("Please rebuild the JavaMOP agent using the provided script.");
+            System.exit(1);
         }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(specsFileInJar.openStream()))) {
             while (reader.ready()) {
@@ -153,9 +155,9 @@ public class Util {
     /**
      * Relocates the generated violation-counts file.
      * @param originalDir directory that should contain the original violation-counts
-     * @param newDir location of directory where violation-counts should be moved to
-     * @param mode the identifier for the relocated violation-counts file (either "critical" or "background")
-     * @return whether the original violation counts file existed
+     * @param newDir directory where violation-counts should be moved to
+     * @param mode the phase for the relocated violation-counts file (either "critical" or "background")
+     * @return whether the original violation-counts file existed
      */
     public static boolean moveViolationCounts(File originalDir, String newDir, String mode) {
         // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...

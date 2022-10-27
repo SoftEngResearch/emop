@@ -39,8 +39,6 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
         if (agentPathString != null) {
             String newArgLine = "-javaagent:" + agentPathString + " " + argsToAppend;
             setField("argLine", mojo, newArgLine);
-//            System.out.println("Running surefire with argument: " + getField("argLine", mojo));
         }
     }
-
 }

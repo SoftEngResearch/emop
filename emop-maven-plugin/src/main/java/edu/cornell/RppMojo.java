@@ -56,7 +56,7 @@ public class RppMojo extends RppHandlerMojo {
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
         boolean criticalCountsExist = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
         if (!criticalCountsExist) {
-            getLog().info("violation-counts file for critical run was not produced, skipping moving...");
+            getLog().info("violation-counts file for critical run was not produced, skip moving...");
         }
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
