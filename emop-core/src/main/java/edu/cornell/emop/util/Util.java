@@ -1,9 +1,14 @@
 package edu.cornell.emop.util;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -16,6 +21,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
 
 public class Util {
     public static List<String> findFilesOfType(File path, String extension) {
@@ -49,6 +57,28 @@ public class Util {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public static Set<String> retrieveSpecListFromJar(String jarPath, Log log) {
+        // we assume that the jar contains a specs.txt
+        Set<String> specs = new HashSet<>();
+        URL specsFileInJar = null;
+        try {
+            specsFileInJar = new URL("jar:file:" + jarPath + "!/specs.txt");
+        } catch (MalformedURLException ex) {
+            log.error("JavaMOP agent used does not contain specs.txt, a list of all specs created.");
+            log.error("Please rebuild the JavaMOP agent using the provided script.");
+            System.exit(1);
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(specsFileInJar.openStream()))) {
+            while (reader.ready()) {
+                specs.add(reader.readLine());
+            }
+        } catch (IOException ex) {
+            log.error("An I/O error occurred while reading the JavaMOP agent's specs.txt.");
+            System.exit(1);
+        }
+        return specs;
     }
 
     /**
@@ -103,4 +133,45 @@ public class Util {
         return fullSet;
     }
 
+    public static void generateNewMonitorFile(String monitorFilePath, Set<String> specsToMonitor)
+            throws MojoExecutionException {
+        try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
+            // Write header
+            writer.println("<aspectj>");
+            writer.println("<aspects>");
+            // Write body
+            for (String spec : specsToMonitor) {
+                writer.println("<aspect name=\"mop." + spec + "\"/>");
+            }
+            // Write footer
+            writer.println("</aspects>");
+            // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
+            writer.println("<weaver options=\"-nowarn -Xlint:ignore\"></weaver>");
+            writer.println("</aspectj>");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    /**
+     * Relocates the generated violation-counts file.
+     * @param originalDir directory that should contain the original violation-counts
+     * @param newDir directory where violation-counts should be moved to
+     * @param mode the phase for the relocated violation-counts file (either "critical" or "background")
+     * @return whether the original violation-counts file existed
+     */
+    public static boolean moveViolationCounts(File originalDir, String newDir, String mode) {
+        // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
+        File violationCounts = new File(originalDir + File.separator + "violation-counts");
+        if (!violationCounts.exists()) {
+            return false;
+        }
+        File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
+        try {
+            Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+        return true;
+    }
 }
