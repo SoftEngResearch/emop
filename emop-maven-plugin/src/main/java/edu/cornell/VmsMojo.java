@@ -111,7 +111,7 @@ public class VmsMojo extends DiffMojo {
 
     /**
      * Fetches the two most recent commits of the repository and finds the differences between them.
-     * TODO: Update description with how the previous version is determined based on user input, lastSha file, and previous commit
+     * TODO: Update description with how the previous version is determined based on user input and lastSha file
      *
      * @return List of differences between two most recent commits of the repository
      * @throws MojoExecutionException if error is encountered at runtime
@@ -164,7 +164,9 @@ public class VmsMojo extends DiffMojo {
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                if (!diff.getNewPath().equals(DiffEntry.DEV_NULL) && !diff.getOldPath().equals(DiffEntry.DEV_NULL)) { // Ignore if a deleted class
+                // Determines if the file is new, read more here:
+                // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/DiffEntry.html
+                if (!diff.getNewPath().equals(DiffEntry.DEV_NULL) && !diff.getOldPath().equals(DiffEntry.DEV_NULL)) {
                     // Gets renamed classes
                     if (!diff.getNewPath().equals(diff.getOldPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
@@ -172,12 +174,6 @@ public class VmsMojo extends DiffMojo {
 
                     // For each file, find the replacements, additions, and deletions at each line
                     for (Edit edit : diffFormatter.toFileHeader(diff).toEditList()) {
-                        getLog().info("Type of diff: " + edit.getType());
-                        getLog().info("A starts at: " + (edit.getBeginA() + 1));
-                        getLog().info("A ends at: " + (edit.getEndA() + 1));
-                        getLog().info("B starts at: " + (edit.getBeginB() + 1));
-                        getLog().info("B ends at: " + (edit.getEndB() + 1));
-                        getLog().info("Offset: " + (edit.getLengthB() - edit.getLengthA()));
                         Map<Integer, Integer> lineChange = new HashMap<>();
                         if (lineChanges.containsKey(diff.getOldPath())) {
                             lineChange = lineChanges.get(diff.getOldPath());
