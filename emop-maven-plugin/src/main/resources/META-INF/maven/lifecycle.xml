@@ -30,7 +30,7 @@
               <goal>clean</goal>
             </goals>
             <configuration>
-              <mode>RVM</mode>
+              <mode>VIOLATION_COUNTS</mode>
             </configuration>
           </execution>
         </executions>
