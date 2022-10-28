@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
@@ -43,7 +42,8 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 public class VmsMojo extends DiffMojo {
 
     /**
-     * Specific SHA to use as the "old" version of code when making comparisons. Should correspond to the previous run of VMS.
+     * Specific SHA to use as the "old" version of code when making comparisons.
+     * Should correspond to the previous run of VMS.
      */
     @Parameter(property = "lastSha", required = false)
     private String lastSha;
@@ -79,9 +79,6 @@ public class VmsMojo extends DiffMojo {
 
     // Maps renamed files to the original names
     private Map<String, String> renames = new HashMap<>();
-
-    // Contains new classes which have been made between commits
-    private Set<String> newClasses = new HashSet<>();
 
     private Set<Violation> oldViolations;
     private Set<Violation> newViolations;
@@ -344,7 +341,7 @@ public class VmsMojo extends DiffMojo {
             if (git.status().call().isClean()) {
                 Files.copy(newVC, oldVC, StandardCopyOption.REPLACE_EXISTING);
 
-                try (PrintWriter out = new PrintWriter(Paths.get(getArtifactsDir(), "last-SHA").toFile())) {
+                try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
                     out.println(git.getRepository().resolve(Constants.HEAD).name());
                 }
             }
@@ -364,7 +361,6 @@ public class VmsMojo extends DiffMojo {
         if (lastSha != null && !lastSha.isEmpty()) {
             return lastSha;
         }
-        Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(lastShaPath.toFile()))) {
             String sha = bufferedReader.readLine();
             if (sha == null || sha.isEmpty()) {
