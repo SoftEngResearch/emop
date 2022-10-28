@@ -64,7 +64,7 @@ public class Violation {
      * "2 Specification StringTokenizer_HasMoreElements has been violated on line edu.cornell.D.d(D.java:11). Documentation for this property can be found at http://runtimeverification.com/monitor/annotated-java/__properties/html/mop/StringTokenizer_HasMoreElements.html"
      * The third word is always the violated specification. The ninth word is always a description of the location
      * where the violation occurred. This is parsed into class name and line number. The class
-     * information is reformatted to include only the class path with the extension (i.e. without the function
+     * information is reformatted to include only the class path with the extension (i.e. without the method
      * information) and uses a backslash (/) instead of a period (.) to match class paths in JGit, which is useful for
      * VMS. In the above example, "edu.cornell.D.d(D.java:11)." has the class name "edu/Cornell/D.java".
      *
@@ -90,11 +90,11 @@ public class Violation {
 
     @Override
     public boolean equals(Object object) {
-        if (object == this) {
-            return true;
-        }
         if (!(object instanceof Violation)) {
             return false;
+        }
+        if (object == this) {
+            return true;
         }
 
         Violation violation = (Violation) object;

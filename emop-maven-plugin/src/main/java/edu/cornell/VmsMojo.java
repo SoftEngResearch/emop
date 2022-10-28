@@ -62,7 +62,7 @@ public class VmsMojo extends DiffMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
         saveViolationCounts();
-        findLineChangesAndRenames(getCommitDiffs());
+        findLineChangesAndRenames(getCommitDiffs()); // populates renames and lineChanges
         getLog().info("Number of files renamed: " + renames.size());
         getLog().info("Number of changed files found: " + lineChanges.size());
         oldViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
@@ -214,7 +214,7 @@ public class VmsMojo extends DiffMojo {
      * Lines 1 and 2 do not see any differences, so their offset is 0 and they will only map to lines 1 and 2 in the new
      * code, respectively. Line 3 sees an addition of one line, so the offset here is 1 and both the new line and line 3
      * in the new code will map to the previous line 3. Similarly, line 4 also takes the previous addition of a line
-     * into account and have an offset of 1, and both lines 3 and 4 in the new code will map to the previous line 4.
+     * into account and has an offset of 1, and both lines 3 and 4 in the new code will map to the previous line 4.
      * Deletions work similarly, and are represented by a negative offset.
      * TODO: The current implementation is generous with finding the "same" violation. The offset is very accurate in
      *  finding the precise location unmodified code has been moved to. This information can be leveraged for more
