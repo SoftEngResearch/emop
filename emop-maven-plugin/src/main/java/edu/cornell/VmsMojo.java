@@ -75,7 +75,11 @@ public class VmsMojo extends DiffMojo {
     // More information about how differences are represented in JGit can be found here:
     // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/Edit.html
     //          file        line     lines modified
-    private Map<String, Map<Integer, Integer>> lineChanges = new HashMap<>();
+    private Map<String, Map<Integer, Integer>> offsets = new HashMap<>();
+
+    // Maps files to lines of code in the original version which have not been modified
+    // Note: If renames are involved, the old name of the file is used.
+    private Map<String, Set<Integer>> modifiedLines = new HashMap<>();
 
     // Maps renamed files to the original names
     private Map<String, String> renames = new HashMap<>();
@@ -94,9 +98,9 @@ public class VmsMojo extends DiffMojo {
         lastSha = getLastSha(); // will also set firstRun if applicable
 
         if (!firstRun) {
-            findLineChangesAndRenames(getCommitDiffs()); // populates renames and lineChanges
+            findLineChangesAndRenames(getCommitDiffs()); // populates renames, lineChanges, and modifiedLines
             getLog().info("Number of files renamed: " + renames.size());
-            getLog().info("Number of changed files found: " + lineChanges.size());
+            getLog().info("Number of changed files found: " + offsets.size());
             oldViolations = Violation.parseViolations(oldVC);
             newViolations = Violation.parseViolations(newVC);
             getLog().info("Number of total violations found: " + newViolations.size());
@@ -166,14 +170,33 @@ public class VmsMojo extends DiffMojo {
                         renames.put(diff.getNewPath(), diff.getOldPath());
                     }
 
-                    // For each file, find the replacements, additions, and deletions at each line
                     for (Edit edit : diffFormatter.toFileHeader(diff).toEditList()) {
-                        Map<Integer, Integer> lineChange = new HashMap<>();
-                        if (lineChanges.containsKey(diff.getOldPath())) {
-                            lineChange = lineChanges.get(diff.getOldPath());
+                        int editBeginning = edit.getBeginA() + 1;
+                        // Gets offset at each line
+                        if (offsets.containsKey(diff.getOldPath())) {
+                            Map<Integer, Integer> fileOffsets = offsets.get(diff.getOldPath());
+                            if (fileOffsets.containsKey(editBeginning)) {
+                                fileOffsets.put(editBeginning, fileOffsets.get(editBeginning)
+                                        + edit.getLengthB() - edit.getLengthA());
+                            } else {
+                                fileOffsets.put(editBeginning, edit.getLengthB() - edit.getLengthA());
+                            }
+                        } else {
+                            Map<Integer, Integer> filesOffsets = new HashMap<>();
+                            filesOffsets.put(editBeginning, edit.getLengthB() - edit.getLengthA());
+                            offsets.put(diff.getOldPath(), filesOffsets);
                         }
-                        lineChange.put(edit.getBeginA() + 1, edit.getLengthB() - edit.getLengthA());
-                        lineChanges.put(diff.getOldPath(), lineChange);
+
+                        // Gets modified lines
+                        for (int i = editBeginning; i < edit.getEndA() + 1; i++) {
+                            if (modifiedLines.containsKey(diff.getOldPath())) {
+                                modifiedLines.get(diff.getOldPath()).add(i);
+                            } else {
+                                Set<Integer> lines = new HashSet<>();
+                                lines.add(i);
+                                modifiedLines.put(diff.getOldPath(), lines);
+                            }
+                        }
                     }
                 }
             }
@@ -230,46 +253,40 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Determines whether an old line in a file can be mapped to the new line. An offset is calculated which determines
-     * the maximum boundary of the distance a line has moved based off of differences between code versions. If two
-     * lines are within this offset of each other (in the correct direction), they are considered mappable.
-     * Take the following example:
+     * Determines whether an old line in a file can be mapped to the new line. For an old line to be mappable to a new
+     * line in a class, it must fulfill two conditions: that the old line has not been modified and that the old line
+     * in addition to the net offset of previous edits equals the new line.
+     * Take the following example where the second line of code has been modified with a new line inserted directly
+     * after it:
      * Old code          New code
-     * line 1            line 1
-     * line 2            line 2
-     * line 3            new line
-     * line 4            line 3
-     *                   line 4
-     * Lines 1 and 2 do not see any differences, so their offset is 0 and they will only map to lines 1 and 2 in the new
-     * code, respectively. Line 3 sees an addition of one line, so the offset here is 1 and both the new line and line 3
-     * in the new code will map to the previous line 3. Similarly, line 4 also takes the previous addition of a line
-     * into account and has an offset of 1, and both lines 3 and 4 in the new code will map to the previous line 4.
-     * Deletions work similarly, and are represented by a negative offset.
-     * TODO: The current implementation is generous with finding the "same" violation. The offset is very accurate in
-     *  finding the precise location unmodified code has been moved to. This information can be leveraged for more
-     *  accuracy when differentiating which violations are new or old when they occur close together and the line
-     *  itself where the violation occurred is not a part of any direct differences in code. There are also errors that
-     *  can arise because of differences between the last commit and the previous run of violation-counts (whose
-     *  violations we keep track of) this can be fixed by incorporating sha information.
+     * 1 line A          1 line A
+     * 2 line B          2 line B'
+     * 3 line C          3 new line
+     *                   4 line C
+     * The first line of code does not have any edits occurring earlier in the code, and will be matched directly to the
+     * first line of the new version of code. The second line has been modified and will not be mapped. The third line
+     * of code has an edit occurring earlier in the code with an offset of 1. Therefore, the third line of the old code
+     * will be mapped to the fourth line of the new code.
      *
-     * @param classInfo Particular class being considered (if the class was renamed, this is the old name)
+     * @param className Particular class being considered (if the class was renamed, this is the old name)
      * @param oldLine Original line number
      * @param newLine New line number
      * @return Whether the original line number can be mapped to the new line number in the updated version
      */
-    private boolean hasSameLineNumber(String classInfo, int oldLine, int newLine) {
-        for (String className : lineChanges.keySet()) {
-            if (className.contains(classInfo)) {
-                int offset = 0;
-                for (Integer originalLine : lineChanges.get(className).keySet()) {
-                    if (originalLine <= oldLine) {
-                        offset += lineChanges.get(className).get(originalLine);
+    private boolean hasSameLineNumber(String className, int oldLine, int newLine) {
+        for (String changedClass : offsets.keySet()) {
+            if (changedClass.contains(className)) {
+                if (modifiedLines.containsKey(changedClass)
+                    && modifiedLines.get(changedClass).contains(oldLine)) { // lines was modified, do not map
+                    return false;
+                } else {
+                    int netOffset = 0;
+                    for (Integer offsetLine : offsets.get(changedClass).keySet()) {
+                        if (offsetLine < oldLine) {
+                            netOffset += offsets.get(changedClass).get(offsetLine);
+                        }
                     }
-                }
-                if (newLine >= oldLine) { // if lines have been inserted
-                    return offset >= 0 && offset >= newLine - oldLine;
-                } else { // if lines have been removed
-                    return offset <= 0 && offset <= newLine - oldLine;
+                    return newLine - oldLine == netOffset;
                 }
             }
         }
