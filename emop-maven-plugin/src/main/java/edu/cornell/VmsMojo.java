@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,6 +24,13 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.shared.invoker.DefaultInvocationRequest;
+import org.apache.maven.shared.invoker.DefaultInvoker;
+import org.apache.maven.shared.invoker.InvocationOutputHandler;
+import org.apache.maven.shared.invoker.InvocationRequest;
+import org.apache.maven.shared.invoker.InvocationResult;
+import org.apache.maven.shared.invoker.Invoker;
+import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
@@ -60,6 +68,18 @@ public class VmsMojo extends DiffMojo {
     @Parameter(property = "firstRun", required = false, defaultValue = "false")
     private boolean firstRun;
 
+    /**
+     * Whether to show all violations in the console or only the new violations.
+     */
+    @Parameter(property = "showAllInConsole", defaultValue = "false")
+    private boolean showAllInConsole;
+
+    /**
+     * Whether to show all violations in <code>violation-counts</code> or only the new violations.
+     */
+    @Parameter(property = "showAllInFile", defaultValue = "false")
+    private boolean showAllInFile;
+
     private Path gitDir;
     private Path oldVC;
     private Path newVC;
@@ -89,26 +109,107 @@ public class VmsMojo extends DiffMojo {
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
+
         gitDir = basedir.toPath().resolve(".git");
         oldVC = Paths.get(getArtifactsDir(), "violation-counts-old");
         newVC = Paths.get(System.getProperty("user.dir"), "violation-counts");
         lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
 
         touchVmsFiles();
+        oldViolations = Violation.parseViolations(oldVC);
         lastSha = getLastSha(); // will also set firstRun if applicable
 
         if (!firstRun) {
             findLineChangesAndRenames(getCommitDiffs()); // populates renames, lineChanges, and modifiedLines
             getLog().info("Number of files renamed: " + renames.size());
             getLog().info("Number of changed files found: " + offsets.size());
-            oldViolations = Violation.parseViolations(oldVC);
-            newViolations = Violation.parseViolations(newVC);
-            getLog().info("Number of total violations found: " + newViolations.size());
+        }
+
+        invokeSurefire();
+        newViolations = Violation.parseViolations(newVC);
+        getLog().info("Number of total violations found: " + newViolations.size());
+
+        if (!firstRun) {
             removeDuplicateViolations();
             getLog().info("Number of \"new\" violations found: " + newViolations.size());
         }
+
         saveViolationCounts();
-        rewriteViolationCounts();
+        if (!showAllInFile) {
+            rewriteViolationCounts();
+        }
+    }
+
+    private static enum SurefireOutputState {
+        PRE_TESTS,
+        TESTS,
+        POST_TESTS
+    }
+
+    @SuppressWarnings("checkstyle:Regexp")
+    private class SurefireOutputHandler implements InvocationOutputHandler {
+        private SurefireOutputState state = SurefireOutputState.PRE_TESTS;
+        private boolean filterOld = !firstRun && !showAllInConsole;
+
+        @Override
+        public void consumeLine(String line) {
+            switch (state) {
+                case PRE_TESTS:
+                    if (line.contains("maven-surefire-plugin")) {
+                        state = SurefireOutputState.TESTS;
+                        System.out.println(line);
+                    }
+                    break;
+                case TESTS:
+                    if (line.startsWith("Specification")) {
+                        filterSpecification(line);
+                    } else if (line.matches(".*BUILD (SUCCESS|FAILURE).*")) {
+                        state = SurefireOutputState.POST_TESTS;
+                    } else {
+                        System.out.println(line);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private void filterSpecification(String line) {
+            if (filterOld) {
+                Violation violation = Violation.parseViolation(line);
+                for (Violation oldViolation : oldViolations) {
+                    if (isSameViolationAfterDifferences(oldViolation, violation)) {
+                        return;
+                    }
+                }
+            }
+
+            System.out.println(line);
+        }
+    }
+
+    /**
+     * Runs Maven Surefire.
+     *
+     * @throws MojoExecutionException if the Surefire execution fails.
+     */
+    private void invokeSurefire() throws MojoExecutionException {
+        InvocationRequest request = new DefaultInvocationRequest();
+        request.setGoals(Collections.singletonList("surefire:test"));
+        InvocationOutputHandler outputHandler = new SurefireOutputHandler();
+        request.setOutputHandler(outputHandler);
+        request.setErrorHandler(outputHandler);
+        Invoker invoker = new DefaultInvoker();
+
+        try {
+            InvocationResult result = invoker.execute(request);
+
+            if (result.getExitCode() != 0) {
+                throw new MojoExecutionException("Surefire reported exit code " + result.getExitCode());
+            }
+        } catch (MavenInvocationException ex) {
+            throw new MojoExecutionException("Failed to execute Surefire", ex);
+        }
     }
 
     /**
@@ -326,12 +427,7 @@ public class VmsMojo extends DiffMojo {
             return true;
         }
         Violation parsedViolation = Violation.parseViolation(violation);
-        for (Violation newViolation : newViolations) {
-            if (newViolation.equals(parsedViolation)) {
-                return true;
-            }
-        }
-        return false;
+        return newViolations.contains(parsedViolation);
     }
 
     /**
