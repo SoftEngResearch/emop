@@ -1,6 +1,7 @@
 package edu.cornell;
 
 import java.nio.file.Paths;
+import java.util.Set;
 
 import edu.illinois.starts.helpers.FileUtil;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -13,28 +14,33 @@ public class CleanMojo extends edu.illinois.starts.jdeps.CleanMojo {
     /**
      * Options for which artifacts to clean.
      */
-    public static enum CleanMode {
-        EVERYTHING,         // All artifacts
-        VIOLATION_COUNTS    // violation-counts only
+    public static enum Artifact {
+        STARTS,
+        WEAVED_BYTECODE,
+        VIOLATION_COUNTS
     }
 
     /**
      * Parameter to determine which artifacts to clean.
      */
-    @Parameter(property = "clean.mode", defaultValue = "EVERYTHING")
-    private CleanMode mode;
+    @Parameter(property = "clean.mode", defaultValue = "STARTS,WEAVED_BYTECODE,VIOLATION_COUNTS")
+    private Set<Artifact> mode;
 
     public void execute() throws MojoExecutionException {
-        switch (mode) {
-            case EVERYTHING:
-                super.execute();
-                FileUtil.delete(Paths.get(System.getProperty("user.dir"), "weaved-bytecode").toFile());
-                // fall through
-            case VIOLATION_COUNTS:
-                FileUtil.delete(Paths.get(System.getProperty("user.dir"), "violation-counts").toFile());
-                break;
-            default:
-                break;
+        for (Artifact artifact : mode) {
+            switch (artifact) {
+                case STARTS:
+                    super.execute();
+                    break;
+                case WEAVED_BYTECODE:
+                    FileUtil.delete(Paths.get(System.getProperty("user.dir"), "weaved-bytecode").toFile());
+                    break;
+                case VIOLATION_COUNTS:
+                    FileUtil.delete(Paths.get(System.getProperty("user.dir"), "violation-counts").toFile());
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }
