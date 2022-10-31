@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
@@ -140,32 +141,41 @@ public class VmsMojo extends DiffMojo {
         }
     }
 
-    private static enum SurefireOutputState {
-        PRE_TESTS,
-        TESTS,
-        POST_TESTS
-    }
+    private static class SurefireOutputHandler implements InvocationOutputHandler {
+        private static enum State {
+            PROLOGUE,   // Output preceding the surefire:test goal
+            BODY,       // Output from surefire:test
+            EPILOGUE    // Output following the surefire:test goal
+        }
 
-    @SuppressWarnings("checkstyle:Regexp")
-    private class SurefireOutputHandler implements InvocationOutputHandler {
-        private SurefireOutputState state = SurefireOutputState.PRE_TESTS;
-        private boolean filterOld = !firstRun && !showAllInConsole;
+        private static final Pattern epilogueStart = Pattern.compile("\\[INFO\\] BUILD (SUCCESS|FAILURE).*");
+
+        private ViolationFilterer filterer;
+        private State state = State.PROLOGUE;
+        private boolean filteringCurrentViolation = false;
+
+        public SurefireOutputHandler(ViolationFilterer filterer) {
+            this.filterer = filterer;
+        }
 
         @Override
+        @SuppressWarnings("checkstyle:Regexp")
         public void consumeLine(String line) {
             switch (state) {
-                case PRE_TESTS:
+                case PROLOGUE:
                     if (line.contains("maven-surefire-plugin")) {
-                        state = SurefireOutputState.TESTS;
                         System.out.println(line);
+                        state = State.BODY;
                     }
                     break;
-                case TESTS:
+                case BODY:
                     if (line.startsWith("Specification")) {
-                        filterSpecification(line);
-                    } else if (line.matches(".*BUILD (SUCCESS|FAILURE).*")) {
-                        state = SurefireOutputState.POST_TESTS;
-                    } else {
+                        if (!(filteringCurrentViolation = filterer.filter(line))) {
+                            System.out.println(line);
+                        }
+                    } else if (epilogueStart.matcher(line).matches()) {
+                        state = State.EPILOGUE;
+                    } else if (line.startsWith("[INFO]") || !filteringCurrentViolation) {
                         System.out.println(line);
                     }
                     break;
@@ -173,18 +183,28 @@ public class VmsMojo extends DiffMojo {
                     break;
             }
         }
+    }
 
-        private void filterSpecification(String line) {
+    private class ViolationFilterer {
+        private final boolean filterOld = !firstRun && !showAllInConsole;
+
+        /**
+         * Returns whether to filter the violation.
+         *
+         * @param violation A string representation of a violation
+         * @return <code>true</code> if the violation should be filtered; <code>false</code> otherwise
+         */
+        private boolean filter(String violation) {
             if (filterOld) {
-                Violation violation = Violation.parseViolation(line);
+                Violation newViolation = Violation.parseViolation(violation);
                 for (Violation oldViolation : oldViolations) {
-                    if (isSameViolationAfterDifferences(oldViolation, violation)) {
-                        return;
+                    if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
+                        return true;
                     }
                 }
             }
 
-            System.out.println(line);
+            return false;
         }
     }
 
@@ -196,12 +216,12 @@ public class VmsMojo extends DiffMojo {
     private void invokeSurefire() throws MojoExecutionException {
         InvocationRequest request = new DefaultInvocationRequest();
         request.setGoals(Collections.singletonList("surefire:test"));
-        InvocationOutputHandler outputHandler = new SurefireOutputHandler();
+        InvocationOutputHandler outputHandler = new SurefireOutputHandler(new ViolationFilterer());
         request.setOutputHandler(outputHandler);
         request.setErrorHandler(outputHandler);
-        Invoker invoker = new DefaultInvoker();
 
         try {
+            Invoker invoker = new DefaultInvoker();
             InvocationResult result = invoker.execute(request);
 
             if (result.getExitCode() != 0) {
