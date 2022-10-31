@@ -20,6 +20,27 @@
     </phases>
   </lifecycle>
   <lifecycle>
+    <id>vms</id>
+      <phases>
+        <phase>
+          <id>process-test-classes</id>
+          <executions>
+            <execution>
+              <goals>
+                <goal>clean</goal>
+              </goals>
+              <configuration>
+                <mode>VIOLATION_COUNTS</mode>
+              </configuration>
+            </execution>
+          </executions>
+        </phase>
+        <phase>
+          <id>test</id>
+        </phase>
+      </phases>
+  </lifecycle>
+  <lifecycle>
     <id>rpp</id>
     <phases>
       <phase>
@@ -31,25 +52,6 @@
             </goals>
           </execution>
         </executions>
-      </phase>
-      <phase>
-        <id>test</id>
-      </phase>
-    </phases>
-  </lifecycle>
-  <lifecycle>
-    <id>vms</id>
-    <phases>
-      <phase>
-        <id>process-test-classes</id>
-        <executions>
-          <execution>
-            <goals>
-              <goal>clean-rvm</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration/>
       </phase>
       <phase>
         <id>test</id>
