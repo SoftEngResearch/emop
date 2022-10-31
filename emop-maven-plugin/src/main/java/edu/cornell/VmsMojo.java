@@ -154,7 +154,7 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Updates the lineChanges and renames based on found differences.
+     * Updates the renames, offsets, and modifiedLines based on found differences.
      *
      * @param diffs List of differences between two versions of the same program
      * @throws MojoExecutionException if error is encountered at runtime
@@ -276,17 +276,17 @@ public class VmsMojo extends DiffMojo {
     private boolean hasSameLineNumber(String className, int oldLine, int newLine) {
         for (String changedClass : offsets.keySet()) {
             if (changedClass.contains(className)) {
-                if (modifiedLines.containsKey(changedClass)
-                    && modifiedLines.get(changedClass).contains(oldLine)) { // lines was modified, do not map
-                    return false;
-                } else {
+                if (!modifiedLines.containsKey(changedClass)
+                    || !modifiedLines.get(changedClass).contains(oldLine)) { // only map if old line is unmodified
                     int netOffset = 0;
                     for (Integer offsetLine : offsets.get(changedClass).keySet()) {
                         if (offsetLine < oldLine) {
                             netOffset += offsets.get(changedClass).get(offsetLine);
                         }
                     }
-                    return newLine - oldLine == netOffset;
+                    if (newLine - oldLine == netOffset) {
+                        return true;
+                    }
                 }
             }
         }
