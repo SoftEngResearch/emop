@@ -263,16 +263,27 @@ public class VmsMojo extends DiffMojo {
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                // Determines if the file is new, read more here:
+                // Only consider differences if the files has not just been created or deleted and is in the relevant
+                // portion of code (src/main/java) (this file path style matches what is used internally by JGit and
+                // is agnostic of the local OS).
+                // To read more about how JGit indicates a newly created or deleted file, read here:
                 // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/DiffEntry.html
-                if (!diff.getNewPath().equals(DiffEntry.DEV_NULL) && !diff.getOldPath().equals(DiffEntry.DEV_NULL)) {
+                if (!diff.getNewPath().equals(DiffEntry.DEV_NULL) && !diff.getOldPath().equals(DiffEntry.DEV_NULL)
+                    && diff.getOldPath().contains("src/main/java/")) {
                     // Gets renamed classes
                     if (!diff.getNewPath().equals(diff.getOldPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
                     }
 
                     for (Edit edit : diffFormatter.toFileHeader(diff).toEditList()) {
-                        int editBeginning = edit.getBeginA() + 1;
+                        // Calculates appropriate beginnings and endings
+                        int editBeginning = edit.getBeginA();
+                        int editEnding = edit.getEndA();
+                        if (edit.getBeginA() != edit.getEndA()) {
+                            editBeginning += 1;
+                            editEnding += 1;
+                        }
+
                         // Gets offset at each line
                         if (offsets.containsKey(diff.getOldPath())) {
                             Map<Integer, Integer> fileOffsets = offsets.get(diff.getOldPath());
@@ -289,7 +300,7 @@ public class VmsMojo extends DiffMojo {
                         }
 
                         // Gets modified lines
-                        for (int i = editBeginning; i < edit.getEndA() + 1; i++) {
+                        for (int i = editBeginning; i < editEnding; i++) {
                             if (modifiedLines.containsKey(diff.getOldPath())) {
                                 modifiedLines.get(diff.getOldPath()).add(i);
                             } else {
@@ -377,18 +388,17 @@ public class VmsMojo extends DiffMojo {
     private boolean hasSameLineNumber(String className, int oldLine, int newLine) {
         for (String changedClass : offsets.keySet()) {
             if (changedClass.contains(className)) {
-                if (!modifiedLines.containsKey(changedClass)
-                    || !modifiedLines.get(changedClass).contains(oldLine)) { // only map if old line is unmodified
-                    int netOffset = 0;
-                    for (Integer offsetLine : offsets.get(changedClass).keySet()) {
-                        if (offsetLine < oldLine) {
-                            netOffset += offsets.get(changedClass).get(offsetLine);
-                        }
-                    }
-                    if (newLine - oldLine == netOffset) {
-                        return true;
+                // modified lines are never mapped
+                if (modifiedLines.containsKey(changedClass) && modifiedLines.get(changedClass).contains(oldLine)) {
+                    return false;
+                }
+                int netOffset = 0;
+                for (Integer offsetLine : offsets.get(changedClass).keySet()) {
+                    if (offsetLine < oldLine) {
+                        netOffset += offsets.get(changedClass).get(offsetLine);
                     }
                 }
+                return newLine - oldLine == netOffset;
             }
         }
         return oldLine == newLine;
