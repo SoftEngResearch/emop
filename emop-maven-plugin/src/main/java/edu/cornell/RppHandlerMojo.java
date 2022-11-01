@@ -19,8 +19,8 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "rpp-handler", requiresDependencyResolution = ResolutionScope.TEST)
 public class RppHandlerMojo extends MonitorMojo {
 
-    Set<String> criticalSpecsSet;
-    Set<String> backgroundSpecsSet;
+    static Set<String> criticalSpecsSet;
+    static Set<String> backgroundSpecsSet;
 
     File metaInfoDirectory;
     @Parameter(property = "criticalSpecsFile", defaultValue = "")

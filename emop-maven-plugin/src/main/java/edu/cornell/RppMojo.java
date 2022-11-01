@@ -9,6 +9,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -19,11 +20,15 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "rpp", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
+
+    @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
+    private boolean demoteCritical;
 
     /**
      * Runs maven surefire.
@@ -62,6 +67,12 @@ public class RppMojo extends RppHandlerMojo {
 
     public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath, String javamopAgent)
             throws MojoExecutionException, FileNotFoundException {
+        Set<String> criticalSpecsSet = new HashSet<>();
+        Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent, getLog());
+        if (!demoteCritical && !RppHandlerMojo.criticalSpecsSet.equals(allSpecs)) {
+            // need to demote specs if the critical specs set contained all specs (first run)
+            criticalSpecsSet.addAll(RppHandlerMojo.criticalSpecsSet);
+        }
         // read the violation-counts files and output the list of critical and background specs for next time
         // (in the case that the user doesn't provide files for critical and background specs)
         Set<String> violatedSpecs = Violation.parseViolationSpecs(criticalViolationsPath);
@@ -69,13 +80,14 @@ public class RppMojo extends RppHandlerMojo {
         violatedSpecs.addAll(bgViolatedSpecs);
         violatedSpecs = violatedSpecs.stream().map(spec -> spec.endsWith("MonitorAspect") ? spec :
                 spec + "MonitorAspect").collect(Collectors.toSet());
+        criticalSpecsSet.addAll(violatedSpecs);
         File artifactsDir = new File(getArtifactsDir());
         File metaCriticalSpecsFile = new File(artifactsDir, "rpp-critical-specs.txt");
         File metaBackgroundSpecsFile = new File(artifactsDir, "rpp-background-specs.txt");
-        writeSpecsToFile(violatedSpecs, metaCriticalSpecsFile);
-        Set<String> nonViolatedSpecs = Util.retrieveSpecListFromJar(javamopAgent, getLog());
-        nonViolatedSpecs.remove(violatedSpecs);
-        writeSpecsToFile(nonViolatedSpecs, metaBackgroundSpecsFile);
+        Set<String> backgroundSpecsSet = new HashSet<>(allSpecs);
+        backgroundSpecsSet.remove(criticalSpecsSet);
+        writeSpecsToFile(criticalSpecsSet, metaCriticalSpecsFile);
+        writeSpecsToFile(backgroundSpecsSet, metaBackgroundSpecsFile);
     }
 
     /**
@@ -89,9 +101,9 @@ public class RppMojo extends RppHandlerMojo {
         if (criticalViolationsPath.isEmpty()) {
             getLog().info("violation-counts file for critical run was not produced, skipping moving...");
         }
+        String previousJavamopAgent = System.getProperty("rpp-agent");
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
-            String previousJavamopAgent = System.getProperty("rpp-agent");
             System.setProperty("previous-javamop-agent", previousJavamopAgent);
             System.setProperty("rpp-agent", backgroundAgent);
             invokeSurefire();
@@ -103,7 +115,7 @@ public class RppMojo extends RppHandlerMojo {
             getLog().info("No specs to monitor for background phase, terminating...");
         }
         try {
-            updateCriticalAndBackgroundSpecs(criticalViolationsPath, bgViolationsPath, backgroundAgent);
+            updateCriticalAndBackgroundSpecs(criticalViolationsPath, bgViolationsPath, previousJavamopAgent);
         } catch (FileNotFoundException ex) {
             getLog().error("Failed to automatically update critical and background specs.");
             System.exit(1);
