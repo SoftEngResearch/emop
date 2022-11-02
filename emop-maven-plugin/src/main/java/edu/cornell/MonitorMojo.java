@@ -3,9 +3,13 @@ package edu.cornell;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import edu.cornell.emop.util.Util;
+import edu.illinois.starts.helpers.Writer;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -85,16 +89,29 @@ public class MonitorMojo extends AffectedSpecsMojo {
      * packages in the maven project in question, effectively disabling instrumentation in third-party libraries.
      * If the includeLibraries parameter is set to true, then this method would return an empty string.
      */
-    private String generateThirdPartyExclusion() {
-        StringBuilder stringBuilder = new StringBuilder();
+    private String generateThirdPartyExclusion() throws MojoExecutionException {
+        StringBuilder exclusions = new StringBuilder();
         if (!includeLibraries) {
-            Set<String> packages =
-                    Util.retrieveProjectPackageNames(getClassesDirectory());
-            for (String packageName : packages) {
-                stringBuilder.append("    within(" + packageName + "..*) &&\n");
+            // TODO: Remove hard-coded parts
+            String sureFireClassPath = Writer.pathToString(getSureFireClassPath().getClassPath());
+            Set<String> dependencies = new HashSet<>();
+            for (String entry : sureFireClassPath.split(":")) {
+                if (entry.contains(".jar")) {
+                    entry = entry.replace('-', '.');
+                    String[] segments = entry.split("/");
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 5; i < segments.length - 3; i++) {
+                        sb.append(segments[i]);
+                        sb.append(".");
+                    }
+                    dependencies.add(sb.toString());
+                }
+            }
+            for (String dependency : dependencies) {
+                exclusions.append("    !within(" + dependency + ".*) &&\n");
             }
         }
-        return stringBuilder.toString();
+        return exclusions.toString();
     }
 
     /**
