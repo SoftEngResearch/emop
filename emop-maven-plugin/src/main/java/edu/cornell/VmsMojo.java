@@ -132,8 +132,8 @@ public class VmsMojo extends DiffMojo {
 
         if (!firstRun) {
             removeDuplicateViolations();
-            getLog().info("Number of \"new\" violations found: " + newViolations.size());
         }
+        getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
         saveViolationCounts();
         if (!showAllInFile) {
@@ -257,7 +257,7 @@ public class VmsMojo extends DiffMojo {
             if (newSha == null || newSha.isEmpty()) {
                 trees.add(new FileTreeIterator(git.getRepository()));
             } else {
-                ObjectId shaId = git.getRepository().resolve(lastSha);
+                ObjectId shaId = git.getRepository().resolve(newSha);
                 RevCommit newerCommit = git.getRepository().parseCommit(shaId);
                 trees.add(new CanonicalTreeParser(null, objectReader, newerCommit.getTree().getId()));
             }
