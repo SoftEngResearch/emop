@@ -3,6 +3,7 @@ package edu.cornell;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashSet;
 import java.util.Set;
 
 import edu.cornell.emop.util.Util;
@@ -44,7 +45,8 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
-        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs);
+        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile,
+                affectedSpecs, retrieveIncludePackages());
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"
@@ -54,7 +56,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + monitorFile);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
-        if (!includeNonAffected || !includeLibraries) {
+        if (!includeNonAffected) {
             start = System.currentTimeMillis();
             // Rewrite BaseAspect.aj to ignore non-affected classes
             generateNewBaseAspect();
@@ -81,20 +83,15 @@ public class MonitorMojo extends AffectedSpecsMojo {
     }
 
     /**
-     * Generates a String containing within() pointcuts so that instrumentation is only performed within the
-     * packages in the maven project in question, effectively disabling instrumentation in third-party libraries.
-     * If the includeLibraries parameter is set to true, then this method would return an empty string.
+     * Generates the set of package names of classes that should be monitored. If the set is non-empty, then any
+     * package not included in this set will not be monitored.
+     * @return created set of package names for weaving. An empty set is returned if the includeLibraries is true.
      */
-    private String generateThirdPartyExclusion() {
-        StringBuilder stringBuilder = new StringBuilder();
+    private Set<String> retrieveIncludePackages() {
         if (!includeLibraries) {
-            Set<String> packages =
-                    Util.retrieveProjectPackageNames(getClassesDirectory());
-            for (String packageName : packages) {
-                stringBuilder.append("    within(" + packageName + "..*) &&\n");
-            }
+            return Util.retrieveProjectPackageNames(getClassesDirectory());
         }
-        return stringBuilder.toString();
+        return new HashSet<>();
     }
 
     /**
@@ -119,7 +116,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
             writer.println("package mop;");
             writer.println("public aspect BaseAspect {");
             writer.println("    pointcut notwithin() :");
-            writer.println(generateThirdPartyExclusion());
             writer.println(generateNonAffectedExclusion());
             // hard-coding the essential exclusions.
             writer.println("    !within(sun..*) &&");
