@@ -9,6 +9,8 @@ import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,7 +45,9 @@ public class RppMojo extends RppHandlerMojo {
             // FIXME: this somehow doesn't redirect the entire surefire output. Debug while PR is ongoing
             System.setOut(ps);
             System.setErr(ps);
+            getLog().info("Execution of maven surefire started at " + formatter.format(new Date()));
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
+            getLog().info("Execution of maven surefire ended at " + formatter.format(new Date()));
             System.setOut(stdout);
             System.setErr(stderr);
         } catch (IllegalAccessException ex) {
@@ -95,6 +99,7 @@ public class RppMojo extends RppHandlerMojo {
      * @throws MojoExecutionException if RPP fails.
      */
     public void execute() throws MojoExecutionException {
+        // timestamp here - when critical phase finished
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
         String criticalViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
         String bgViolationsPath = "";
@@ -120,6 +125,7 @@ public class RppMojo extends RppHandlerMojo {
             getLog().error("Failed to automatically update critical and background specs.");
             System.exit(1);
         }
+        // timestamp - background phase finished
     }
 
 }
