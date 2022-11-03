@@ -234,8 +234,9 @@ public class VmsMojo extends DiffMojo {
 
     /**
      * Fetches the two most recent commits of the repository and finds the differences between them.
-     * If the user has specified a lastSha, then that sha will be used as the "old" version of code. It should ideally
-     * correspond to
+     * If the newSha option is used, that particular version of code is used as the "updated" code, otherwise the
+     * working tree is used.
+     * The lastSha variable determines which version of code to compare the updated version against for differences.
      *
      * @return List of differences between two most recent commits of the repository
      * @throws MojoExecutionException if error is encountered at runtime
@@ -398,7 +399,8 @@ public class VmsMojo extends DiffMojo {
      * The first line of code does not have any edits occurring earlier in the code, and will be matched directly to the
      * first line of the new version of code. The second line has been modified and will not be mapped. The third line
      * of code has an edit occurring earlier in the code with an offset of 1. Therefore, the third line of the old code
-     * will be mapped to the fourth line of the new code.
+     * will be mapped to the fourth line of the new code. No line in the old code will ever be mapped to the newly
+     * inserted line in the new code.
      *
      * @param className Particular class being considered (if the class was renamed, this is the old name)
      * @param oldLine Original line number
