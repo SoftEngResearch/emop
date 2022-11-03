@@ -82,8 +82,8 @@ public class VmsMojo extends DiffMojo {
     private boolean showAllInFile;
 
     private Path gitDir;
-    private Path oldVC;
-    private Path newVC;
+    private Path oldViolationCounts;
+    private Path newViolationCounts;
     private Path lastShaPath;
 
     // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
@@ -112,12 +112,12 @@ public class VmsMojo extends DiffMojo {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
 
         gitDir = basedir.toPath().resolve(".git");
-        oldVC = Paths.get(getArtifactsDir(), "violation-counts-old");
-        newVC = Paths.get(System.getProperty("user.dir"), "violation-counts");
+        oldViolationCounts = Paths.get(getArtifactsDir(), "violation-counts-old");
+        newViolationCounts = Paths.get(System.getProperty("user.dir"), "violation-counts");
         lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
 
         touchVmsFiles();
-        oldViolations = Violation.parseViolations(oldVC);
+        oldViolations = Violation.parseViolations(oldViolationCounts);
         lastSha = getLastSha(); // will also set firstRun if applicable
 
         if (!firstRun) {
@@ -127,7 +127,7 @@ public class VmsMojo extends DiffMojo {
         }
 
         invokeSurefire();
-        newViolations = Violation.parseViolations(newVC);
+        newViolations = Violation.parseViolations(newViolationCounts);
         getLog().info("Number of total violations found: " + newViolations.size());
 
         if (!firstRun) {
@@ -432,12 +432,12 @@ public class VmsMojo extends DiffMojo {
     private void rewriteViolationCounts() throws MojoExecutionException {
         List<String> lines = null;
         try {
-            lines = Files.readAllLines(newVC);
+            lines = Files.readAllLines(newViolationCounts);
         } catch (IOException exception) {
             throw new MojoExecutionException("Failure encountered when reading violation-counts");
         }
 
-        try (PrintWriter writer = new PrintWriter(newVC.toFile())) {
+        try (PrintWriter writer = new PrintWriter(newViolationCounts.toFile())) {
             for (String line : lines) {
                 if (isNewViolation(line)) {
                     writer.println(line);
@@ -468,8 +468,8 @@ public class VmsMojo extends DiffMojo {
      */
     private void touchVmsFiles() throws MojoExecutionException {
         try {
-            oldVC.toFile().createNewFile();
-            newVC.toFile().createNewFile();
+            oldViolationCounts.toFile().createNewFile();
+            newViolationCounts.toFile().createNewFile();
             lastShaPath.toFile().createNewFile();
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -484,7 +484,7 @@ public class VmsMojo extends DiffMojo {
     private void saveViolationCounts() throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
             if (git.status().call().isClean()) {
-                Files.copy(newVC, oldVC, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
 
                 try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
                     out.println(git.getRepository().resolve(Constants.HEAD).name());
