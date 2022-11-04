@@ -132,8 +132,18 @@ public class VmsMojo extends DiffMojo {
 
         if (!firstRun) {
             removeDuplicateViolations();
+        } else {
+            oldViolations.clear();
         }
+
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
+        getLog().info("Number of fixed violations: " + oldViolations.size());
+
+        for (Violation fixed : oldViolations) {
+            getLog().info("Fixed violation: " + fixed.getSpecification()
+                    + " (" + fixed.getClassName()
+                    + ":" + fixed.getLineNum() + ")");
+        }
 
         saveViolationCounts();
         if (!showAllInFile) {
@@ -339,19 +349,25 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Removes newViolations of violations believed to be duplicates from violation-counts-old.
+     * Removes {@link VmsMojo#newViolations newViolations} of violations believed to be duplicates from
+     * <code>violation-counts-old</code>, and removes {@link VmsMojo#oldViolations oldViolations} of
+     * violations believed to be duplicates from <code>violation-counts</code>.
      */
     private void removeDuplicateViolations() {
-        Set<Violation> violationsToRemove = new HashSet<>();
+        Set<Violation> oldViolationsToRemove = new HashSet<>();
+        Set<Violation> newViolationsToRemove = new HashSet<>();
+
         for (Violation newViolation : newViolations) {
             for (Violation oldViolation : oldViolations) {
                 if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
-                    violationsToRemove.add(newViolation);
-                    break;
+                    oldViolationsToRemove.add(oldViolation);
+                    newViolationsToRemove.add(newViolation);
                 }
             }
         }
-        newViolations.removeAll(violationsToRemove);
+
+        oldViolations.removeAll(oldViolationsToRemove);
+        newViolations.removeAll(newViolationsToRemove);
     }
 
     /**
