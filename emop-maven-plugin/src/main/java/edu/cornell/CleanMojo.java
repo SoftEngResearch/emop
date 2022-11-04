@@ -22,7 +22,13 @@ public class CleanMojo extends edu.illinois.starts.jdeps.CleanMojo {
 
     /**
      * Parameter to determine which artifacts to clean. Specified as a comma-separated list of
-     * artifacts. See {@link Artifact} for a list of permissable artifact names.
+     * artifacts. By default, all artifacts are cleaned. The artifacts recognized by this parameter
+     * are:
+     * <ul>
+     *   <li><b>STARTS</b>: the {@code .starts} directory</li>
+     *   <li><b>WEAVED_BYTECODE</b>: the {@code weaved-bytecode} directory</li>
+     *   <li><b>VIOLATION_COUNTS</b>: the {@code violation-counts} file</li>
+     * </ul>
      */
     @Parameter(property = "clean.mode", defaultValue = "STARTS,WEAVED_BYTECODE,VIOLATION_COUNTS")
     private Set<Artifact> mode;
