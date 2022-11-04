@@ -28,6 +28,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
 
+
     @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
     private boolean demoteCritical;
 
