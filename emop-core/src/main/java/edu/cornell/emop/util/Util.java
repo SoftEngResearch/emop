@@ -168,13 +168,13 @@ public class Util {
      * @param originalDir directory that should contain the original violation-counts
      * @param newDir directory where violation-counts should be moved to
      * @param mode the phase for the relocated violation-counts file (either "critical" or "background")
-     * @return whether the original violation-counts file existed
+     * @return absolute path to the new location of violation-counts if move was successful, empty string if not
      */
-    public static boolean moveViolationCounts(File originalDir, String newDir, String mode) {
+    public static String moveViolationCounts(File originalDir, String newDir, String mode) {
         // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
         File violationCounts = new File(originalDir + File.separator + "violation-counts");
         if (!violationCounts.exists()) {
-            return false;
+            return "";
         }
         File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
         try {
@@ -182,6 +182,6 @@ public class Util {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-        return true;
+        return newViolationCounts.getAbsolutePath();
     }
 }
