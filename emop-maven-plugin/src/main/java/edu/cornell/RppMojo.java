@@ -36,6 +36,7 @@ public class RppMojo extends RppHandlerMojo {
      * @throws MojoExecutionException when the surefire invocation fails.
      */
     private void invokeSurefire() throws MojoExecutionException {
+        getLog().info("RPP background phase surefire execution start: " + timeFormatter.format(new Date()));
         PrintStream stdout = System.out;
         PrintStream stderr = System.err;
         try {
@@ -56,6 +57,7 @@ public class RppMojo extends RppHandlerMojo {
         } catch (FileNotFoundException ex) {
             throw new RuntimeException(ex);
         }
+        getLog().info("RPP background phase surefire execution end: " + timeFormatter.format(new Date()));
     }
 
     public static void writeSpecsToFile(Set<String> specs, File file) throws FileNotFoundException {
@@ -96,7 +98,7 @@ public class RppMojo extends RppHandlerMojo {
      * @throws MojoExecutionException if RPP fails.
      */
     public void execute() throws MojoExecutionException {
-        getLog().info("RPP background phase time start:" + timeFormatter.format(new Date()));
+        getLog().info("RPP background phase start: " + timeFormatter.format(new Date()));
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
         String criticalViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
         String bgViolationsPath = "";
@@ -122,7 +124,7 @@ public class RppMojo extends RppHandlerMojo {
             getLog().error("Failed to automatically update critical and background specs.");
             System.exit(1);
         }
-        getLog().info("RPP background phase time end:" + timeFormatter.format(new Date()));
+        getLog().info("RPP background phase end: " + timeFormatter.format(new Date()));
     }
 
 }

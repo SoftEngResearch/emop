@@ -161,7 +161,7 @@ public class RppHandlerMojo extends MonitorMojo {
      * @throws MojoExecutionException where instrumentation for surefire did not succeed.
      */
     public void execute() throws MojoExecutionException {
-        getLog().info("RPP preprocess time start:" + timeFormatter.format(new Date()));
+        getLog().info("RPP preprocessing start: " + timeFormatter.format(new Date()));
         metaInfoDirectory = new File(getArtifactsDir());
         // prepare the two jars
         setupJars();
@@ -169,6 +169,6 @@ public class RppHandlerMojo extends MonitorMojo {
         if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
             throw new MojoExecutionException("Could not attach agent");
         }
-        getLog().info("RPP preprocess time end:" + timeFormatter.format(new Date()));
+        getLog().info("RPP preprocessing end: " + timeFormatter.format(new Date()));
     }
 }
