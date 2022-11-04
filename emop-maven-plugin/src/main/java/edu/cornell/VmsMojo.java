@@ -1,6 +1,7 @@
 package edu.cornell;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -8,12 +9,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
@@ -21,12 +23,22 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.shared.invoker.DefaultInvocationRequest;
+import org.apache.maven.shared.invoker.DefaultInvoker;
+import org.apache.maven.shared.invoker.InvocationOutputHandler;
+import org.apache.maven.shared.invoker.InvocationRequest;
+import org.apache.maven.shared.invoker.InvocationResult;
+import org.apache.maven.shared.invoker.Invoker;
+import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
@@ -38,6 +50,42 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
 
+    /**
+     * Specific SHA to use as the "old" version of code when making comparisons.
+     * Should correspond to the previous run of VMS.
+     */
+    @Parameter(property = "lastSha", required = false)
+    private String lastSha;
+
+    /**
+     * Specific SHA to use as the "new" version of code when making comparisons.
+     */
+    @Parameter(property = "newSha", required = false)
+    private String newSha;
+
+    /**
+     * Whether to treat all found violations as new, regardless of previous runs.
+     */
+    @Parameter(property = "firstRun", required = false, defaultValue = "false")
+    private boolean firstRun;
+
+    /**
+     * Whether to show all violations in the console or only the new violations.
+     */
+    @Parameter(property = "showAllInConsole", defaultValue = "false")
+    private boolean showAllInConsole;
+
+    /**
+     * Whether to show all violations in <code>violation-counts</code> or only the new violations.
+     */
+    @Parameter(property = "showAllInFile", defaultValue = "false")
+    private boolean showAllInFile;
+
+    private Path gitDir;
+    private Path oldViolationCounts;
+    private Path newViolationCounts;
+    private Path lastShaPath;
+
     // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
     // and deletions
     private final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
@@ -48,79 +96,187 @@ public class VmsMojo extends DiffMojo {
     // More information about how differences are represented in JGit can be found here:
     // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/Edit.html
     //          file        line     lines modified
-    private Map<String, Map<Integer, Integer>> lineChanges = new HashMap<>();
+    private Map<String, Map<Integer, Integer>> offsets = new HashMap<>();
+
+    // Maps files to lines of code in the original version which have not been modified
+    // Note: If renames are involved, the old name of the file is used.
+    private Map<String, Set<Integer>> modifiedLines = new HashMap<>();
 
     // Maps renamed files to the original names
     private Map<String, String> renames = new HashMap<>();
-
-    // Contains new classes which have been made between commits
-    private Set<String> newClasses = new HashSet<>();
 
     private Set<Violation> oldViolations;
     private Set<Violation> newViolations;
 
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
-        saveViolationCounts();
-        findLineChangesAndRenames(getCommitDiffs()); // populates renames and lineChanges
-        getLog().info("Number of files renamed: " + renames.size());
-        getLog().info("Number of changed files found: " + lineChanges.size());
-        oldViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts-old");
-        newViolations = Violation.parseViolations(getArtifactsDir() + File.separator + "violation-counts");
+
+        gitDir = basedir.toPath().resolve(".git");
+        oldViolationCounts = Paths.get(getArtifactsDir(), "violation-counts-old");
+        newViolationCounts = Paths.get(System.getProperty("user.dir"), "violation-counts");
+        lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
+
+        touchVmsFiles();
+        oldViolations = Violation.parseViolations(oldViolationCounts);
+        lastSha = getLastSha(); // will also set firstRun if applicable
+
+        if (!firstRun) {
+            findLineChangesAndRenames(getCommitDiffs()); // populates renames, lineChanges, and modifiedLines
+            getLog().info("Number of files renamed: " + renames.size());
+            getLog().info("Number of changed files found: " + offsets.size());
+        }
+
+        invokeSurefire();
+        newViolations = Violation.parseViolations(newViolationCounts);
         getLog().info("Number of total violations found: " + newViolations.size());
-        removeDuplicateViolations();
+
+        if (!firstRun) {
+            removeDuplicateViolations();
+        }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
-        rewriteViolationCounts();
+
+        saveViolationCounts();
+        if (!showAllInFile) {
+            rewriteViolationCounts();
+        }
+    }
+
+    private static class SurefireOutputHandler implements InvocationOutputHandler {
+        private static enum State {
+            PROLOGUE,   // Output preceding the surefire:test goal
+            BODY,       // Output from surefire:test
+            EPILOGUE    // Output following the surefire:test goal
+        }
+
+        private static final Pattern epilogueStart = Pattern.compile("\\[INFO\\] BUILD (SUCCESS|FAILURE).*");
+
+        private ViolationFilterer filterer;
+        private State state = State.PROLOGUE;
+        private boolean filteringCurrentViolation = false;
+
+        public SurefireOutputHandler(ViolationFilterer filterer) {
+            this.filterer = filterer;
+        }
+
+        @Override
+        @SuppressWarnings("checkstyle:Regexp")
+        public void consumeLine(String line) {
+            switch (state) {
+                case PROLOGUE:
+                    if (line.contains("maven-surefire-plugin")) {
+                        System.out.println(line);
+                        state = State.BODY;
+                    }
+                    break;
+                case BODY:
+                    if (line.startsWith("Specification")) {
+                        if (!(filteringCurrentViolation = filterer.filter(line))) {
+                            System.out.println(line);
+                        }
+                    } else if (epilogueStart.matcher(line).matches()) {
+                        state = State.EPILOGUE;
+                    } else if (line.startsWith("[INFO]") || !filteringCurrentViolation) {
+                        System.out.println(line);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    private class ViolationFilterer {
+        private final boolean filterOld = !firstRun && !showAllInConsole;
+
+        /**
+         * Returns whether to filter the violation.
+         *
+         * @param violation A string representation of a violation
+         * @return <code>true</code> if the violation should be filtered; <code>false</code> otherwise
+         */
+        private boolean filter(String violation) {
+            if (filterOld) {
+                Violation newViolation = Violation.parseViolation(violation);
+                for (Violation oldViolation : oldViolations) {
+                    if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /**
+     * Runs Maven Surefire.
+     *
+     * @throws MojoExecutionException if the Surefire execution fails.
+     */
+    private void invokeSurefire() throws MojoExecutionException {
+        InvocationRequest request = new DefaultInvocationRequest();
+        request.setGoals(Collections.singletonList("surefire:test"));
+        InvocationOutputHandler outputHandler = new SurefireOutputHandler(new ViolationFilterer());
+        request.setOutputHandler(outputHandler);
+        request.setErrorHandler(outputHandler);
+
+        try {
+            Invoker invoker = new DefaultInvoker();
+            InvocationResult result = invoker.execute(request);
+
+            if (result.getExitCode() != 0) {
+                throw new MojoExecutionException("Surefire reported exit code " + result.getExitCode());
+            }
+        } catch (MavenInvocationException ex) {
+            throw new MojoExecutionException("Failed to execute Surefire", ex);
+        }
     }
 
     /**
      * Fetches the two most recent commits of the repository and finds the differences between them.
+     * If the newSha option is used, that particular version of code is used as the "updated" code, otherwise the
+     * working tree is used.
+     * The lastSha variable determines which version of code to compare the updated version against for differences.
      *
      * @return List of differences between two most recent commits of the repository
      * @throws MojoExecutionException if error is encountered at runtime
      */
     private List<DiffEntry> getCommitDiffs() throws MojoExecutionException {
-        Git git;
-        Iterable<RevCommit> commits;
         ObjectReader objectReader;
         List<DiffEntry> diffs;
-
-        // Sets up repository and fetches commits
-        try {
-            git = Git.open(basedir.toPath().resolve(".git").toFile());
-            commits = git.log().setMaxCount(1).call();
-            objectReader = git.getRepository().newObjectReader();
-        } catch (GitAPIException | IOException exception) {
-            throw new MojoExecutionException("Failed to fetch two previous commits from repository");
-        }
-
-        // Creates trees to parse through to analyze for differences
         List<AbstractTreeIterator> trees = new ArrayList<>();
-        trees.add(new FileTreeIterator(git.getRepository()));
-        try {
-            for (RevCommit commit : commits) {
-                trees.add(new CanonicalTreeParser(null, objectReader, commit.getTree().getId()));
-            }
-        } catch (IOException exception) {
-            throw new MojoExecutionException("Encountered an error when creating trees from commits");
-        }
 
-        // Sets up diffFormatter and analyzes for differences between the two trees
-        diffFormatter.setRepository(git.getRepository());
-        diffFormatter.setContext(0);
-        diffFormatter.setDetectRenames(true);
-        try {
+        try (Git git = Git.open(gitDir.toFile())) {
+            objectReader = git.getRepository().newObjectReader();
+
+            // Set up diffFormatter
+            diffFormatter.setRepository(git.getRepository());
+            diffFormatter.setContext(0);
+            diffFormatter.setDetectRenames(true);
+
+            // Get more recent version of code (either working tree or most recent commit)
+            if (newSha == null || newSha.isEmpty()) {
+                trees.add(new FileTreeIterator(git.getRepository()));
+            } else {
+                ObjectId shaId = git.getRepository().resolve(newSha);
+                RevCommit newerCommit = git.getRepository().parseCommit(shaId);
+                trees.add(new CanonicalTreeParser(null, objectReader, newerCommit.getTree().getId()));
+            }
+
+            // Get older version of code (either from user or file)
+            ObjectId shaId = git.getRepository().resolve(lastSha);
+            RevCommit olderCommit = git.getRepository().parseCommit(shaId);
+            trees.add(new CanonicalTreeParser(null, objectReader, olderCommit.getTree().getId()));
             diffs = diffFormatter.scan(trees.get(1), trees.get(0));
         } catch (IOException exception) {
-            throw new MojoExecutionException("Encountered an error when analyzing for differences between commits");
+            throw new MojoExecutionException("Failed to fetch code version");
         }
 
-        git.close();
         return diffs;
     }
 
     /**
-     * Updates the lineChanges and renames based on found differences.
+     * Updates the renames, offsets, and modifiedLines based on found differences.
      *
      * @param diffs List of differences between two versions of the same program
      * @throws MojoExecutionException if error is encountered at runtime
@@ -128,23 +284,52 @@ public class VmsMojo extends DiffMojo {
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                // Determines if the file is new, read more here: https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/DiffEntry.html
-                if (diff.getOldPath().equals(DiffEntry.DEV_NULL)) {
-                    newClasses.add(diff.getNewPath());
-                } else if (!diff.getNewPath().equals(DiffEntry.DEV_NULL)) { // Ignore if a deleted class
+                // Only consider differences if the files has not just been created or deleted and is in the relevant
+                // portion of code (src/main/java) (this file path style matches what is used internally by JGit and
+                // is agnostic of the local OS).
+                // To read more about how JGit indicates a newly created or deleted file, read here:
+                // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/DiffEntry.html
+                if (!diff.getNewPath().equals(DiffEntry.DEV_NULL) && !diff.getOldPath().equals(DiffEntry.DEV_NULL)
+                    && diff.getOldPath().contains("src/main/java/")) {
                     // Gets renamed classes
-                    if (!diff.getOldPath().equals(diff.getNewPath())) {
+                    if (!diff.getNewPath().equals(diff.getOldPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
                     }
 
-                    // For each file, find the replacements, additions, and deletions at each line
                     for (Edit edit : diffFormatter.toFileHeader(diff).toEditList()) {
-                        Map<Integer, Integer> lineChange = new HashMap<>();
-                        if (lineChanges.containsKey(diff.getOldPath())) {
-                            lineChange = lineChanges.get(diff.getOldPath());
+                        // Calculates appropriate beginnings and endings
+                        int editBeginning = edit.getBeginA();
+                        int editEnding = edit.getEndA();
+                        if (edit.getBeginA() != edit.getEndA()) {
+                            editBeginning += 1;
+                            editEnding += 1;
                         }
-                        lineChange.put(edit.getBeginA() + 1, edit.getLengthB() - edit.getLengthA());
-                        lineChanges.put(diff.getOldPath(), lineChange);
+
+                        // Gets offset at each line
+                        if (offsets.containsKey(diff.getOldPath())) {
+                            Map<Integer, Integer> fileOffsets = offsets.get(diff.getOldPath());
+                            if (fileOffsets.containsKey(editBeginning)) {
+                                fileOffsets.put(editBeginning, fileOffsets.get(editBeginning)
+                                        + edit.getLengthB() - edit.getLengthA());
+                            } else {
+                                fileOffsets.put(editBeginning, edit.getLengthB() - edit.getLengthA());
+                            }
+                        } else {
+                            Map<Integer, Integer> filesOffsets = new HashMap<>();
+                            filesOffsets.put(editBeginning, edit.getLengthB() - edit.getLengthA());
+                            offsets.put(diff.getOldPath(), filesOffsets);
+                        }
+
+                        // Gets modified lines
+                        for (int i = editBeginning; i < editEnding; i++) {
+                            if (modifiedLines.containsKey(diff.getOldPath())) {
+                                modifiedLines.get(diff.getOldPath()).add(i);
+                            } else {
+                                Set<Integer> lines = new HashSet<>();
+                                lines.add(i);
+                                modifiedLines.put(diff.getOldPath(), lines);
+                            }
+                        }
                     }
                 }
             }
@@ -201,66 +386,58 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Determines whether an old line in a file can be mapped to the new line. An offset is calculated which determines
-     * the maximum boundary of the distance a line has moved based off of differences between code versions. If two
-     * lines are within this offset of each other (in the correct direction), they are considered mappable.
-     * Take the following example:
+     * Determines whether an old line in a file can be mapped to the new line. For an old line to be mappable to a new
+     * line in a class, it must fulfill two conditions: that the old line has not been modified and that the old line
+     * in addition to the net offset of previous edits equals the new line.
+     * Take the following example where the second line of code has been modified with a new line inserted directly
+     * after it:
      * Old code          New code
-     * line 1            line 1
-     * line 2            line 2
-     * line 3            new line
-     * line 4            line 3
-     *                   line 4
-     * Lines 1 and 2 do not see any differences, so their offset is 0 and they will only map to lines 1 and 2 in the new
-     * code, respectively. Line 3 sees an addition of one line, so the offset here is 1 and both the new line and line 3
-     * in the new code will map to the previous line 3. Similarly, line 4 also takes the previous addition of a line
-     * into account and has an offset of 1, and both lines 3 and 4 in the new code will map to the previous line 4.
-     * Deletions work similarly, and are represented by a negative offset.
-     * TODO: The current implementation is generous with finding the "same" violation. The offset is very accurate in
-     *  finding the precise location unmodified code has been moved to. This information can be leveraged for more
-     *  accuracy when differentiating which violations are new or old when they occur close together and the line
-     *  itself where the violation occurred is not a part of any direct differences in code. There are also errors that
-     *  can arise because of differences between the last commit and the previous run of violation-counts (whose
-     *  violations we keep track of) this can be fixed by incorporating sha information.
+     * 1 line A          1 line A
+     * 2 line B          2 line B'
+     * 3 line C          3 new line
+     *                   4 line C
+     * The first line of code does not have any edits occurring earlier in the code, and will be matched directly to the
+     * first line of the new version of code. The second line has been modified and will not be mapped. The third line
+     * of code has an edit occurring earlier in the code with an offset of 1. Therefore, the third line of the old code
+     * will be mapped to the fourth line of the new code. No line in the old code will ever be mapped to the newly
+     * inserted line in the new code.
      *
-     * @param classInfo Particular class being considered (if the class was renamed, this is the old name)
+     * @param className Particular class being considered (if the class was renamed, this is the old name)
      * @param oldLine Original line number
      * @param newLine New line number
      * @return Whether the original line number can be mapped to the new line number in the updated version
      */
-    private boolean hasSameLineNumber(String classInfo, int oldLine, int newLine) {
-        for (String className : lineChanges.keySet()) {
-            if (className.contains(classInfo)) {
-                int offset = 0;
-                for (Integer originalLine : lineChanges.get(className).keySet()) {
-                    if (originalLine <= oldLine) {
-                        offset += lineChanges.get(className).get(originalLine);
+    private boolean hasSameLineNumber(String className, int oldLine, int newLine) {
+        for (String changedClass : offsets.keySet()) {
+            if (changedClass.contains(className)) {
+                // modified lines are never mapped
+                if (modifiedLines.containsKey(changedClass) && modifiedLines.get(changedClass).contains(oldLine)) {
+                    return false;
+                }
+                int netOffset = 0;
+                for (Integer offsetLine : offsets.get(changedClass).keySet()) {
+                    if (offsetLine < oldLine) {
+                        netOffset += offsets.get(changedClass).get(offsetLine);
                     }
                 }
-                if (newLine >= oldLine) { // if lines have been inserted
-                    return offset >= 0 && offset >= newLine - oldLine;
-                } else { // if lines have been removed
-                    return offset <= 0 && offset <= newLine - oldLine;
-                }
+                return newLine - oldLine == netOffset;
             }
         }
         return oldLine == newLine;
     }
 
     /**
-     * Rewrites violation-counts to only include violations in newViolations.
+     * Rewrites <code>violation-counts</code> to only include violations in newViolations.
      */
     private void rewriteViolationCounts() throws MojoExecutionException {
-        Path vc = Paths.get(System.getProperty("user.dir"), "violation-counts");
-
         List<String> lines = null;
         try {
-            lines = Files.readAllLines(vc);
+            lines = Files.readAllLines(newViolationCounts);
         } catch (IOException exception) {
             throw new MojoExecutionException("Failure encountered when reading violation-counts");
         }
 
-        try (PrintWriter writer = new PrintWriter(vc.toFile())) {
+        try (PrintWriter writer = new PrintWriter(newViolationCounts.toFile())) {
             for (String line : lines) {
                 if (isNewViolation(line)) {
                     writer.println(line);
@@ -278,36 +455,65 @@ public class VmsMojo extends DiffMojo {
      * @return Whether the violation is a new violation
      */
     private boolean isNewViolation(String violation) {
-        Violation parsedViolation = Violation.parseViolation(violation);
-        for (Violation newViolation : newViolations) {
-            if (newViolation.equals(parsedViolation)) {
-                return true;
-            }
+        if (firstRun) {
+            return true;
         }
-        return false;
+        Violation parsedViolation = Violation.parseViolation(violation);
+        return newViolations.contains(parsedViolation);
     }
 
     /**
-     * Saves the most recent <code>violation-counts</code> created by RV-Monitor
-     * into the artifacts directory, and backs up the previously saved violations
-     * to <code>violation-counts-old</code>.
+     * Ensures that <code>violation-counts</code> and <code>violation-counts-old</code>
+     * both exist, creating empty files if not.
      */
-    private void saveViolationCounts() throws MojoExecutionException {
-        Path savedVC = Paths.get(getArtifactsDir(), "violation-counts");
-        Path savedVCOld = Paths.get(getArtifactsDir(), "violation-counts-old");
-        Path newVC = Paths.get(System.getProperty("user.dir"), "violation-counts");
-
+    private void touchVmsFiles() throws MojoExecutionException {
         try {
-            getLog().info("Saving previous violation-counts to violation-counts-old...");
-            savedVC.toFile().createNewFile();
-            Files.move(savedVC, savedVCOld, StandardCopyOption.REPLACE_EXISTING);
-
-            getLog().info("Saving current violation-counts to violation-counts...");
-            newVC.toFile().createNewFile();
-            Files.copy(newVC, savedVC);
+            oldViolationCounts.toFile().createNewFile();
+            newViolationCounts.toFile().createNewFile();
+            lastShaPath.toFile().createNewFile();
         } catch (IOException ex) {
             ex.printStackTrace();
+            throw new MojoExecutionException("Failed to create VMS files", ex);
+        }
+    }
+
+    /**
+     * If the working tree is clean, saves the most recent <code>violation-counts</code>
+     * created by RV-Monitor in <code>violation-counts-old</code>.
+     */
+    private void saveViolationCounts() throws MojoExecutionException {
+        try (Git git = Git.open(gitDir.toFile())) {
+            if (git.status().call().isClean()) {
+                Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
+
+                try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
+                    out.println(git.getRepository().resolve(Constants.HEAD).name());
+                }
+            }
+        } catch (IOException | GitAPIException ex) {
+            ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
+        }
+    }
+
+    /**
+     * Reads and returns the lastSha. That is, the SHA which corresponds to the "old" version of code.
+     *
+     * @return String of the previous SHA, null if the file is empty
+     * @throws MojoExecutionException if error encountered at runtime
+     */
+    private String getLastSha() throws MojoExecutionException {
+        if (lastSha != null && !lastSha.isEmpty()) {
+            return lastSha;
+        }
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(lastShaPath.toFile()))) {
+            String sha = bufferedReader.readLine();
+            if (sha == null || sha.isEmpty()) {
+                firstRun = true;
+            }
+            return sha;
+        } catch (IOException exception) {
+            throw new MojoExecutionException("Error encountered when reading lastSha");
         }
     }
 }
