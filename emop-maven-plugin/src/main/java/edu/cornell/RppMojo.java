@@ -8,6 +8,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Date;
 import java.util.HashSet;
@@ -27,7 +28,6 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "rpp", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
-
 
     @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
     private boolean demoteCritical;
@@ -79,8 +79,8 @@ public class RppMojo extends RppHandlerMojo {
         }
         // read the violation-counts files and output the list of critical and background specs for next time
         // (in the case that the user doesn't provide files for critical and background specs)
-        Set<String> violatedSpecs = Violation.parseViolationSpecs(criticalViolationsPath);
-        Set<String> bgViolatedSpecs = Violation.parseViolationSpecs(bgViolationsPath);
+        Set<String> violatedSpecs = Violation.parseViolationSpecs(Paths.get(criticalViolationsPath));
+        Set<String> bgViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
         violatedSpecs.addAll(bgViolatedSpecs);
         violatedSpecs = violatedSpecs.stream().map(spec -> spec.endsWith("MonitorAspect") ? spec :
                 spec + "MonitorAspect").collect(Collectors.toSet());
