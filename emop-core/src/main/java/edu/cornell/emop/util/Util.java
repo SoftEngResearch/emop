@@ -133,8 +133,13 @@ public class Util {
         return fullSet;
     }
 
-    public static void generateNewMonitorFile(String monitorFilePath, Set<String> specsToMonitor)
-            throws MojoExecutionException {
+    public static void generateNewMonitorFile(String monitorFilePath, Set<String> specsToMonitor) {
+        generateNewMonitorFile(monitorFilePath, specsToMonitor, new HashSet<>());
+    }
+
+    public static void generateNewMonitorFile(String monitorFilePath,
+                                              Set<String> specsToMonitor,
+                                              Set<String> includesPackageNames) {
         try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
             // Write header
             writer.println("<aspectj>");
@@ -146,7 +151,12 @@ public class Util {
             // Write footer
             writer.println("</aspects>");
             // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
-            writer.println("<weaver options=\"-nowarn -Xlint:ignore\"></weaver>");
+            writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
+            for (String packageName : includesPackageNames) {
+                writer.println("<include within=\"" + packageName + "..*\"/>");
+            }
+            writer.println("</weaver>");
+
             writer.println("</aspectj>");
         } catch (IOException ex) {
             ex.printStackTrace();
