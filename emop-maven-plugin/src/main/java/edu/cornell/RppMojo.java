@@ -73,7 +73,7 @@ public class RppMojo extends RppHandlerMojo {
         Set<String> criticalSpecsSet = new HashSet<>();
         Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent, getLog());
         if (!demoteCritical && !RppHandlerMojo.criticalSpecsSet.equals(allSpecs)) {
-            // need to demote specs if the critical specs set contained all specs (first run)
+            // demote specs if the critical specs set contained all specs (first run)
             criticalSpecsSet.addAll(RppHandlerMojo.criticalSpecsSet);
         }
         // read the violation-counts files and output the list of critical and background specs for next time
@@ -83,6 +83,7 @@ public class RppMojo extends RppHandlerMojo {
         violatedSpecs.addAll(bgViolatedSpecs);
         violatedSpecs = violatedSpecs.stream().map(spec -> spec.endsWith("MonitorAspect") ? spec :
                 spec + "MonitorAspect").collect(Collectors.toSet());
+        // implicitly demote all specs that were not violated and not already in the critical specs set
         criticalSpecsSet.addAll(violatedSpecs);
         File artifactsDir = new File(getArtifactsDir());
         File metaCriticalSpecsFile = new File(artifactsDir, "rpp-critical-specs.txt");
