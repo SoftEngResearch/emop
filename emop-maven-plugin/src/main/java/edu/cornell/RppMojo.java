@@ -9,6 +9,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -95,6 +96,7 @@ public class RppMojo extends RppHandlerMojo {
      * @throws MojoExecutionException if RPP fails.
      */
     public void execute() throws MojoExecutionException {
+        getLog().info("RPP background phase time start:" + timeFormatter.format(new Date()));
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
         String criticalViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
         String bgViolationsPath = "";
@@ -120,6 +122,7 @@ public class RppMojo extends RppHandlerMojo {
             getLog().error("Failed to automatically update critical and background specs.");
             System.exit(1);
         }
+        getLog().info("RPP background phase time end:" + timeFormatter.format(new Date()));
     }
 
 }

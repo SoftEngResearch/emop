@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,8 +23,11 @@ public class RppHandlerMojo extends MonitorMojo {
 
     static Set<String> criticalSpecsSet;
     static Set<String> backgroundSpecsSet;
+    static SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 
     File metaInfoDirectory;
+
+
     @Parameter(property = "criticalSpecsFile", defaultValue = "")
     private String criticalSpecsFile;
 
@@ -156,6 +161,7 @@ public class RppHandlerMojo extends MonitorMojo {
      * @throws MojoExecutionException where instrumentation for surefire did not succeed.
      */
     public void execute() throws MojoExecutionException {
+        getLog().info("RPP preprocess time start:" + timeFormatter.format(new Date()));
         metaInfoDirectory = new File(getArtifactsDir());
         // prepare the two jars
         setupJars();
@@ -163,5 +169,6 @@ public class RppHandlerMojo extends MonitorMojo {
         if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
             throw new MojoExecutionException("Could not attach agent");
         }
+        getLog().info("RPP preprocess time end:" + timeFormatter.format(new Date()));
     }
 }
