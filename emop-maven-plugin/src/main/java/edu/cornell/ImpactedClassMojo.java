@@ -1,5 +1,7 @@
 package edu.cornell;
 
+import java.util.Date;
+
 import edu.illinois.starts.enums.TransitiveClosureOptions;
 import edu.illinois.starts.jdeps.ImpactedMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -29,6 +31,8 @@ public class ImpactedClassMojo extends ImpactedMojo {
     private TransitiveClosureOptions closureOption;
 
     public void execute() throws MojoExecutionException {
+        getLog().info("ImpactedClassMojo start time: " + RppHandlerMojo.timeFormatter.format(new Date()));
+        getLog().info("closureOption: " + closureOption);
         setUpdateImpactedChecksums(updateChecksums);
         setTrackNewClasses(true);
         setTransitiveClosureOption(closureOption);
@@ -42,5 +46,6 @@ public class ImpactedClassMojo extends ImpactedMojo {
             getLog().info("[eMOP] No impacted classes, terminating...");
             System.exit(0);
         }
+        getLog().info("ImpactedClassMojo end time: " + RppHandlerMojo.timeFormatter.format(new Date()));
     }
 }

@@ -12,6 +12,7 @@ import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -69,6 +70,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
+        getLog().info("AffectedSpecsMojo start: " + RppHandlerMojo.timeFormatter.format(new Date()));
         long start = System.currentTimeMillis();
         // If only computing changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
@@ -95,6 +97,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
         getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
+        getLog().info("AffectedSpecsMojo end: " + RppHandlerMojo.timeFormatter.format(new Date()));
     }
 
     private void computeAffectedSpecs() throws MojoExecutionException {

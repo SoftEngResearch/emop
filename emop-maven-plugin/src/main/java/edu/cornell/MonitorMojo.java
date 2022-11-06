@@ -3,6 +3,7 @@ package edu.cornell;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,6 +44,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
+        getLog().info("MonitorMojo start: " + RppHandlerMojo.timeFormatter.format(new Date()));
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile,
@@ -80,6 +82,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
         }
+        getLog().info("MonitorMojo end: " + RppHandlerMojo.timeFormatter.format(new Date()));
     }
 
     /**
