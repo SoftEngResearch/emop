@@ -1,8 +1,6 @@
 package edu.cornell;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -11,16 +9,11 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.aspectj.bridge.IMessage;
-import org.aspectj.bridge.MessageHandler;
-import org.aspectj.tools.ajc.Main;
 
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
     private String monitorFile = "new-aop-ajc.xml";
-
-    private String baseAspectFile = "BaseAspect.aj";
 
     /**
      * The path that specify the Javamop Agent JAR file.
@@ -45,8 +38,9 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
-        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile,
-                affectedSpecs, retrieveIncludePackages());
+        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs,
+                includeLibraries ? new HashSet<>() : retrieveIncludePackages(),
+                includeNonAffected ? new HashSet<>() : getNonAffected());
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"
@@ -56,30 +50,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + monitorFile);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
-        if (!includeNonAffected) {
-            start = System.currentTimeMillis();
-            // Rewrite BaseAspect.aj to ignore non-affected classes
-            generateNewBaseAspect();
-            // Compile BaseAspect.aj with ajc
-            Main compiler = new Main();
-            MessageHandler mh = new MessageHandler();
-            String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
-            String[] ajcArgs = {"-d", getArtifactsDir(), "-classpath", classpath,
-                    getArtifactsDir() + File.separator + baseAspectFile};
-            compiler.run(ajcArgs, mh);
-            IMessage[] ms = mh.getMessages(null, true);
-            for (IMessage i : ms) {
-                if (i.isError()) {
-                    getLog().error("AspectJ compilation of BaseAspect.aj failed! Exiting...");
-                    System.exit(1);
-                }
-            }
-            // Replace compiled BaseAspect in javamop-agent's jar
-            Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
-                    getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
-            end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Generating BaseAspect and replace it takes " + (end - start) + " ms");
-        }
     }
 
     /**
@@ -111,36 +81,4 @@ public class MonitorMojo extends AffectedSpecsMojo {
         return stringBuilder.toString();
     }
 
-    private void generateNewBaseAspect() throws MojoExecutionException {
-        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + baseAspectFile)) {
-            writer.println("package mop;");
-            writer.println("public aspect BaseAspect {");
-            writer.println("    pointcut notwithin() :");
-            writer.println(generateNonAffectedExclusion());
-            // hard-coding the essential exclusions.
-            writer.println("    !within(sun..*) &&");
-            writer.println("    !within(java..*) &&");
-            writer.println("    !within(javax..*) &&");
-            writer.println("    !within(javafx..*) &&");
-            writer.println("    !within(com.sun..*) &&");
-            writer.println("    !within(org.dacapo.harness..*) &&");
-            writer.println("    !within(net.sf.cglib..*) &&");
-            writer.println("    !within(mop..*) &&");
-            writer.println("    !within(javamoprt..*) &&");
-            writer.println("    !within(rvmonitorrt..*) &&");
-            writer.println("    !within(org.junit..*) &&");
-            writer.println("    !within(junit..*) &&");
-            writer.println("    !within(java.lang.Object) &&");
-            writer.println("    !within(com.runtimeverification..*) &&");
-            writer.println("    !within(org.apache.maven.surefire..*) &&");
-            writer.println("    !within(org.mockito..*) &&");
-            writer.println("    !within(org.powermock..*) &&");
-            writer.println("    !within(org.easymock..*) &&");
-            writer.println("    !within(com.mockrunner..*) &&");
-            writer.println("    !within(org.jmock..*);");
-            writer.println("}");
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
 }

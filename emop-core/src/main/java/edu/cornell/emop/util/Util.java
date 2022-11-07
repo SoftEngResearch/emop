@@ -133,13 +133,10 @@ public class Util {
         return fullSet;
     }
 
-    public static void generateNewMonitorFile(String monitorFilePath, Set<String> specsToMonitor) {
-        generateNewMonitorFile(monitorFilePath, specsToMonitor, new HashSet<>());
-    }
-
     public static void generateNewMonitorFile(String monitorFilePath,
                                               Set<String> specsToMonitor,
-                                              Set<String> includesPackageNames) {
+                                              Set<String> includesPackageNames,
+                                              Set<String> nonAffectedClasses) {
         try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
             // Write header
             writer.println("<aspectj>");
@@ -154,6 +151,9 @@ public class Util {
             writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
             for (String packageName : includesPackageNames) {
                 writer.println("<include within=\"" + packageName + "..*\"/>");
+            }
+            for (String nonAffectedClass : nonAffectedClasses) {
+                writer.println("<exclude within=\"" + nonAffectedClass + "\"/>");
             }
             writer.println("</weaver>");
 
