@@ -484,11 +484,15 @@ public class VmsMojo extends DiffMojo {
     private void saveViolationCounts() throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
             if (git.status().call().isClean()) {
+                getLog().info("I'm a clean repo!!");
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
 
                 try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
                     out.println(git.getRepository().resolve(Constants.HEAD).name());
                 }
+            }
+            else {
+                getLog().info("I'm not a clean repo!!");
             }
         } catch (IOException | GitAPIException ex) {
             ex.printStackTrace();
