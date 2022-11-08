@@ -33,6 +33,8 @@ import org.apache.maven.shared.invoker.InvocationResult;
 import org.apache.maven.shared.invoker.Invoker;
 import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -483,20 +485,33 @@ public class VmsMojo extends DiffMojo {
      */
     private void saveViolationCounts() throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
-            if (git.status().call().isClean()) {
-                getLog().info("I'm a clean repo!!");
+            if (isFunctionallyClean(git)) {
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
 
                 try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
                     out.println(git.getRepository().resolve(Constants.HEAD).name());
                 }
             }
-            else {
-                getLog().info("I'm not a clean repo!!");
-            }
-        } catch (IOException | GitAPIException ex) {
+        } catch (IOException ex) {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
+        }
+    }
+
+    /**
+     * Whether a particular git repository's only uncommitted changes are those caused by emop.
+     *
+     * @param git Git repository to analyze
+     * @return Boolean of whether to consider the git functionally clean for the purposes of VMS
+     * @throws MojoExecutionException if error encountered at runtime
+     */
+    private boolean isFunctionallyClean(Git git) throws MojoExecutionException {
+        try {
+            Set<String> uncommittedChanges = git.status().call().getUncommittedChanges();
+            return (git.status().call().isClean() || (uncommittedChanges.size() != 2
+                    && !uncommittedChanges.contains("violation-counts") && !uncommittedChanges.contains(".starts/")));
+        } catch (GitAPIException ex) {
+            throw new MojoExecutionException("Failed to check if code was clean", ex);
         }
     }
 
