@@ -8,8 +8,8 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "rps-rpp", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rps-rpp")
-public class RpsRppMojo extends MonitorMojo {
+public class RpsRppMojo extends RppMojo {
     public void execute() throws MojoExecutionException {
-        getLog().info("[eMOP] Invoking the RPS-RPP Mojo...");
+        super.execute();
     }
 }

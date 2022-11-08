@@ -13,6 +13,9 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
+    protected static Set<String> monitorIncludes;
+    protected static Set<String> monitorExcludes;
+
     private String monitorFile = "new-aop-ajc.xml";
 
     /**
@@ -38,9 +41,10 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
+        monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
+        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs,
-                includeLibraries ? new HashSet<>() : retrieveIncludePackages(),
-                includeNonAffected ? new HashSet<>() : getNonAffected());
+                monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"

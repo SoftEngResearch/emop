@@ -149,11 +149,15 @@ public class Util {
             writer.println("</aspects>");
             // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
             writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
-            for (String packageName : includesPackageNames) {
-                writer.println("<include within=\"" + packageName + "..*\"/>");
+            if (includesPackageNames != null) {
+                for (String packageName : includesPackageNames) {
+                    writer.println("<include within=\"" + packageName + "..*\"/>");
+                }
             }
-            for (String nonAffectedClass : nonAffectedClasses) {
-                writer.println("<exclude within=\"" + nonAffectedClass + "\"/>");
+            if (nonAffectedClasses != null) {
+                for (String nonAffectedClass : nonAffectedClasses) {
+                    writer.println("<exclude within=\"" + nonAffectedClass + "\"/>");
+                }
             }
             writer.println("</weaver>");
 

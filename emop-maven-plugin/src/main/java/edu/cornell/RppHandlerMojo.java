@@ -120,7 +120,7 @@ public class RppHandlerMojo extends MonitorMojo {
             try {
                 Files.copy(javamopAgentFile.toPath(), createdJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 Util.generateNewMonitorFile(metaInfoDirectory + File.separator + mode + "-ajc.xml",
-                        specsToMonitor, new HashSet<>(), new HashSet<>());
+                        specsToMonitor, MonitorMojo.monitorIncludes, MonitorMojo.monitorExcludes);
                 Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
                         metaInfoDirectory + File.separator + mode + "-ajc.xml");
             } catch (IOException ex) {
