@@ -499,7 +499,9 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Whether a particular git repository's only uncommitted changes are those caused by emop.
+     * Whether a particular git repository is clean (there is no difference between it and its last associated commit).
+     * A repository is also considered clean if the only difference between it and the last associated commit consists
+     * only of files and directories that were created by eMOP - these are violation-counts and the .starts directory.
      *
      * @param git Git repository to analyze
      * @return Boolean of whether to consider the git functionally clean for the purposes of VMS
@@ -507,6 +509,9 @@ public class VmsMojo extends DiffMojo {
      */
     private boolean isFunctionallyClean(Git git) throws MojoExecutionException {
         try {
+            // uncommittedChanges is a list of files and directories which differ between this repo and its last
+            // associated commit - if the repo is functionally clean it will be empty or only have exactly two entries:
+            // violation-counts and .starts/
             Set<String> uncommittedChanges = git.status().call().getUncommittedChanges();
             return (git.status().call().isClean() || (uncommittedChanges.size() != 2
                     && !uncommittedChanges.contains("violation-counts") && !uncommittedChanges.contains(".starts/")));
