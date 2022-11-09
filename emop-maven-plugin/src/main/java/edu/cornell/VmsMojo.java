@@ -128,7 +128,7 @@ public class VmsMojo extends DiffMojo {
             getLog().info("Number of changed files found: " + offsets.size());
         }
 
-        invokeSurefire();
+        //invokeSurefire();
         newViolations = Violation.parseViolations(newViolationCounts);
         getLog().info("Number of total violations found: " + newViolations.size());
 
