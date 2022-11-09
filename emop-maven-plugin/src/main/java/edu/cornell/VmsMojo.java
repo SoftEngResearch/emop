@@ -509,12 +509,15 @@ public class VmsMojo extends DiffMojo {
      */
     private boolean isFunctionallyClean(Git git) throws MojoExecutionException {
         try {
-            // uncommittedChanges is a list of files and directories which differ between this repo and its last
-            // associated commit - if the repo is functionally clean it will be empty or only have exactly two entries:
-            // violation-counts and .starts/
-            Set<String> uncommittedChanges = git.status().call().getUncommittedChanges();
-            return (git.status().call().isClean() || (uncommittedChanges.size() != 2
-                    && !uncommittedChanges.contains("violation-counts") && !uncommittedChanges.contains(".starts/")));
+            // changes in the repo will either be untracked or uncommitted - a functionally clean repo will not have
+            // any uncommitted changes but may have exactly three untracked files which were created by eMOP
+            // read more here:
+            // https://download.eclipse.org/jgit/site/6.3.0.202209071007-r/apidocs/org/eclipse/jgit/api/Status.html
+            Set<String> untracked = git.status().call().getUntracked();
+            Set<String> uncommitted = git.status().call().getUncommittedChanges();
+            return (git.status().call().isClean() || (uncommitted.size() == 0 && untracked.size() == 3
+                    && untracked.contains(".starts/last-SHA") && untracked.contains(".starts/violation-counts-old")
+                    && untracked.contains("violation-counts")));
         } catch (GitAPIException ex) {
             throw new MojoExecutionException("Failed to check if code was clean", ex);
         }
