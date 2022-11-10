@@ -261,7 +261,6 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
             } else {
                 getLog().error("Source file not found: " + source.getAbsolutePath());
                 getLog().error("Test file not found: " + test.getAbsolutePath());
-                throw new MojoExecutionException("Couldn't find source file for new class");
             }
         }
 
