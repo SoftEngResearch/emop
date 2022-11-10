@@ -358,13 +358,17 @@ public class VmsMojo extends DiffMojo {
 
     /**
      * Determines if an old violation in a class could be mapped to the new violation after accounting for differences
-     * in code and renames.
+     * in code and renames. Both violations must have a known location where they occurred for them to be considered
+     * the same violation.
      *
      * @param oldViolation Original violation to compare
      * @param newViolation New violation to compare
      * @return Whether the old violation can be mapped to the new violation, after code changes and renames
      */
     private boolean isSameViolationAfterDifferences(Violation oldViolation, Violation newViolation) {
+        if (!Violation.hasKnownLocation(oldViolation) || Violation.hasKnownLocation(newViolation)) {
+            return false;
+        }
         return oldViolation.getSpecification().equals(newViolation.getSpecification())
                 && (oldViolation.getClassName().equals(newViolation.getClassName())
                     || isRenamed(oldViolation.getClassName(), newViolation.getClassName()))
