@@ -241,19 +241,19 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         return parent.resolve(classFile.getFileName().toString().replace(".class", ".java"));
     }
 
-    private void makeSourcesFile(String sourceList, Set<String> impacted) throws MojoExecutionException {
+    private void makeSourcesFile(String sourceList, Set<String> newClasses) throws MojoExecutionException {
         Set<String> classes = new HashSet<>();
         Path testSourceDir = getTestSourceDirectory().toPath().toAbsolutePath();
         Path sourceDir = Paths.get(getTestSourceDirectory().getAbsolutePath().replace(
                 "src" + File.separator + "test", "src" + File.separator + "main"));
 
-        for (String klas : impacted) {
-            if (klas.contains("$")) {
-                klas = klas.substring(0, klas.indexOf("$"));
+        for (String newClass : newClasses) {
+            if (newClass.contains("$")) {
+                newClass = newClass.substring(0, newClass.indexOf("$"));
             }
-            klas = klas.replace(".", File.separator) + ".java";
-            File test = testSourceDir.resolve(klas).toFile();
-            File source = sourceDir.resolve(klas).toFile();
+            newClass = newClass.replace(".", File.separator) + ".java";
+            File test = testSourceDir.resolve(newClass).toFile();
+            File source = sourceDir.resolve(newClass).toFile();
             if (source.exists()) {
                 classes.add(source.getAbsolutePath());
             } else if (test.exists()) {
@@ -261,20 +261,20 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
             } else {
                 getLog().error("Source file not found: " + source.getAbsolutePath());
                 getLog().error("Test file not found: " + test.getAbsolutePath());
-                throw new MojoExecutionException("Couldn't find source file for impacted class");
+                throw new MojoExecutionException("Couldn't find source file for new class");
             }
         }
 
         Path classesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
 
-        for (String klas : getChanged()) {
-            if (klas.contains("$")) {
-                klas = klas.substring(0, klas.indexOf('$')) + ".class";
+        for (String changedClass : getChanged()) {
+            if (changedClass.contains("$")) {
+                changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
             }
 
             try {
-                Path classFile = Paths.get(new URI(klas)).toAbsolutePath();
+                Path classFile = Paths.get(new URI(changedClass)).toAbsolutePath();
                 Path sourceFile = null;
 
                 if (classFile.startsWith(classesDir)) {
