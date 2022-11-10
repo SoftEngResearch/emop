@@ -87,7 +87,7 @@ public class Violation {
         Matcher matcher = pattern.matcher(violation);
 
         if (!matcher.matches()) {
-            throw new IllegalArgumentException();
+            return new Violation("", "", -1);
         }
 
         String method = matcher.group(2);
