@@ -455,7 +455,7 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Whether a violation line is a new violation.
+     * Whether a violation line is a new violation. Violations without known locations are always treated as new.
      *
      * @param violation Violation line being considered
      * @return Whether the violation is a new violation
@@ -465,7 +465,7 @@ public class VmsMojo extends DiffMojo {
             return true;
         }
         Violation parsedViolation = Violation.parseViolation(violation);
-        return newViolations.contains(parsedViolation);
+        return newViolations.contains(parsedViolation) || !Violation.hasKnownLocation(parsedViolation);
     }
 
     /**
