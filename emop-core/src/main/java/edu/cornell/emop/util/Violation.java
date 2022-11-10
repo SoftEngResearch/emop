@@ -93,8 +93,7 @@ public class Violation {
             Matcher specMatcher = specPattern.matcher(violation);
             if (specMatcher.matches()) {
                 return new Violation(specMatcher.group(1), null, -1);
-            }
-            else {
+            } else {
                 throw new IllegalArgumentException();
             }
         }
