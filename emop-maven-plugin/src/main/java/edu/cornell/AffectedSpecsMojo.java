@@ -281,13 +281,14 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 } else if (classFile.startsWith(testClassesDir)) {
                     sourceFile = classFileToSource(classFile, testClassesDir, testSourceDir);
                 } else {
-                    throw new MojoExecutionException("Couldn't find class file for changed class");
+                    getLog().error("Class file not found in standard directories: " + classFile.toString());
+                    continue;
                 }
 
                 if (sourceFile.toFile().exists()) {
                     classes.add(sourceFile.toString());
                 } else {
-                    throw new MojoExecutionException("Couldn't find source file for changed class");
+                    getLog().error("Source file not found: " + sourceFile.toString());
                 }
             } catch (URISyntaxException ex) {
                 throw new MojoExecutionException("Couldn't parse URI for changed class", ex);
