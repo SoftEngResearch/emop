@@ -1,6 +1,7 @@
 package edu.cornell;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -37,6 +38,9 @@ public class MonitorMojo extends AffectedSpecsMojo {
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     private boolean includeLibraries;
 
+    @Parameter(property = "rpsRpp", defaultValue = "false")
+    private boolean rpsRpp;
+
     public void execute() throws MojoExecutionException {
         super.execute();
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
@@ -45,6 +49,17 @@ public class MonitorMojo extends AffectedSpecsMojo {
         monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs,
                 monitorIncludes, monitorExcludes);
+        getLog().info("rps-rpp: " + rpsRpp);
+        if (rpsRpp) {
+            getLog().info("In mode RPS-RPP");
+            try {
+                Util.writeSpecsToFile(affectedSpecs, new File(
+                        getArtifactsDir(), "affected-specs.txt"));
+            } catch (FileNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
+            System.setProperty("rpsRpp", "true");
+        }
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"

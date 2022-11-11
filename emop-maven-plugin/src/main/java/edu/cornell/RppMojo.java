@@ -61,14 +61,6 @@ public class RppMojo extends RppHandlerMojo {
         getLog().info("RPP background phase surefire execution end: " + timeFormatter.format(new Date()));
     }
 
-    public static void writeSpecsToFile(Set<String> specs, File file) throws FileNotFoundException {
-        try (PrintWriter writer = new PrintWriter(file)) {
-            for (String spec : specs) {
-                writer.println(spec);
-            }
-        }
-    }
-
     public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath, String javamopAgent)
             throws MojoExecutionException, FileNotFoundException {
         Set<String> criticalSpecsSet = new HashSet<>();
@@ -90,9 +82,9 @@ public class RppMojo extends RppHandlerMojo {
         File metaCriticalSpecsFile = new File(artifactsDir, "rpp-critical-specs.txt");
         File metaBackgroundSpecsFile = new File(artifactsDir, "rpp-background-specs.txt");
         Set<String> backgroundSpecsSet = new HashSet<>(allSpecs);
-        backgroundSpecsSet.remove(criticalSpecsSet);
-        writeSpecsToFile(criticalSpecsSet, metaCriticalSpecsFile);
-        writeSpecsToFile(backgroundSpecsSet, metaBackgroundSpecsFile);
+        backgroundSpecsSet.removeAll(criticalSpecsSet);
+        Util.writeSpecsToFile(criticalSpecsSet, metaCriticalSpecsFile);
+        Util.writeSpecsToFile(backgroundSpecsSet, metaBackgroundSpecsFile);
     }
 
     /**
