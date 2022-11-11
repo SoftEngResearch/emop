@@ -51,7 +51,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
                 monitorIncludes, monitorExcludes);
         getLog().info("rps-rpp: " + rpsRpp);
         if (rpsRpp) {
-            getLog().info("In mode RPS-RPP");
+            getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
             try {
                 Util.writeSpecsToFile(affectedSpecs, new File(
                         getArtifactsDir(), "affected-specs.txt"));

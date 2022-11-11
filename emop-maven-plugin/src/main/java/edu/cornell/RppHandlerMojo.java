@@ -108,13 +108,9 @@ public class RppHandlerMojo extends MonitorMojo {
                 System.exit(1);
             }
         }
-        getLog().info("BEFORE criticalSpecsSet: " + criticalSpecsSet);
-        getLog().info("BEFORE backgroundSpecsSet: " + backgroundSpecsSet);
         // filtering out specs that are not in the set of all specs
         criticalSpecsSet.retainAll(allSpecs);
         backgroundSpecsSet.retainAll(allSpecs);
-        getLog().info("AFTER criticalSpecsSet: " + criticalSpecsSet);
-        getLog().info("AFTER backgroundSpecsSet: " + backgroundSpecsSet);
         // if there are any specs in the universe that we haven't considered, add them to the critical specs set
         Set<String> remainingSpecs = new HashSet<>(allSpecs);
         remainingSpecs.removeAll(criticalSpecsSet);
