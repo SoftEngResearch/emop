@@ -9,7 +9,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.JarURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -224,16 +228,32 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         return Writer.pathToString(getSureFireClassPath().getClassPath());
     }
 
-    private void makeSourcesFile(String sourceList, Set<String> impacted) {
+    /**
+     * Given a path to a class file, returns a path to its corresponding source file. Assumes a standard directory
+     * layout, i.e., one where the source for {@code com.abc.A} resides in {@code sourceDir/com/abc/A.java}.
+     * @param classFile the path to the class file
+     * @param classesDir the base class file directory
+     * @param sourceDir the base sources directory
+     * @return the path to the source file
+     */
+    private static Path classFileToSource(Path classFile, Path classesDir, Path sourceDir) {
+        Path parent = sourceDir.resolve(classesDir.relativize(classFile)).getParent();
+        return parent.resolve(classFile.getFileName().toString().replace(".class", ".java"));
+    }
+
+    private void makeSourcesFile(String sourceList, Set<String> newClasses) throws MojoExecutionException {
         Set<String> classes = new HashSet<>();
-        for (String klas : impacted) {
-            if (klas.contains("$")) {
-                klas = klas.substring(0, klas.indexOf("$"));
+        Path testSourceDir = getTestSourceDirectory().toPath().toAbsolutePath();
+        Path sourceDir = Paths.get(getTestSourceDirectory().getAbsolutePath().replace(
+                "src" + File.separator + "test", "src" + File.separator + "main"));
+
+        for (String newClass : newClasses) {
+            if (newClass.contains("$")) {
+                newClass = newClass.substring(0, newClass.indexOf("$"));
             }
-            klas = klas.replace(".", File.separator) + ".java";
-            File test = new File(getTestSourceDirectory().getAbsolutePath() + File.separator + klas);
-            File source = new File(test.getAbsolutePath().replace("src" + File.separator + "test",
-                    "src" + File.separator + "main"));
+            newClass = newClass.replace(".", File.separator) + ".java";
+            File test = testSourceDir.resolve(newClass).toFile();
+            File source = sourceDir.resolve(newClass).toFile();
             if (source.exists()) {
                 classes.add(source.getAbsolutePath());
             } else if (test.exists()) {
@@ -243,7 +263,38 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 getLog().error("Test file not found: " + test.getAbsolutePath());
             }
         }
-        classes.addAll(getChanged());
+
+        Path classesDir = getClassesDirectory().toPath().toAbsolutePath();
+        Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
+
+        for (String changedClass : getChanged()) {
+            if (changedClass.contains("$")) {
+                changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
+            }
+
+            try {
+                Path classFile = Paths.get(new URI(changedClass)).toAbsolutePath();
+                Path sourceFile = null;
+
+                if (classFile.startsWith(classesDir)) {
+                    sourceFile = classFileToSource(classFile, classesDir, sourceDir);
+                } else if (classFile.startsWith(testClassesDir)) {
+                    sourceFile = classFileToSource(classFile, testClassesDir, testSourceDir);
+                } else {
+                    getLog().error("Class file not found in standard directories: " + classFile.toString());
+                    continue;
+                }
+
+                if (sourceFile.toFile().exists()) {
+                    classes.add(sourceFile.toString());
+                } else {
+                    getLog().error("Source file not found: " + sourceFile.toString());
+                }
+            } catch (URISyntaxException ex) {
+                throw new MojoExecutionException("Couldn't parse URI for changed class", ex);
+            }
+        }
+
         Writer.writeToFile(classes, sourceList);
     }
 
