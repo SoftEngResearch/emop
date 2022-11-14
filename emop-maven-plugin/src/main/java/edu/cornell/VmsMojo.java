@@ -518,9 +518,10 @@ public class VmsMojo extends DiffMojo {
             // read more here:
             // https://download.eclipse.org/jgit/site/6.3.0.202209071007-r/apidocs/org/eclipse/jgit/api/Status.html
             Set<String> untracked = git.status().call().getUntracked();
+            Set<String> untrackedFolders = git.status().call().getUntrackedFolders();
             Set<String> uncommitted = git.status().call().getUncommittedChanges();
-            return (git.status().call().isClean() || (uncommitted.size() == 0 && untracked.size() == 3
-                    && untracked.contains(".starts/last-SHA") && untracked.contains(".starts/violation-counts-old")
+            return (git.status().call().isClean() || (uncommitted.size() == 0 && untrackedFolders.size() == 2
+                    && untrackedFolders.contains(".starts/") && untrackedFolders.contains("target/")
                     && untracked.contains("violation-counts")));
         } catch (GitAPIException ex) {
             throw new MojoExecutionException("Failed to check if code was clean", ex);
