@@ -33,6 +33,8 @@ import org.apache.maven.shared.invoker.InvocationResult;
 import org.apache.maven.shared.invoker.Invoker;
 import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -126,7 +128,7 @@ public class VmsMojo extends DiffMojo {
             getLog().info("Number of changed files found: " + offsets.size());
         }
 
-        invokeSurefire();
+        //invokeSurefire();
         newViolations = Violation.parseViolations(newViolationCounts);
         getLog().info("Number of total violations found: " + newViolations.size());
 
@@ -356,13 +358,17 @@ public class VmsMojo extends DiffMojo {
 
     /**
      * Determines if an old violation in a class could be mapped to the new violation after accounting for differences
-     * in code and renames.
+     * in code and renames. Both violations must have a known location where they occurred for them to be considered
+     * the same violation.
      *
      * @param oldViolation Original violation to compare
      * @param newViolation New violation to compare
      * @return Whether the old violation can be mapped to the new violation, after code changes and renames
      */
     private boolean isSameViolationAfterDifferences(Violation oldViolation, Violation newViolation) {
+        if (!oldViolation.hasKnownLocation() || !newViolation.hasKnownLocation()) {
+            return false;
+        }
         return oldViolation.getSpecification().equals(newViolation.getSpecification())
                 && (oldViolation.getClassName().equals(newViolation.getClassName())
                     || isRenamed(oldViolation.getClassName(), newViolation.getClassName()))
@@ -449,7 +455,7 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
-     * Whether a violation line is a new violation.
+     * Whether a violation line is a new violation. Violations without known locations are always treated as new.
      *
      * @param violation Violation line being considered
      * @return Whether the violation is a new violation
@@ -459,7 +465,7 @@ public class VmsMojo extends DiffMojo {
             return true;
         }
         Violation parsedViolation = Violation.parseViolation(violation);
-        return newViolations.contains(parsedViolation);
+        return newViolations.contains(parsedViolation) || !parsedViolation.hasKnownLocation();
     }
 
     /**
@@ -483,17 +489,50 @@ public class VmsMojo extends DiffMojo {
      */
     private void saveViolationCounts() throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
-            if (git.status().call().isClean()) {
+            if (isFunctionallyClean(git)) {
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
 
                 try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
                     out.println(git.getRepository().resolve(Constants.HEAD).name());
                 }
             }
-        } catch (IOException | GitAPIException ex) {
+        } catch (IOException ex) {
             ex.printStackTrace();
             throw new MojoExecutionException("Failed to save violation-counts", ex);
         }
+    }
+
+    /**
+     * Whether a particular git repository is clean (there is no difference between it and its last associated commit).
+     * A repository is also considered clean if the only difference between it and the last associated commit consists
+     * only of files and directories that were created by eMOP - these are violation-counts and the .starts directory.
+     *
+     * @param git Git repository to analyze
+     * @return Boolean of whether to consider the git functionally clean for the purposes of VMS
+     * @throws MojoExecutionException if error encountered at runtime
+     */
+    private boolean isFunctionallyClean(Git git) throws MojoExecutionException {
+        try {
+            // changes in the repo will either be untracked or uncommitted - a functionally clean repo will not have
+            // any uncommitted changes but may have exactly three untracked files which were created by eMOP
+            // read more here:
+            // https://download.eclipse.org/jgit/site/6.3.0.202209071007-r/apidocs/org/eclipse/jgit/api/Status.html
+            Set<String> untracked = git.status().call().getUntracked();
+            Set<String> uncommitted = git.status().call().getUncommittedChanges();
+            return (git.status().call().isClean()
+                    || (uncommitted.size() == 0 && untrackedFilesAreFunctionallyClean(untracked)));
+        } catch (GitAPIException ex) {
+            throw new MojoExecutionException("Failed to check if code was clean", ex);
+        }
+    }
+
+    private boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
+        for (String file : untracked) {
+            if (!file.startsWith(".starts/") || !file.startsWith("target/") || !file.equals("violation-counts")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
