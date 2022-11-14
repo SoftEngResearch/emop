@@ -61,4 +61,26 @@
       </phase>
     </phases>
   </lifecycle>
+  <lifecycle>
+    <id>rps-rpp</id>
+    <phases>
+      <phase>
+        <id>process-test-classes</id>
+        <executions>
+          <execution>
+            <goals>
+              <goal>monitor</goal>
+              <goal>rpp-handler</goal>
+            </goals>
+            <configuration>
+              <rpsRpp>true</rpsRpp>
+            </configuration>
+          </execution>
+        </executions>
+      </phase>
+      <phase>
+        <id>test</id>
+      </phase>
+    </phases>
+  </lifecycle>
 </lifecycles>
