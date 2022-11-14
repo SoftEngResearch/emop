@@ -366,7 +366,7 @@ public class VmsMojo extends DiffMojo {
      * @return Whether the old violation can be mapped to the new violation, after code changes and renames
      */
     private boolean isSameViolationAfterDifferences(Violation oldViolation, Violation newViolation) {
-        if (!Violation.hasKnownLocation(oldViolation) || !Violation.hasKnownLocation(newViolation)) {
+        if (!oldViolation.hasKnownLocation() || !newViolation.hasKnownLocation()) {
             return false;
         }
         return oldViolation.getSpecification().equals(newViolation.getSpecification())
@@ -465,7 +465,7 @@ public class VmsMojo extends DiffMojo {
             return true;
         }
         Violation parsedViolation = Violation.parseViolation(violation);
-        return newViolations.contains(parsedViolation) || !Violation.hasKnownLocation(parsedViolation);
+        return newViolations.contains(parsedViolation) || !parsedViolation.hasKnownLocation();
     }
 
     /**
@@ -518,14 +518,21 @@ public class VmsMojo extends DiffMojo {
             // read more here:
             // https://download.eclipse.org/jgit/site/6.3.0.202209071007-r/apidocs/org/eclipse/jgit/api/Status.html
             Set<String> untracked = git.status().call().getUntracked();
-            Set<String> untrackedFolders = git.status().call().getUntrackedFolders();
             Set<String> uncommitted = git.status().call().getUncommittedChanges();
-            return (git.status().call().isClean() || (uncommitted.size() == 0 && untrackedFolders.size() == 2
-                    && untrackedFolders.contains(".starts/") && untrackedFolders.contains("target/")
-                    && untracked.contains("violation-counts")));
+            return (git.status().call().isClean()
+                    || (uncommitted.size() == 0 && untrackedFilesAreFunctionallyClean(untracked)));
         } catch (GitAPIException ex) {
             throw new MojoExecutionException("Failed to check if code was clean", ex);
         }
+    }
+
+    private boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
+        for (String file : untracked) {
+            if (!file.startsWith(".starts/") || !file.startsWith("target/") || !file.equals("violation-counts")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

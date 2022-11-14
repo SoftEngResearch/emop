@@ -108,11 +108,10 @@ public class Violation {
      * Whether a violation has a known location or not. Violations with unknown locations must have a non-null class
      * name and a valid line number where the violation occurred.
      *
-     * @param violation The violation to analyze
      * @return Whether the violation has a known location where it occurred
      */
-    public static boolean hasKnownLocation(Violation violation) {
-        return violation.getClassName() != null && violation.getLineNum() >= 0;
+    public boolean hasKnownLocation() {
+        return this.getClassName() != null && this.getLineNum() >= 0;
     }
 
     @Override
