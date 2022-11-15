@@ -178,6 +178,7 @@ public class RppHandlerMojo extends MonitorMojo {
         metaInfoDirectory = new File(getArtifactsDir());
         // prepare the two jars
         setupJars();
+        System.setProperty("running-rpp", "true");
         // load agent that will harness surefire and manipulate arguments to surefire before test execution
         if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
             throw new MojoExecutionException("Could not attach agent");

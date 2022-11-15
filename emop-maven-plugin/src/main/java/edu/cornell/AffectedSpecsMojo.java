@@ -72,6 +72,9 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
+        if (getImpacted().isEmpty()) {
+            return;
+        }
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
         long start = System.currentTimeMillis();
         // If only computing changed classes, then these lines can stay the same

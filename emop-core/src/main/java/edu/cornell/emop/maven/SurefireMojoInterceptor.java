@@ -1,5 +1,12 @@
 package edu.cornell.emop.maven;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static edu.illinois.starts.constants.StartsConstants.STARTS_EXCLUDE_PROPERTY;
+
 /**
  * This class is adapted from STARTS's SurefireMojoInterceptor
  * (https://github.com/TestingResearchIllinois/starts/blob/master/...
@@ -18,7 +25,12 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
     public static void execute(Object mojo) throws Exception {
         sfMojo = mojo;
         String currentArgs = checkSurefireVersion(mojo);
-        manipulateArgs(mojo, currentArgs);
+        if (Boolean.getBoolean("exiting-rps")) {
+            skipTests(mojo);
+        }
+        if (Boolean.getBoolean("running-rpp")) {
+            manipulateArgs(mojo, currentArgs);
+        }
     }
 
     private static String checkSurefireVersion(Object mojo) throws NoSuchFieldException, IllegalAccessException {
@@ -26,6 +38,20 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
         // Modern versions of surefire have both of these fields. Skip if we don't have these fields.
         argLineString = (String) getField("argLine", mojo);
         return argLineString;
+    }
+
+    private static void skipTests(Object mojo) throws NoSuchFieldException, IllegalAccessException {
+        List<String> currentExcludes = (List<String>) getField("excludes", mojo);
+        // always use forward-slash as separator for Surefire's excludes field
+        List<String> newExcludes = new ArrayList<>(Arrays.asList(System.getProperty("rps-test-excludes")
+                .replace("[", "").replace("]", "").replace(File.separator, "/").split(",")));
+        if (currentExcludes != null) {
+            newExcludes.addAll(currentExcludes);
+        } else {
+            newExcludes.add("**/*$*");
+        }
+        setField("excludes", mojo, newExcludes);
+
     }
 
     private static void manipulateArgs(Object mojo, String currentArgs)
