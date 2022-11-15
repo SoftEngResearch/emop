@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static edu.illinois.starts.constants.StartsConstants.STARTS_EXCLUDE_PROPERTY;
-
 /**
  * This class is adapted from STARTS's SurefireMojoInterceptor
  * (https://github.com/TestingResearchIllinois/starts/blob/master/...
