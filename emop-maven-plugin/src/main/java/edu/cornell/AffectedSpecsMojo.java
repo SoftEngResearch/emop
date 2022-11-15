@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import edu.cornell.emop.util.Util;
 import edu.illinois.starts.helpers.Writer;
@@ -31,6 +33,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
 import org.aspectj.bridge.IMessage;
 import org.aspectj.bridge.MessageHandler;
 import org.aspectj.tools.ajc.Main;
@@ -69,6 +72,9 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
      */
     @Parameter(property = "classToSpecsFormat", defaultValue = "TXT")
     private OutputFormat classToSpecsFormat;
+
+    @Parameter(defaultValue = "${project}", required = true, readonly = true)
+    private MavenProject mavenProject;
 
     public void execute() throws MojoExecutionException {
         super.execute();
@@ -243,30 +249,35 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     private void makeSourcesFile(String sourceList, Set<String> newClasses) throws MojoExecutionException {
         Set<String> classes = new HashSet<>();
-        Path testSourceDir = getTestSourceDirectory().toPath().toAbsolutePath();
-        Path sourceDir = Paths.get(getTestSourceDirectory().getAbsolutePath().replace(
-                "src" + File.separator + "test", "src" + File.separator + "main"));
+        List<String> compileSourceRoots = mavenProject.getCompileSourceRoots();
+        List<String> testCompileSourceRoots = mavenProject.getTestCompileSourceRoots();
+        List<Path> sourceDirs = Stream.concat(compileSourceRoots.stream(), testCompileSourceRoots.stream())
+                .map(path -> Paths.get(path).toAbsolutePath())
+                .collect(Collectors.toList());
 
+        classes:
         for (String newClass : newClasses) {
             if (newClass.contains("$")) {
                 newClass = newClass.substring(0, newClass.indexOf("$"));
             }
-            newClass = newClass.replace(".", File.separator) + ".java";
-            File test = testSourceDir.resolve(newClass).toFile();
-            File source = sourceDir.resolve(newClass).toFile();
-            if (source.exists()) {
-                classes.add(source.getAbsolutePath());
-            } else if (test.exists()) {
-                classes.add(test.getAbsolutePath());
-            } else {
-                getLog().error("Source file not found: " + source.getAbsolutePath());
-                getLog().error("Test file not found: " + test.getAbsolutePath());
+            String relativeSourcePath = newClass.replace(".", File.separator) + ".java";
+
+            for (Path dir : sourceDirs) {
+                File source = dir.resolve(relativeSourcePath).toFile();
+                if (source.exists()) {
+                    classes.add(source.getAbsolutePath());
+                    continue classes;
+                }
             }
+
+            // Source file not found in any standard directory
+            getLog().error("No source file found for class " + newClass);
         }
 
-        Path classesDir = getClassesDirectory().toPath().toAbsolutePath();
+        Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
 
+        classes:
         for (String changedClass : getChanged()) {
             if (changedClass.contains("$")) {
                 changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
@@ -274,22 +285,27 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
             try {
                 Path classFile = Paths.get(new URI(changedClass)).toAbsolutePath();
-                Path sourceFile = null;
+                Path classesDir = null;
 
-                if (classFile.startsWith(classesDir)) {
-                    sourceFile = classFileToSource(classFile, classesDir, sourceDir);
+                if (classFile.startsWith(mainClassesDir)) {
+                    classesDir = mainClassesDir;
                 } else if (classFile.startsWith(testClassesDir)) {
-                    sourceFile = classFileToSource(classFile, testClassesDir, testSourceDir);
+                    classesDir = testClassesDir;
                 } else {
                     getLog().error("Class file not found in standard directories: " + classFile.toString());
                     continue;
                 }
 
-                if (sourceFile.toFile().exists()) {
-                    classes.add(sourceFile.toString());
-                } else {
-                    getLog().error("Source file not found: " + sourceFile.toString());
+                for (Path dir : sourceDirs) {
+                    Path sourceFile = classFileToSource(classFile, classesDir, dir);
+                    if (sourceFile.toFile().exists()) {
+                        classes.add(sourceFile.toString());
+                        continue classes;
+                    }
                 }
+
+                // Source file not found in any standard directory
+                getLog().error("No source file found for class file " + classFile.toString());
             } catch (URISyntaxException ex) {
                 throw new MojoExecutionException("Couldn't parse URI for changed class", ex);
             }
