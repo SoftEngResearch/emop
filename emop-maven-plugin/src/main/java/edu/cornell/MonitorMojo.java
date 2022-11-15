@@ -52,13 +52,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
                 throw new MojoExecutionException("Could not attach agent");
             }
-            getLog().info("No impacted classes");
-//            throw new MojoExecutionException("no impacted classes");
-//            setIncludes(new ArrayList<>());
-//            List<String> lst = new ArrayList<>();
-//            lst.add("**/*Test");
-//            // getTestClasses("MonitorMojo.execute")
-//            setExcludes(lst);
+            getLog().info("No impacted classes mode detected MonitorMojo");
             return;
         }
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
@@ -67,7 +61,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
         monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs,
                 monitorIncludes, monitorExcludes);
-        getLog().info("rps-rpp: " + rpsRpp);
         if (rpsRpp) {
             getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
             try {
