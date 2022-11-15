@@ -52,6 +52,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
                 throw new MojoExecutionException("Could not attach agent");
             }
+            getLog().info("No impacted classes");
 //            throw new MojoExecutionException("no impacted classes");
 //            setIncludes(new ArrayList<>());
 //            List<String> lst = new ArrayList<>();
