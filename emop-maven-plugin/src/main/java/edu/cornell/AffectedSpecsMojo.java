@@ -287,6 +287,11 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 Path classFile = Paths.get(new URI(changedClass)).toAbsolutePath();
                 Path classesDir = null;
 
+                if (!classFile.toFile().exists()) {
+                    getLog().debug("Class file does not exist: " + classFile.toString());
+                    continue;
+                }
+
                 if (classFile.startsWith(mainClassesDir)) {
                     classesDir = mainClassesDir;
                 } else if (classFile.startsWith(testClassesDir)) {
