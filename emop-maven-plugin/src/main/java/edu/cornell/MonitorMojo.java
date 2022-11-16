@@ -2,9 +2,12 @@ package edu.cornell;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import edu.cornell.emop.maven.AgentLoader;
 import edu.cornell.emop.util.Util;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -43,13 +46,21 @@ public class MonitorMojo extends AffectedSpecsMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
+        if (getImpacted().isEmpty()) {
+            System.setProperty("exiting-rps", "true");
+            System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
+            if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
+                throw new MojoExecutionException("Could not attach agent");
+            }
+            getLog().info("No impacted classes mode detected MonitorMojo");
+            return;
+        }
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs,
                 monitorIncludes, monitorExcludes);
-        getLog().info("rps-rpp: " + rpsRpp);
         if (rpsRpp) {
             getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
             try {
