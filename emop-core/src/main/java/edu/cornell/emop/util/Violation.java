@@ -22,7 +22,10 @@ public class Violation {
      * The line number (group 3) is <code>11</code>.
      */
     public static final Pattern pattern =
-            Pattern.compile("\\d* ?Specification (\\S+) has been violated on line ([^\\(]+)\\([^:]*:(\\d+)\\).*");
+            Pattern.compile("(?:\\d+ )?Specification (\\S+) has been violated on line ([^\\(]+)\\([^:]*:(\\d+)\\).*");
+
+    public static final Pattern specPattern =
+            Pattern.compile("(?:\\d+ )?Specification (\\S+) has been violated on line \\(Unknown\\).*");
 
     private String specification;
     private String className;
@@ -87,13 +90,28 @@ public class Violation {
         Matcher matcher = pattern.matcher(violation);
 
         if (!matcher.matches()) {
-            throw new IllegalArgumentException();
+            Matcher specMatcher = specPattern.matcher(violation);
+            if (specMatcher.matches()) {
+                return new Violation(specMatcher.group(1), null, -1);
+            } else {
+                throw new IllegalArgumentException();
+            }
         }
 
         String method = matcher.group(2);
         String className = method.substring(0, method.lastIndexOf('.')).replace('.', '/') + ".java";
 
         return new Violation(matcher.group(1), className, Integer.parseInt(matcher.group(3)));
+    }
+
+    /**
+     * Whether a violation has a known location or not. Violations with unknown locations must have a non-null class
+     * name and a valid line number where the violation occurred.
+     *
+     * @return Whether the violation has a known location where it occurred
+     */
+    public boolean hasKnownLocation() {
+        return this.getClassName() != null && this.getLineNum() >= 0;
     }
 
     @Override

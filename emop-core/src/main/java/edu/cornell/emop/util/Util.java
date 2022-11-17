@@ -3,6 +3,7 @@ package edu.cornell.emop.util;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -149,11 +150,15 @@ public class Util {
             writer.println("</aspects>");
             // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
             writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
-            for (String packageName : includesPackageNames) {
-                writer.println("<include within=\"" + packageName + "..*\"/>");
+            if (includesPackageNames != null) {
+                for (String packageName : includesPackageNames) {
+                    writer.println("<include within=\"" + packageName + "..*\"/>");
+                }
             }
-            for (String nonAffectedClass : nonAffectedClasses) {
-                writer.println("<exclude within=\"" + nonAffectedClass + "\"/>");
+            if (nonAffectedClasses != null) {
+                for (String nonAffectedClass : nonAffectedClasses) {
+                    writer.println("<exclude within=\"" + nonAffectedClass + "\"/>");
+                }
             }
             writer.println("</weaver>");
 
@@ -183,5 +188,19 @@ public class Util {
             throw new RuntimeException(ex);
         }
         return newViolationCounts.getAbsolutePath();
+    }
+
+    /**
+     * Writes the provided set of specifications to the specified file, delimited by newline.
+     * @param specs set of specs to write to the file
+     * @param file the file to write to
+     * @throws FileNotFoundException when file cannot be found
+     */
+    public static void writeSpecsToFile(Set<String> specs, File file) throws FileNotFoundException {
+        try (PrintWriter writer = new PrintWriter(file)) {
+            for (String spec : specs) {
+                writer.println(spec);
+            }
+        }
     }
 }

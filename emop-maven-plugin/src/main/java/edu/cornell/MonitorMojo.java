@@ -1,9 +1,13 @@
 package edu.cornell;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import edu.cornell.emop.maven.AgentLoader;
 import edu.cornell.emop.util.Util;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -12,6 +16,9 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
+
+    protected static Set<String> monitorIncludes;
+    protected static Set<String> monitorExcludes;
 
     private String monitorFile = "new-aop-ajc.xml";
 
@@ -34,13 +41,36 @@ public class MonitorMojo extends AffectedSpecsMojo {
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     private boolean includeLibraries;
 
+    @Parameter(property = "rpsRpp", defaultValue = "false")
+    private boolean rpsRpp;
+
     public void execute() throws MojoExecutionException {
         super.execute();
+        if (getImpacted().isEmpty()) {
+            System.setProperty("exiting-rps", "true");
+            System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
+            if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
+                throw new MojoExecutionException("Could not attach agent");
+            }
+            getLog().info("No impacted classes mode detected MonitorMojo");
+            return;
+        }
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
+        monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
+        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs,
-                includeLibraries ? new HashSet<>() : retrieveIncludePackages(),
-                includeNonAffected ? new HashSet<>() : getNonAffected());
+                monitorIncludes, monitorExcludes);
+        if (rpsRpp) {
+            getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
+            try {
+                Util.writeSpecsToFile(affectedSpecs, new File(
+                        getArtifactsDir(), "affected-specs.txt"));
+            } catch (FileNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
+            System.setProperty("rpsRpp", "true");
+        }
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"

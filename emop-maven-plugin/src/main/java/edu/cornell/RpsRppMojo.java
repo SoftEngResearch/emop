@@ -6,11 +6,10 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-@Mojo(name = "rps", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-@Execute(phase = LifecyclePhase.TEST, lifecycle = "rps")
-public class RpsMojo extends MonitorMojo {
+@Mojo(name = "rps-rpp", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
+@Execute(phase = LifecyclePhase.TEST, lifecycle = "rps-rpp")
+public class RpsRppMojo extends RppMojo {
     public void execute() throws MojoExecutionException {
-        getLog().info("[eMOP] Invoking the RPS Mojo...");
-        System.setProperty("exiting-rps", "false");
+        super.execute();
     }
 }

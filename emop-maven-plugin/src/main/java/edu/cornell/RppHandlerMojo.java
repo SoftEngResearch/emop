@@ -3,6 +3,7 @@ package edu.cornell;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -26,7 +27,6 @@ public class RppHandlerMojo extends MonitorMojo {
     static SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 
     File metaInfoDirectory;
-
 
     @Parameter(property = "criticalSpecsFile", defaultValue = "")
     private String criticalSpecsFile;
@@ -80,7 +80,12 @@ public class RppHandlerMojo extends MonitorMojo {
      * Computes the critical specs set and the background specs set.
      */
     private void computeSpecSets() {
-        Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent, getLog());
+        Set<String> allSpecs;
+        if (!Boolean.getBoolean("rpsRpp")) {
+            allSpecs = Util.retrieveSpecListFromJar(javamopAgent, getLog());
+        } else {
+            allSpecs = parseSpecsFile(new File(metaInfoDirectory, "affected-specs.txt").getAbsolutePath());
+        }
         // if we still don't have any spec files, then we'd just need to obtain all specs and run them in critical
         if (criticalSpecsFile == null && backgroundSpecsFile == null) {
             criticalSpecsSet = allSpecs;
@@ -103,6 +108,14 @@ public class RppHandlerMojo extends MonitorMojo {
                 System.exit(1);
             }
         }
+        // filtering out specs that are not in the set of all specs
+        criticalSpecsSet.retainAll(allSpecs);
+        backgroundSpecsSet.retainAll(allSpecs);
+        // if there are any specs in the universe that we haven't considered, add them to the critical specs set
+        Set<String> remainingSpecs = new HashSet<>(allSpecs);
+        remainingSpecs.removeAll(criticalSpecsSet);
+        remainingSpecs.removeAll(backgroundSpecsSet);
+        criticalSpecsSet.addAll(remainingSpecs);
     }
 
     /**
@@ -120,7 +133,7 @@ public class RppHandlerMojo extends MonitorMojo {
             try {
                 Files.copy(javamopAgentFile.toPath(), createdJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 Util.generateNewMonitorFile(metaInfoDirectory + File.separator + mode + "-ajc.xml",
-                        specsToMonitor, new HashSet<>(), new HashSet<>());
+                        specsToMonitor, MonitorMojo.monitorIncludes, MonitorMojo.monitorExcludes);
                 Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
                         metaInfoDirectory + File.separator + mode + "-ajc.xml");
             } catch (IOException ex) {
@@ -165,6 +178,7 @@ public class RppHandlerMojo extends MonitorMojo {
         metaInfoDirectory = new File(getArtifactsDir());
         // prepare the two jars
         setupJars();
+        System.setProperty("running-rpp", "true");
         // load agent that will harness surefire and manipulate arguments to surefire before test execution
         if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
             throw new MojoExecutionException("Could not attach agent");
