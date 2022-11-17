@@ -528,7 +528,7 @@ public class VmsMojo extends DiffMojo {
 
     private boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
         for (String file : untracked) {
-            if (!file.startsWith(".starts/") || !file.startsWith("target/") || !file.equals("violation-counts")) {
+            if (!file.startsWith(".starts/") && !file.startsWith("target/") && !file.equals("violation-counts")) {
                 return false;
             }
         }
