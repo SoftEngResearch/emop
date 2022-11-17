@@ -108,9 +108,6 @@
       </phase>
       <phase>
         <id>test</id>
-        <configuration>
-          <skipTests>true</skipTests>
-        </configuration>
       </phase>
     </phases>
   </lifecycle>
