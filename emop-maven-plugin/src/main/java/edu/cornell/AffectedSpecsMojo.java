@@ -291,7 +291,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
                 Path classesDir = null;
 
                 if (!classFile.toFile().exists()) {
-                    getLog().debug("Class file does not exist: " + classFile.toString());
+                    getLog().warn("Class file does not exist: " + classFile.toString());
                     continue;
                 }
 
