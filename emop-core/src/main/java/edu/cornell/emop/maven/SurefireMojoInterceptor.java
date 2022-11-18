@@ -23,7 +23,7 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
     public static void execute(Object mojo) throws Exception {
         sfMojo = mojo;
         String currentArgs = checkSurefireVersion(mojo);
-        if (Boolean.getBoolean("exiting-rps")) {
+        if (Boolean.getBoolean("skipping-execution")) {
             skipTests(mojo);
         }
         if (Boolean.getBoolean("running-rpp")) {

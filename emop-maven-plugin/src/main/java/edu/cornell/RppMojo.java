@@ -36,8 +36,8 @@ public class RppMojo extends RppHandlerMojo {
      * Runs maven surefire.
      * @throws MojoExecutionException when the surefire invocation fails.
      */
-    private void invokeSurefire() throws MojoExecutionException {
-        getLog().info("RPP background phase surefire execution start: " + timeFormatter.format(new Date()));
+    private void invokeSurefire(String phaseName) throws MojoExecutionException {
+        getLog().info("RPP " + phaseName + " phase surefire execution start: " + timeFormatter.format(new Date()));
         PrintStream stdout = System.out;
         PrintStream stderr = System.err;
         try {
@@ -58,7 +58,7 @@ public class RppMojo extends RppHandlerMojo {
         } catch (FileNotFoundException ex) {
             throw new RuntimeException(ex);
         }
-        getLog().info("RPP background phase surefire execution end: " + timeFormatter.format(new Date()));
+        getLog().info("RPP " + phaseName + " phase surefire execution end: " + timeFormatter.format(new Date()));
     }
 
     public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath, String javamopAgent)
@@ -104,7 +104,7 @@ public class RppMojo extends RppHandlerMojo {
         if (!backgroundAgent.isEmpty()) {
             System.setProperty("previous-javamop-agent", previousJavamopAgent);
             System.setProperty("rpp-agent", backgroundAgent);
-            invokeSurefire();
+            invokeSurefire("background");
             bgViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
             if (bgViolationsPath.isEmpty()) {
                 getLog().info("violation-counts file for background run was not produced, skipping moving...");

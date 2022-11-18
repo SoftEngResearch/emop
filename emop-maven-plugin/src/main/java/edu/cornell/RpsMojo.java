@@ -11,6 +11,6 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 public class RpsMojo extends MonitorMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the RPS Mojo...");
-        System.setProperty("exiting-rps", "false");
+        System.setProperty("skipping-execution", "false");
     }
 }
