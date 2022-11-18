@@ -159,14 +159,8 @@ public class RppHandlerMojo extends MonitorMojo {
         computeSpecSets();
         String criticalRunAgentPath = setUpSingleJar("critical", criticalSpecsSet);
         String backgroundRunAgentPath = setUpSingleJar("background", backgroundSpecsSet);
-        if (!criticalRunAgentPath.isEmpty()) {
-            System.setProperty("rpp-agent", criticalRunAgentPath);
-            System.setProperty("background-agent", backgroundRunAgentPath);
-        } else {
-            getLog().info("Critical phase had no specs, skipping and running background phase...");
-            System.setProperty("rpp-agent", backgroundRunAgentPath);
-            System.setProperty("background-agent", ""); // prevent RppMojo from running a second time
-        }
+        System.setProperty("critical-agent", criticalRunAgentPath);
+        System.setProperty("background-agent", backgroundRunAgentPath);
     }
 
     /**

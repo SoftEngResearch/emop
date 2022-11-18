@@ -48,7 +48,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         super.execute();
         if (getImpacted().isEmpty()) {
             System.setProperty("skipping-execution", "true");
-            System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
+//            System.setProperty("test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
             if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
                 throw new MojoExecutionException("Could not attach agent");
             }

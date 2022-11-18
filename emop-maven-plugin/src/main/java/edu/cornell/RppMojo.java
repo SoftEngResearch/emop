@@ -37,13 +37,15 @@ public class RppMojo extends RppHandlerMojo {
      * @throws MojoExecutionException when the surefire invocation fails.
      */
     private void invokeSurefire(String phaseName) throws MojoExecutionException {
+        getLog().info("previous-javamop-agent: " + System.getProperty("previous-javamop-agent"));
+        getLog().info("rpp-agent: " + System.getProperty("rpp-agent"));
         getLog().info("RPP " + phaseName + " phase surefire execution start: " + timeFormatter.format(new Date()));
         PrintStream stdout = System.out;
         PrintStream stderr = System.err;
         try {
             PrintStream ps = new PrintStream(new FileOutputStream(
-                    getArtifactsDir() + File.separator + "background-surefire-run.txt"));
-            // FIXME: this somehow doesn't redirect the entire surefire output. Debug while PR is ongoing
+                    getArtifactsDir() + File.separator + phaseName + "-surefire-run.txt"));
+//            // FIXME: this somehow doesn't redirect the entire surefire output. Debug while PR is ongoing
             System.setOut(ps);
             System.setErr(ps);
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
@@ -87,30 +89,40 @@ public class RppMojo extends RppHandlerMojo {
         Util.writeSpecsToFile(backgroundSpecsSet, metaBackgroundSpecsFile);
     }
 
+    public String runRppRun(String phase, String previousAgent, String agentPath) throws MojoExecutionException {
+        if (agentPath.isEmpty()) {
+            getLog().info("No specs to monitor for " + phase + " phase, terminating...");
+            return "";
+        }
+        System.setProperty("previous-javamop-agent", previousAgent);
+        System.setProperty("rpp-agent", agentPath);
+        invokeSurefire(phase);
+        String violationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), phase);
+        if (violationsPath.isEmpty()) {
+            getLog().info("violation-counts file for " + phase + " run was not produced, skipping moving...");
+        }
+        return violationsPath;
+    }
+
     /**
      * This mojo runs RPP.
      * @throws MojoExecutionException if RPP fails.
      */
     public void execute() throws MojoExecutionException {
-        getLog().info("RPP background phase start: " + timeFormatter.format(new Date()));
+        System.setProperty("skipping-execution", "false");
+        System.setProperty("running-rpp", "true");
+        getLog().info("RPP start: " + timeFormatter.format(new Date()));
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
-        String criticalViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
-        String bgViolationsPath = "";
-        if (criticalViolationsPath.isEmpty()) {
-            getLog().info("violation-counts file for critical run was not produced, skipping moving...");
-        }
-        String previousJavamopAgent = System.getProperty("rpp-agent");
+        String previousJavamopAgent = System.getProperty("previous-javamop-agent");
+        System.out.println("previousJavamopAgent: " + previousJavamopAgent);
+        String criticalAgent = System.getProperty("critical-agent");
         String backgroundAgent = System.getProperty("background-agent");
-        if (!backgroundAgent.isEmpty()) {
-            System.setProperty("previous-javamop-agent", previousJavamopAgent);
-            System.setProperty("rpp-agent", backgroundAgent);
-            invokeSurefire("background");
-            bgViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
-            if (bgViolationsPath.isEmpty()) {
-                getLog().info("violation-counts file for background run was not produced, skipping moving...");
-            }
-        } else { // edge case where critical phase runs all specs
-            getLog().info("No specs to monitor for background phase, terminating...");
+        String criticalViolationsPath = runRppRun("critical", previousJavamopAgent, criticalAgent);
+        String bgViolationsPath;
+        if (criticalViolationsPath.isEmpty()) {
+            bgViolationsPath = runRppRun("background", previousJavamopAgent, backgroundAgent);
+        } else {
+            bgViolationsPath = runRppRun("background", criticalAgent, backgroundAgent);
         }
         try {
             updateCriticalAndBackgroundSpecs(criticalViolationsPath, bgViolationsPath, previousJavamopAgent);
@@ -118,7 +130,7 @@ public class RppMojo extends RppHandlerMojo {
             getLog().error("Failed to automatically update critical and background specs.");
             System.exit(1);
         }
-        getLog().info("RPP background phase end: " + timeFormatter.format(new Date()));
+        getLog().info("RPP end: " + timeFormatter.format(new Date()));
     }
 
 }

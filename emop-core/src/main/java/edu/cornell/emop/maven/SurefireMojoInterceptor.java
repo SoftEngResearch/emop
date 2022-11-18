@@ -21,14 +21,30 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
      * Method that executes at the very beginning of SurefirePlugin's execute method.
      */
     public static void execute(Object mojo) throws Exception {
+        String originalExcludes = System.getProperty("original-excludes");
+        if (originalExcludes == null) {
+            List<String> excludes = (List<String>) getField("excludes", mojo);
+            System.setProperty("original-excludes", excludes == null ? "" : String.join("," ,excludes));
+        } else {
+            setField("excludes", mojo, Arrays.asList(originalExcludes));
+            setField("includes", mojo, Arrays.asList("**/Test*,**/*Test,**/*Tests,**/*TestCase"));
+            setField("excludesFile", mojo, new File("/home/ayaka/projects/tiny-emop-example/excludesFile2.txt"));
+            setField("includesFile", mojo, new File("/home/ayaka/projects/tiny-emop-example/includesFile.txt"));
+        }
         sfMojo = mojo;
         String currentArgs = checkSurefireVersion(mojo);
+        System.out.println(System.getProperties());
         if (Boolean.getBoolean("skipping-execution")) {
-            skipTests(mojo);
+            setField("excludesFile", mojo, new File("/home/ayaka/projects/tiny-emop-example/excludesFile.txt"));
+//            skipTests(mojo);
         }
         if (Boolean.getBoolean("running-rpp")) {
-            manipulateArgs(mojo, currentArgs);
+            manipulateArgs(mojo, currentArgs, true);
+        } else { // FIXME: this will break RPS maybe???
+            manipulateArgs(mojo, currentArgs, false);
         }
+        System.out.println("excludes: " + getField("excludes" , mojo));
+        System.out.println("argLine: " + getField("argLine", mojo));
     }
 
     private static String checkSurefireVersion(Object mojo) throws NoSuchFieldException, IllegalAccessException {
@@ -41,7 +57,7 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
     private static void skipTests(Object mojo) throws NoSuchFieldException, IllegalAccessException {
         List<String> currentExcludes = (List<String>) getField("excludes", mojo);
         // always use forward-slash as separator for Surefire's excludes field
-        List<String> newExcludes = new ArrayList<>(Arrays.asList(System.getProperty("rps-test-excludes")
+        List<String> newExcludes = new ArrayList<>(Arrays.asList("**/Test*,**/*Test,**/*Tests,**/*TestCase"
                 .replace("[", "").replace("]", "").replace(File.separator, "/").split(",")));
         if (currentExcludes != null) {
             newExcludes.addAll(currentExcludes);
@@ -49,21 +65,23 @@ public final class SurefireMojoInterceptor extends AbstractMojoInterceptor {
             newExcludes.add("**/*$*");
         }
         setField("excludes", mojo, newExcludes);
-
     }
 
-    private static void manipulateArgs(Object mojo, String currentArgs)
+    private static void manipulateArgs(Object mojo, String currentArgs, boolean setNewAgent)
             throws NoSuchFieldException, IllegalAccessException {
-        String argsToAppend = "";
+        String newArgLine = "";
         if (currentArgs != null) {
+            System.out.println("replacing previousjavamopagent. currentArgs: " + currentArgs);
             // we want to preserve all preexisting arguments besides -javaagent:${previousJavamopAgent}
             String previousJavamopAgent = System.getProperty("previous-javamop-agent");
-            argsToAppend = currentArgs.replace("-javaagent:" + previousJavamopAgent, "");
+            newArgLine = currentArgs.replace("-javaagent:" + previousJavamopAgent, "");
         }
-        String agentPathString = System.getProperty("rpp-agent");
-        if (agentPathString != null) {
-            String newArgLine = "-javaagent:" + agentPathString + " " + argsToAppend;
-            setField("argLine", mojo, newArgLine);
+        if (setNewAgent) {
+            String agentPathString = System.getProperty("rpp-agent");
+            if (agentPathString != null) {
+                newArgLine = "-javaagent:" + agentPathString + " " + newArgLine;
+            }
         }
+        setField("argLine", mojo, newArgLine);
     }
 }
