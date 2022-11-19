@@ -33,8 +33,6 @@ import org.apache.maven.shared.invoker.InvocationResult;
 import org.apache.maven.shared.invoker.Invoker;
 import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.Status;
-import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -82,6 +80,12 @@ public class VmsMojo extends DiffMojo {
      */
     @Parameter(property = "showAllInFile", defaultValue = "false")
     private boolean showAllInFile;
+
+    /**
+     * Whether to always save <code>violation-counts</code> regardless of the current git status.
+     */
+    @Parameter(property = "forceSave", defaultValue = "false")
+    private boolean forceSave;
 
     private Path gitDir;
     private Path oldViolationCounts;
@@ -489,7 +493,7 @@ public class VmsMojo extends DiffMojo {
      */
     private void saveViolationCounts() throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
-            if (isFunctionallyClean(git)) {
+            if (forceSave || isFunctionallyClean(git)) {
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
 
                 try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
