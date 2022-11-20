@@ -179,12 +179,12 @@ public class Util {
         // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
         File violationCounts = new File(originalDir + File.separator + "violation-counts");
         try {
+            File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
             if (!violationCounts.exists()) {
-                violationCounts.delete();
-                violationCounts.createNewFile();
+                newViolationCounts.delete();
+                newViolationCounts.createNewFile();
                 return "";
             }
-            File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
             Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
             return newViolationCounts.getAbsolutePath();
         } catch (IOException ex) {
