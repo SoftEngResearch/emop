@@ -178,16 +178,18 @@ public class Util {
     public static String moveViolationCounts(File originalDir, String newDir, String mode) {
         // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
         File violationCounts = new File(originalDir + File.separator + "violation-counts");
-        if (!violationCounts.exists()) {
-            return "";
-        }
-        File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
         try {
+            File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
+            if (!violationCounts.exists()) {
+                newViolationCounts.delete();
+                newViolationCounts.createNewFile();
+                return "";
+            }
             Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return newViolationCounts.getAbsolutePath();
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-        return newViolationCounts.getAbsolutePath();
     }
 
     /**
