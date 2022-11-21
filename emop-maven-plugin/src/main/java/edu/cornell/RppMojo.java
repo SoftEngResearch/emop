@@ -34,9 +34,10 @@ public class RppMojo extends RppHandlerMojo {
 
     /**
      * Runs maven surefire.
+     * @return false if the surefire run resulted in an exception, true if otherwise
      * @throws MojoExecutionException when the surefire invocation fails.
      */
-    private void invokeSurefire() throws MojoExecutionException {
+    private boolean invokeSurefire() throws MojoExecutionException {
         getLog().info("RPP background phase surefire execution start: " + timeFormatter.format(new Date()));
         PrintStream stdout = System.out;
         PrintStream stderr = System.err;
@@ -49,16 +50,12 @@ public class RppMojo extends RppHandlerMojo {
             SurefireMojoInterceptor.sfMojo.getClass().getMethod("execute").invoke(SurefireMojoInterceptor.sfMojo);
             System.setOut(stdout);
             System.setErr(stderr);
-        } catch (IllegalAccessException ex) {
-            throw new RuntimeException(ex);
-        } catch (InvocationTargetException ex) {
-            throw new RuntimeException(ex);
-        } catch (NoSuchMethodException ex) {
-            throw new RuntimeException(ex);
-        } catch (FileNotFoundException ex) {
-            throw new RuntimeException(ex);
+        } catch (Exception ex) {
+            return false;
+        } finally {
+            getLog().info("RPP background phase surefire execution end: " + timeFormatter.format(new Date()));
         }
-        getLog().info("RPP background phase surefire execution end: " + timeFormatter.format(new Date()));
+        return true;
     }
 
     public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath, String javamopAgent)
@@ -104,7 +101,9 @@ public class RppMojo extends RppHandlerMojo {
         if (!backgroundAgent.isEmpty()) {
             System.setProperty("previous-javamop-agent", previousJavamopAgent);
             System.setProperty("rpp-agent", backgroundAgent);
-            invokeSurefire();
+            if (!invokeSurefire()) {
+                getLog().info("Surefire run threw an exception.");
+            }
             bgViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
             if (bgViolationsPath.isEmpty()) {
                 getLog().info("violation-counts file for background run was not produced, skipping moving...");
