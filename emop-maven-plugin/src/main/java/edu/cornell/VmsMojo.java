@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,6 +38,8 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
+import org.eclipse.jgit.ignore.FastIgnoreRule;
+import org.eclipse.jgit.ignore.IgnoreNode;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
@@ -120,9 +123,9 @@ public class VmsMojo extends DiffMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
 
-        gitDir = Paths.get(executionRootDirectory).resolve(".git");
+        gitDir = Paths.get(executionRootDirectory, ".git");
         oldViolationCounts = Paths.get(getArtifactsDir(), "violation-counts-old");
-        newViolationCounts = Paths.get(System.getProperty("user.dir"), "violation-counts");
+        newViolationCounts = basedir.toPath().resolve("violation-counts");
         lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
 
         touchVmsFiles();
@@ -532,8 +535,15 @@ public class VmsMojo extends DiffMojo {
     }
 
     private boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
+        IgnoreNode ignores = new IgnoreNode(Arrays.asList(
+            new FastIgnoreRule("**/.starts/**"),
+            new FastIgnoreRule("**/target/**"),
+            new FastIgnoreRule("**/violation-counts")
+        ));
+
         for (String file : untracked) {
-            if (!file.startsWith(".starts/") && !file.startsWith("target/") && !file.equals("violation-counts")) {
+            Boolean ignored = ignores.checkIgnored(file, false);
+            if (ignored == null || !ignored) {
                 return false;
             }
         }
