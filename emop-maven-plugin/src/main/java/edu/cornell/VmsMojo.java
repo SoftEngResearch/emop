@@ -87,6 +87,9 @@ public class VmsMojo extends DiffMojo {
     @Parameter(property = "forceSave", defaultValue = "false")
     private boolean forceSave;
 
+    @Parameter(defaultValue = "${session.executionRootDirectory}", required = true, readonly = true)
+    private String executionRootDirectory;
+
     private Path gitDir;
     private Path oldViolationCounts;
     private Path newViolationCounts;
@@ -117,7 +120,7 @@ public class VmsMojo extends DiffMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
 
-        gitDir = basedir.toPath().resolve(".git");
+        gitDir = Paths.get(executionRootDirectory).resolve(".git");
         oldViolationCounts = Paths.get(getArtifactsDir(), "violation-counts-old");
         newViolationCounts = Paths.get(System.getProperty("user.dir"), "violation-counts");
         lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
