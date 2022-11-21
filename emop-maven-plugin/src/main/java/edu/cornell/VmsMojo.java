@@ -290,13 +290,11 @@ public class VmsMojo extends DiffMojo {
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                // Only consider differences if the files has not just been created or deleted and is in the relevant
-                // portion of code (src/main/java) (this file path style matches what is used internally by JGit and
-                // is agnostic of the local OS).
+                // Only consider differences if the file has not just been created or deleted and is a Java source file.
                 // To read more about how JGit indicates a newly created or deleted file, read here:
                 // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/DiffEntry.html
                 if (!diff.getNewPath().equals(DiffEntry.DEV_NULL) && !diff.getOldPath().equals(DiffEntry.DEV_NULL)
-                    && diff.getOldPath().contains("src/main/java/")) {
+                    && diff.getOldPath().endsWith(".java")) {
                     // Gets renamed classes
                     if (!diff.getNewPath().equals(diff.getOldPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
