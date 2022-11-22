@@ -22,10 +22,10 @@ public class Violation {
      * The line number (group 3) is <code>11</code>.
      */
     public static final Pattern pattern =
-            Pattern.compile("(?:\\d+ )?Specification (\\S+) has been violated on line ([^\\(]+)\\([^:]*:(\\d+)\\).*");
+            Pattern.compile("(?:\\d+ )?Specification (\\S+) has been violated on line ([^(]+)\\([^:]*:(\\d+)\\).*");
 
     public static final Pattern specPattern =
-            Pattern.compile("(?:\\d+ )?Specification (\\S+) has been violated on line \\(Unknown\\).*");
+            Pattern.compile("(?:\\d+ )?Specification (\\S+) has been violated on line [^(]*\\(Unknown(?: Source)?\\).*");
 
     private String specification;
     private String className;
@@ -94,7 +94,7 @@ public class Violation {
             if (specMatcher.matches()) {
                 return new Violation(specMatcher.group(1), null, -1);
             } else {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("Could not parse violation: illegal string representation");
             }
         }
 
@@ -124,9 +124,9 @@ public class Violation {
         }
 
         Violation violation = (Violation) object;
-        return specification.equals(violation.getSpecification())
-                && className.equals(violation.getClassName())
-                && lineNum == violation.getLineNum();
+        return Objects.equals(specification, violation.specification)
+                && Objects.equals(className, violation.className)
+                && lineNum == violation.lineNum;
     }
 
     @Override

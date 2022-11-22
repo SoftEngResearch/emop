@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,6 +38,8 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
+import org.eclipse.jgit.ignore.FastIgnoreRule;
+import org.eclipse.jgit.ignore.IgnoreNode;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
@@ -87,6 +90,9 @@ public class VmsMojo extends DiffMojo {
     @Parameter(property = "forceSave", defaultValue = "false")
     private boolean forceSave;
 
+    @Parameter(defaultValue = "${session.executionRootDirectory}", required = true, readonly = true)
+    private String executionRootDirectory;
+
     private Path gitDir;
     private Path oldViolationCounts;
     private Path newViolationCounts;
@@ -117,9 +123,9 @@ public class VmsMojo extends DiffMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
 
-        gitDir = basedir.toPath().resolve(".git");
+        gitDir = Paths.get(executionRootDirectory, ".git");
         oldViolationCounts = Paths.get(getArtifactsDir(), "violation-counts-old");
-        newViolationCounts = Paths.get(System.getProperty("user.dir"), "violation-counts");
+        newViolationCounts = basedir.toPath().resolve("violation-counts");
         lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
 
         touchVmsFiles();
@@ -290,13 +296,11 @@ public class VmsMojo extends DiffMojo {
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
-                // Only consider differences if the files has not just been created or deleted and is in the relevant
-                // portion of code (src/main/java) (this file path style matches what is used internally by JGit and
-                // is agnostic of the local OS).
+                // Only consider differences if the file has not just been created or deleted and is a Java source file.
                 // To read more about how JGit indicates a newly created or deleted file, read here:
                 // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/DiffEntry.html
                 if (!diff.getNewPath().equals(DiffEntry.DEV_NULL) && !diff.getOldPath().equals(DiffEntry.DEV_NULL)
-                    && diff.getOldPath().contains("src/main/java/")) {
+                    && diff.getOldPath().endsWith(".java")) {
                     // Gets renamed classes
                     if (!diff.getNewPath().equals(diff.getOldPath())) {
                         renames.put(diff.getNewPath(), diff.getOldPath());
@@ -531,8 +535,15 @@ public class VmsMojo extends DiffMojo {
     }
 
     private boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
+        IgnoreNode ignores = new IgnoreNode(Arrays.asList(
+            new FastIgnoreRule("**/.starts/**"),
+            new FastIgnoreRule("**/target/**"),
+            new FastIgnoreRule("**/violation-counts")
+        ));
+
         for (String file : untracked) {
-            if (!file.startsWith(".starts/") && !file.startsWith("target/") && !file.equals("violation-counts")) {
+            Boolean ignored = ignores.checkIgnored(file, false);
+            if (ignored == null || !ignored) {
                 return false;
             }
         }

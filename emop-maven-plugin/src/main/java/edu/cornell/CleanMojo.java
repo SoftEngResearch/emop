@@ -43,7 +43,7 @@ public class CleanMojo extends edu.illinois.starts.jdeps.CleanMojo {
                     FileUtil.delete(Paths.get(System.getProperty("user.dir"), "weaved-bytecode").toFile());
                     break;
                 case VIOLATION_COUNTS:
-                    FileUtil.delete(Paths.get(System.getProperty("user.dir"), "violation-counts").toFile());
+                    FileUtil.delete(basedir.toPath().resolve("violation-counts").toFile());
                     break;
                 default:
                     break;
