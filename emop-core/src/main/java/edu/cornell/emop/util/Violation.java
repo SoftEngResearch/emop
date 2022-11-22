@@ -124,9 +124,9 @@ public class Violation {
         }
 
         Violation violation = (Violation) object;
-        return specification.equals(violation.getSpecification())
-                && className.equals(violation.getClassName())
-                && lineNum == violation.getLineNum();
+        return Objects.equals(specification, violation.specification)
+                && Objects.equals(className, violation.className)
+                && lineNum == violation.lineNum;
     }
 
     @Override
