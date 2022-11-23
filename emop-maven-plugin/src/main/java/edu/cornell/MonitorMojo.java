@@ -2,9 +2,7 @@ package edu.cornell;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import edu.cornell.emop.maven.AgentLoader;
@@ -17,10 +15,10 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
+    public static final String monitorFile = "new-aop-ajc.xml";
+
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
-
-    private String monitorFile = "new-aop-ajc.xml";
 
     /**
      * The path that specify the Javamop Agent JAR file.

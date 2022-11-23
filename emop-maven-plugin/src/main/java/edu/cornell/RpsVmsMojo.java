@@ -10,6 +10,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rps-vms")
 public class RpsVmsMojo extends VmsMojo {
     public void execute() throws MojoExecutionException {
+        super.monitorFile = MonitorMojo.monitorFile;
         super.execute();
     }
 }
