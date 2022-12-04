@@ -98,6 +98,9 @@ Invoke various eMOP goals with the following commands:
 - `includeNonAffected` (default: `true`) indicates whether unaffected classes in the program should be monitored. Setting this option to `false` excludes all unaffected classes from monitoring, resulting in a RPS variant with an *c* in its superscript.
 - `javamopAgent` indicates the location of the JavaMOP jar. The default location is `${M2_HOME}/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar`.
 
+### VMS Options
+
+- `javamopAgent` indicates the location of the JavaMOP jar. The default location is `${M2_HOME}/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar`.
 
 ### RPP Options
 
