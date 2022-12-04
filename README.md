@@ -87,9 +87,3 @@ Invoke various eMOP goals with the following commands:
 7. `mvn emop:rps−vms`: run RPS+VMS
 8. `mvn emop:rps−rpp`: run RPS+RPP
 9. `mvn emop:clean`: delete all metadata
-
-## Options
-
-### RPS options
-
-> TODO: Finish it
