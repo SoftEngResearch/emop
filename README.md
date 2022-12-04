@@ -65,14 +65,12 @@ To integrate eMOP as a plugin into your Maven project, add the following segment
       <plugin>
         <artifactId>emop-maven-plugin</artifactId>
         <groupId>edu.cornell</groupId>
-        <version>${latest eMOP version}</version>
+        <version>1.0-SNAPSHOT</version>
       </plugin>
     </plugins>
   </build>
 </project>
 ```
-
-> TODO: Need to release versions for users
 
 ## Usages
 
@@ -87,3 +85,23 @@ Invoke various eMOP goals with the following commands:
 7. `mvn emop:rps−vms`: run RPS+VMS
 8. `mvn emop:rps−rpp`: run RPS+RPP
 9. `mvn emop:clean`: delete all metadata
+
+## Options
+
+### RPS Options
+
+- `closureOption` (default: `TRANSITIVE`) determines which option to use for computing impacted classes.
+   - `TRANSITIVE` (*ps3*) will only instrument properties impacted by the set of changed and new classes (Δ), and the dependents of Δ (classes that depend on those in Δ).
+   - `TRANSITIVE_AND_INVERSE_TRANSITIVE` (*ps2*) will instrument all properties that `TRANSITIVE` instruments, along with properties impacted by the dependees of Δ (classes that those in Δ depend on).
+   - `TRANSITIVE_OF_INVERSE_TRANSITIVE` (*ps1*) will instrument all properties that `TRANSITIVE_AND_INVERSE_TRANSITIVE` instruments, along with properties impacted by the dependees of dependents of Δ. This is the safest option out of the three.
+- `includeLibraries` (default: `true`) indicates whether third-party library classes should be monitored. Setting this option to `false` exludes all third-party library classes from monitoring, resulting in a weak RPS variant with an *l* in its superscript.
+- `includeNonAffected` (default: `true`) indicates whether unaffected classes in the program should be monitored. Setting this option to `false` excludes all unaffected classes from monitoring, resulting in a RPS variant with an *c* in its superscript.
+- `javamopAgent` indicates the location of the JavaMOP jar. The default location is `${M2_HOME}/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar`.
+
+
+### RPP Options
+
+- `backgroundSpecsFile` indicates the location of a file containing the set of background properties. The file should contain a newline-delimited list of property names. In the default case, either (1) it is the first invocation of RPP, in which RPP will not run anything in the background phase, or (2) RPP will run previously non-violated properties in the background phase.
+- `criticalSpecsFile` indicates the location of a file containing the set of critical properties. The file should contain a newline-delimited list of property names. In the default case, either (1) it is the first invocation of RPP, in which RPP will run all properties in the critical phase, or (2) RPP will run previously violated properties in the critical phase.
+- `demoteCritical` (default: `false`) indicates whether properties that were in the critical set but did not get violated on the current run should be designated to the background set for the next iteration.
+- `javamopAgent` indicates the location of the JavaMOP jar. The default location is `${M2_HOME}/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar`.
