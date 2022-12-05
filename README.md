@@ -12,6 +12,7 @@ eMOP is a Maven plugin that realizes evolution-aware runtime verification throug
 3. [Integration](#Integration)
 4. [Usages](#Usages)
 5. [Options](#Options)
+6. [Citation](#Citation)
 
 ## Prerequisites
 
@@ -112,3 +113,20 @@ Invoke various eMOP goals with the following commands:
 - `criticalSpecsFile` indicates the location of a file containing the set of critical properties. The file should contain a newline-delimited list of property names. In the default case, either (1) it is the first invocation of RPP, in which RPP will run all properties in the critical phase, or (2) RPP will run previously violated properties in the critical phase.
 - `demoteCritical` (default: `false`) indicates whether properties that were in the critical set but did not get violated on the current run should be designated to the background set for the next iteration.
 - `javamopAgent` indicates the location of the JavaMOP jar. The default location is `${M2_HOME}/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar`.
+
+## Citation
+
+Title: [Techniques for Evolution-Aware Runtime Verification](https://www.cs.cornell.edu/~legunsen/pubs/LegunsenETAL19eMOP.pdf)
+
+Authors: Owolabi Legunsen, Yi Zhang, Milica Hadzi-Tanovic, Grigore Rosu, Darko Marinov
+
+```bibtex
+@inproceedings{LegunsenETALeMOPICST2019,
+  author =       {Legunsen, Owolabi and Zhang, Yi and Hadzi-Tanovic, Milica
+                  and Rosu, Grigore and Marinov, Darko},
+  title =        {Techniques for Evolution-Aware Runtime Verification},
+  booktitle =    {ICST},
+  year =         {2019},
+  pages =        {300-311}
+}
+```
