@@ -28,13 +28,21 @@ Make sure you install the `impacted-both-ways` branch of [STARTS](https://github
 bash scripts/install-starts.sh
 ```
 
-### Javamop & Javamop Agent
+### JavaMOP
 
-> TODO:
->
-> 1. Finish writing up Javamop & Javamop Agent
-> 2. Requirements for Maven and Surefire
-> 3. Requirements for OS?
+To install `JavaMOP`, clone [JavaMOP](https://github.com/owolabileg/javamop) and follow the installation guide there.
+
+### JavaMOP Agent
+
+To install `JavaMOP` agent, clone [JavaMOP Agent](https://github.com/SoftEngResearch/javamop-agent-bundle) and follow the installation guide there.
+
+### Maven
+
+Use Maven version `3.3.9` or above.
+
+### Maven Surefire Plugin
+
+`maven-surefire-plugin` has to have a version number of `2.20` or higher.
 
 ## Installation
 
@@ -60,6 +68,8 @@ To integrate eMOP as a plugin into your Maven project, add the following segment
         <artifactId>maven−sureﬁre−plugin</artifactId>
         <version>2.20 or greater</version>
         <configuration>
+          <!-- Use $HOME/.m2/repository/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar -->
+          <!-- if you do not have a specific javamop agent jar that you want to use. -->
         	<argLine>−javaagent:${JavaMOP jar}</argLine>
         </configuration>
       </plugin>
