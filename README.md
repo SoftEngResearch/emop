@@ -94,12 +94,16 @@ Invoke various eMOP goals with the following commands:
    - `TRANSITIVE` (*ps3*) will only instrument properties impacted by the set of changed and new classes (Δ), and the dependents of Δ (classes that depend on those in Δ).
    - `TRANSITIVE_AND_INVERSE_TRANSITIVE` (*ps2*) will instrument all properties that `TRANSITIVE` instruments, along with properties impacted by the dependees of Δ (classes that those in Δ depend on).
    - `TRANSITIVE_OF_INVERSE_TRANSITIVE` (*ps1*) will instrument all properties that `TRANSITIVE_AND_INVERSE_TRANSITIVE` instruments, along with properties impacted by the dependees of dependents of Δ. This is the safest option out of the three.
-- `includeLibraries` (default: `true`) indicates whether third-party library classes should be monitored. Setting this option to `false` exludes all third-party library classes from monitoring, resulting in a weak RPS variant with an *l* in its superscript.
+- `includeLibraries` (default: `true`) indicates whether third-party library classes should be monitored. Setting this option to `false` excludes all third-party library classes from monitoring, resulting in a weak RPS variant with an *l* in its superscript.
 - `includeNonAffected` (default: `true`) indicates whether unaffected classes in the program should be monitored. Setting this option to `false` excludes all unaffected classes from monitoring, resulting in a RPS variant with an *c* in its superscript.
 - `javamopAgent` indicates the location of the JavaMOP jar. The default location is `${M2_HOME}/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar`.
 
 ### VMS Options
 
+- `lastSha` indicates the sha against which "new" code will be determined. By default, the last sha VMS was run on will be used.
+- `newSha` indicates the sha for which "new" code will be determined. By default, the working tree will be used.
+- `showAllInConsole` (default: `false`) indicates whether all violations should be shown in the console.
+- `showAllInFile` (default: `false`) indicates whether all violations should be shown in the `violation-counts` file.
 - `javamopAgent` indicates the location of the JavaMOP jar. The default location is `${M2_HOME}/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar`.
 
 ### RPP Options
