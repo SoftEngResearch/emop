@@ -229,6 +229,7 @@ public class VmsMojo extends DiffMojo {
         InvocationRequest request = new DefaultInvocationRequest();
         request.setGoals(Collections.singletonList("surefire:test"));
         request.setProperties(System.getProperties());
+        request.setBatchMode(true);
         InvocationOutputHandler outputHandler = new SurefireOutputHandler(new ViolationFilterer());
         request.setOutputHandler(outputHandler);
         request.setErrorHandler(outputHandler);
