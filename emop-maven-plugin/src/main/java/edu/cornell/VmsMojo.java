@@ -228,6 +228,7 @@ public class VmsMojo extends DiffMojo {
     private void invokeSurefire() throws MojoExecutionException {
         InvocationRequest request = new DefaultInvocationRequest();
         request.setGoals(Collections.singletonList("surefire:test"));
+        request.setProperties(System.getProperties());
         InvocationOutputHandler outputHandler = new SurefireOutputHandler(new ViolationFilterer());
         request.setOutputHandler(outputHandler);
         request.setErrorHandler(outputHandler);
