@@ -79,6 +79,13 @@ public class VmsMojo extends DiffMojo {
     private String lastSha;
 
     /**
+     * Filename to read the "old" violations from. The filename is resolved
+     * against the artifacts directory.
+     */
+    @Parameter(property = "lastViolationsFile", defaultValue = "violation-counts-old")
+    private String lastViolationsFile;
+
+    /**
      * Specific SHA to use as the "new" version of code when making comparisons.
      */
     @Parameter(property = "newSha", required = false)
@@ -142,7 +149,7 @@ public class VmsMojo extends DiffMojo {
         getLog().info("[eMOP] Invoking the VMS Mojo...");
 
         gitDir = Paths.get(executionRootDirectory, ".git");
-        oldViolationCounts = Paths.get(getArtifactsDir(), "violation-counts-old");
+        oldViolationCounts = Paths.get(getArtifactsDir(), lastViolationsFile);
         newViolationCounts = basedir.toPath().resolve("violation-counts");
         lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
 
