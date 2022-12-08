@@ -83,4 +83,35 @@
       </phase>
     </phases>
   </lifecycle>
+  <lifecycle>
+    <id>rpp-vms</id>
+    <phases>
+      <phase>
+        <id>process-test-classes</id>
+        <executions>
+          <execution>
+            <goals>
+              <goal>rpp-handler</goal>
+            </goals>
+          </execution>
+        </executions>
+      </phase>
+      <phase>
+        <id>test</id>
+        <executions>
+          <execution>
+            <goals>
+              <goal>vms</goal>
+            </goals>
+            <configuration>
+              <lastViolationsFile>critical-violation-counts.txt</lastViolationsFile>
+            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <skipTests>true</skipTests>
+        </configuration>
+      </phase>
+    </phases>
+  </lifecycle>
 </lifecycles>

@@ -3,15 +3,12 @@ package edu.cornell;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -24,6 +21,13 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.shared.invoker.DefaultInvocationRequest;
+import org.apache.maven.shared.invoker.DefaultInvoker;
+import org.apache.maven.shared.invoker.InvocationOutputHandler;
+import org.apache.maven.shared.invoker.InvocationRequest;
+import org.apache.maven.shared.invoker.InvocationResult;
+import org.apache.maven.shared.invoker.Invoker;
+import org.apache.maven.shared.invoker.MavenInvocationException;
 
 @Mojo(name = "rpp", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
@@ -31,6 +35,9 @@ public class RppMojo extends RppHandlerMojo {
 
     @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
     private boolean demoteCritical;
+
+    @Parameter(property = "runWithVMS", defaultValue = "false", required = false)
+    private boolean runWithVMS;
 
     /**
      * Runs maven surefire.
@@ -56,6 +63,27 @@ public class RppMojo extends RppHandlerMojo {
             getLog().info("RPP background phase surefire execution end: " + timeFormatter.format(new Date()));
         }
         return true;
+    }
+
+    private void invokeGoal(String goal, String argLine) throws MojoExecutionException {
+        InvocationRequest request = new DefaultInvocationRequest();
+        request.setGoals(Collections.singletonList(goal));
+        request.setBatchMode(true);
+        request.addArg("-DargLine=" + argLine);
+        InvocationOutputHandler outputHandler = s -> {};
+        request.setOutputHandler(outputHandler);
+        request.setErrorHandler(outputHandler);
+
+        try {
+            Invoker invoker = new DefaultInvoker();
+            InvocationResult result = invoker.execute(request);
+
+            if (result.getExitCode() != 0) {
+                throw new MojoExecutionException(goal + " reported exit code " + result.getExitCode());
+            }
+        } catch (MavenInvocationException ex) {
+            throw new MojoExecutionException("Failed to execute " + goal, ex);
+        }
     }
 
     public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath, String javamopAgent)
@@ -101,9 +129,7 @@ public class RppMojo extends RppHandlerMojo {
         if (!backgroundAgent.isEmpty()) {
             System.setProperty("previous-javamop-agent", previousJavamopAgent);
             System.setProperty("rpp-agent", backgroundAgent);
-            if (!invokeSurefire()) {
-                getLog().info("Surefire run threw an exception.");
-            }
+            invokeGoal(runWithVMS ? "emop:vms" : "surefire:test", "-javaagent:" + backgroundAgent);
             bgViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
             if (bgViolationsPath.isEmpty()) {
                 getLog().info("violation-counts file for background run was not produced, skipping moving...");
@@ -119,5 +145,4 @@ public class RppMojo extends RppHandlerMojo {
         }
         getLog().info("RPP background phase end: " + timeFormatter.format(new Date()));
     }
-
 }
