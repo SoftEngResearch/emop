@@ -15,12 +15,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.surefire.SurefireProperties;
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -221,6 +223,21 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
+     * Gets the system properties to forward to Surefire.
+     *
+     * @return The properties to forward
+     */
+    private static Properties getPropertiesToForward() {
+        SurefireProperties properties = new SurefireProperties(System.getProperties());
+
+        for (Object property : properties.propertiesThatCannotBeSetASystemProperties()) {
+            properties.remove(property);
+        }
+
+        return properties;
+    }
+
+    /**
      * Runs Maven Surefire.
      *
      * @throws MojoExecutionException if the Surefire execution fails.
@@ -228,7 +245,7 @@ public class VmsMojo extends DiffMojo {
     private void invokeSurefire() throws MojoExecutionException {
         InvocationRequest request = new DefaultInvocationRequest();
         request.setGoals(Collections.singletonList("surefire:test"));
-        request.setProperties(System.getProperties());
+        request.setProperties(getPropertiesToForward());
         request.setBatchMode(true);
         InvocationOutputHandler outputHandler = new SurefireOutputHandler(new ViolationFilterer());
         request.setOutputHandler(outputHandler);
