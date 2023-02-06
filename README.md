@@ -34,7 +34,7 @@ To install `JavaMOP`, clone [JavaMOP](https://github.com/owolabileg/javamop) and
 
 ### JavaMOP Agent
 
-To install `JavaMOP` agent, clone [JavaMOP Agent](https://github.com/SoftEngResearch/javamop-agent-bundle) and follow the installation guide there.
+To install `JavaMOP` agent, clone [JavaMOP Agent](https://github.com/SoftEngResearch/javamop-agent-bundle), checkout the `record-spec-list` branch, and follow the installation guide there.
 
 ### Maven
 
