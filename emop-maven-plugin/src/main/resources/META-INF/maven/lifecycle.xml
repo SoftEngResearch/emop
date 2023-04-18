@@ -86,7 +86,7 @@
     </phases>
   </lifecycle>
   <lifecycle>
-    <id>rps-vms</id>
+    <id>rpp-vms</id>
     <phases>
       <phase>
         <id>process-test-classes</id>
@@ -112,7 +112,7 @@
     </phases>
   </lifecycle>
   <lifecycle>
-    <id>rpp-vms</id>
+    <id>rps-vms</id>
     <phases>
       <phase>
         <id>process-test-classes</id>
