@@ -2,9 +2,7 @@ package edu.cornell;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import edu.cornell.emop.maven.AgentLoader;
@@ -17,10 +15,10 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
+    public static final String MONITOR_FILE = "new-aop-ajc.xml";
+
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
-
-    private String monitorFile = "new-aop-ajc.xml";
 
     /**
      * The path that specify the Javamop Agent JAR file.
@@ -59,7 +57,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
-        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + monitorFile, affectedSpecs,
+        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (rpsRpp) {
             getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
@@ -77,7 +75,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
         }
-        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + monitorFile);
+        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + MONITOR_FILE);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
     }

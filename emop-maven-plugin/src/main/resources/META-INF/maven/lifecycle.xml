@@ -21,29 +21,29 @@
   </lifecycle>
   <lifecycle>
     <id>vms</id>
-      <phases>
-        <phase>
-          <id>process-test-classes</id>
-          <executions>
-            <execution>
-              <goals>
-                <goal>clean</goal>
-              </goals>
-              <configuration>
-                <mode>VIOLATION_COUNTS</mode>
-              </configuration>
-            </execution>
-          </executions>
-        </phase>
-        <phase>
-          <id>test</id>
-          <!--
-          <configuration>
-            <skipTests>true</skipTests>
-          </configuration>
-          -->
-        </phase>
-      </phases>
+    <phases>
+      <phase>
+        <id>process-test-classes</id>
+        <executions>
+          <execution>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+            <configuration>
+              <mode>VIOLATION_COUNTS</mode>
+            </configuration>
+          </execution>
+        </executions>
+      </phase>
+      <phase>
+        <id>test</id>
+        <!--
+        <configuration>
+          <skipTests>true</skipTests>
+        </configuration>
+        -->
+      </phase>
+    </phases>
   </lifecycle>
   <lifecycle>
     <id>rpp</id>
@@ -76,6 +76,32 @@
             </goals>
             <configuration>
               <rpsRpp>true</rpsRpp>
+            </configuration>
+          </execution>
+        </executions>
+      </phase>
+      <phase>
+        <id>test</id>
+      </phase>
+    </phases>
+  </lifecycle>
+  <lifecycle>
+    <id>rps-vms</id>
+    <phases>
+      <phase>
+        <id>process-test-classes</id>
+        <executions>
+          <execution>
+            <goals>
+              <goal>monitor</goal>
+            </goals>
+          </execution>
+          <execution>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+            <configuration>
+              <mode>VIOLATION_COUNTS</mode>
             </configuration>
           </execution>
         </executions>
