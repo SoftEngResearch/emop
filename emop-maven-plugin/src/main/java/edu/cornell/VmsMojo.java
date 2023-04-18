@@ -1,6 +1,7 @@
 package edu.cornell;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -8,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,6 +19,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLEventReader;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.events.StartElement;
+import javax.xml.stream.events.XMLEvent;
 
 import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
@@ -52,6 +62,14 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
+
+    /**
+     * Monitor file from which to read monitored specs and excluded classes. The given path is
+     * resolved relative to the artifacts directory. Can be left null to indicate that all specs and
+     * classes were monitored.
+     */
+    @Parameter(property = "monitorFile", required = false)
+    protected String monitorFile;
 
     /**
      * Specific SHA to use as the "old" version of code when making comparisons.
@@ -288,7 +306,7 @@ public class VmsMojo extends DiffMojo {
             trees.add(new CanonicalTreeParser(null, objectReader, olderCommit.getTree().getId()));
             diffs = diffFormatter.scan(trees.get(1), trees.get(0));
         } catch (IOException exception) {
-            throw new MojoExecutionException("Failed to fetch code version");
+            throw new MojoExecutionException("Failed to fetch code version", exception);
         }
 
         return diffs;
@@ -351,7 +369,7 @@ public class VmsMojo extends DiffMojo {
                 }
             }
         } catch (IOException exception) {
-            throw new MojoExecutionException("Encountered an error when comparing different files");
+            throw new MojoExecutionException("Encountered an error when comparing different files", exception);
         }
     }
 
@@ -455,7 +473,7 @@ public class VmsMojo extends DiffMojo {
         try {
             lines = Files.readAllLines(newViolationCounts);
         } catch (IOException exception) {
-            throw new MojoExecutionException("Failure encountered when reading violation-counts");
+            throw new MojoExecutionException("Failure encountered when reading violation-counts", exception);
         }
 
         try (PrintWriter writer = new PrintWriter(newViolationCounts.toFile())) {
@@ -465,7 +483,7 @@ public class VmsMojo extends DiffMojo {
                 }
             }
         } catch (IOException exception) {
-            throw new MojoExecutionException("Failure encountered when writing violation-counts");
+            throw new MojoExecutionException("Failure encountered when writing violation-counts", exception);
         }
     }
 
@@ -505,7 +523,9 @@ public class VmsMojo extends DiffMojo {
     private void saveViolationCounts() throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
             if (forceSave || isFunctionallyClean(git)) {
+                List<String> carryoverViolations = getCarryoverViolations();
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
+                Files.write(oldViolationCounts, carryoverViolations, StandardOpenOption.APPEND);
 
                 try (PrintWriter out = new PrintWriter(lastShaPath.toFile())) {
                     out.println(git.getRepository().resolve(Constants.HEAD).name());
@@ -558,6 +578,73 @@ public class VmsMojo extends DiffMojo {
     }
 
     /**
+     * Returns the lines of <code>violation-counts-old</code> representing violations that
+     * correspond to classes or specs that were not monitored in the last run.
+     *
+     * @return List of violations to carry over
+     */
+    private List<String> getCarryoverViolations() throws MojoExecutionException {
+        if (firstRun || monitorFile == null) {
+            return Collections.emptyList();
+        }
+
+        List<String> lines = null;
+        try {
+            lines = Files.readAllLines(oldViolationCounts);
+        } catch (IOException ex) {
+            throw new MojoExecutionException("Failed to read violation-counts-old", ex);
+        }
+
+        if ("true".equals(System.getProperty("exiting-rps"))) {
+            return lines;
+        }
+
+        Set<String> specs = new HashSet<>();
+        Set<String> excludedClasses = new HashSet<>();
+
+        try {
+            XMLEventReader reader = XMLInputFactory.newInstance().createXMLEventReader(
+                    new FileInputStream(Paths.get(getArtifactsDir(), monitorFile).toFile()));
+
+            while (reader.hasNext()) {
+                XMLEvent event = reader.nextEvent();
+
+                if (event.isStartElement()) {
+                    StartElement element = event.asStartElement();
+
+                    switch (element.getName().getLocalPart()) {
+                        case "aspect":
+                            String name = element.getAttributeByName(new QName("name")).getValue();
+                            // remove "mop." from start and "MonitorAspect" from end
+                            String spec = name.substring(4, name.length() - 13);
+                            specs.add(spec);
+                            break;
+                        case "exclude":
+                            String within = element.getAttributeByName(new QName("within")).getValue();
+                            String className = within.replace('.', '/') + ".java";
+                            excludedClasses.add(className);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        } catch (IOException | XMLStreamException ex) {
+            throw new MojoExecutionException("Failed to parse monitor file", ex);
+        }
+
+        return lines.stream()
+                .filter(line -> {
+                    Violation violation = Violation.parseViolation(line);
+
+                    return excludedClasses.contains(violation.getClassName())
+                            && violation.getClassName().indexOf('$') == -1      // TODO: fix inner class exclusion
+                            || !specs.contains(violation.getSpecification());
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Reads and returns the lastSha. That is, the SHA which corresponds to the "old" version of code.
      *
      * @return String of the previous SHA, null if the file is empty
@@ -574,7 +661,7 @@ public class VmsMojo extends DiffMojo {
             }
             return sha;
         } catch (IOException exception) {
-            throw new MojoExecutionException("Error encountered when reading lastSha");
+            throw new MojoExecutionException("Error encountered when reading lastSha", exception);
         }
     }
 }

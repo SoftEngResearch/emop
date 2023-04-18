@@ -34,7 +34,7 @@ To install `JavaMOP`, clone [JavaMOP](https://github.com/owolabileg/javamop) and
 
 ### JavaMOP Agent
 
-To install `JavaMOP` agent, clone [JavaMOP Agent](https://github.com/SoftEngResearch/javamop-agent-bundle) and follow the installation guide there.
+To install `JavaMOP` agent, clone [JavaMOP Agent](https://github.com/SoftEngResearch/javamop-agent-bundle), checkout the `record-spec-list` branch, and follow the installation guide there.
 
 ### Maven
 
@@ -66,7 +66,7 @@ To integrate eMOP as a plugin into your Maven project, add the following segment
       <plugin>
       	<groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven−sureﬁre−plugin</artifactId>
-        <version>2.20 or greater</version>
+        <version>2.20</version> <!-- 2.20 or greater -->
         <configuration>
           <!-- Use $HOME/.m2/repository/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar -->
           <!-- if you do not have a specific javamop agent jar that you want to use. -->
