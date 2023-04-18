@@ -32,6 +32,10 @@ public class RppMojo extends RppHandlerMojo {
     @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
     private boolean demoteCritical;
 
+    public void setDemoteCritical(boolean demoteCritical) {
+        this.demoteCritical = demoteCritical;
+    }
+
     /**
      * Runs maven surefire.
      * @return false if the surefire run resulted in an exception, true if otherwise
