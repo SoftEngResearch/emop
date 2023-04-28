@@ -8,6 +8,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Date;
@@ -35,6 +36,9 @@ public class RppMojo extends RppHandlerMojo {
     public void setDemoteCritical(boolean demoteCritical) {
         this.demoteCritical = demoteCritical;
     }
+
+    protected String criticalViolationsPath;
+    protected String bgViolationsPath;
 
     /**
      * Runs maven surefire.
@@ -95,8 +99,7 @@ public class RppMojo extends RppHandlerMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("RPP background phase start: " + timeFormatter.format(new Date()));
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
-        String criticalViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
-        String bgViolationsPath = "";
+        criticalViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
         if (criticalViolationsPath.isEmpty()) {
             getLog().info("violation-counts file for critical run was not produced, skipping moving...");
         }
