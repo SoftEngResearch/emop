@@ -125,7 +125,7 @@ public class VmsMojo extends DiffMojo {
 
     // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
     // and deletions
-    private final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
+    private static final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
     // Map from a file to a map representing the number of additional lines added or deleted at each line
     // of the original file. If the value is 0, the line has been modified in place.
@@ -278,7 +278,11 @@ public class VmsMojo extends DiffMojo {
      * @return List of differences between two most recent commits of the repository
      * @throws MojoExecutionException if error is encountered at runtime
      */
-    private List<DiffEntry> getCommitDiffs() throws MojoExecutionException {
+    public List<DiffEntry> getCommitDiffs() throws MojoExecutionException {
+        return getCommitDiffsHelper(gitDir, lastSha, newSha);
+    }
+
+    public static List<DiffEntry> getCommitDiffsHelper(Path gitDir, String lastSha, String newSha) throws MojoExecutionException {
         ObjectReader objectReader;
         List<DiffEntry> diffs;
         List<AbstractTreeIterator> trees = new ArrayList<>();
