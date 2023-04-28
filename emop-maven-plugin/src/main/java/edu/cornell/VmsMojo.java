@@ -168,7 +168,7 @@ public class VmsMojo extends DiffMojo {
         getLog().info("Number of total violations found: " + newViolations.size());
 
         if (!firstRun) {
-            removeDuplicateViolations();
+            removeDuplicateViolations(oldViolations, newViolations);
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
@@ -323,6 +323,13 @@ public class VmsMojo extends DiffMojo {
      * @throws MojoExecutionException if error is encountered at runtime
      */
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
+        findLineChangesAndRenamesHelper(diffs, renames, offsets, modifiedLines);
+    }
+
+    public static void findLineChangesAndRenamesHelper(List<DiffEntry> diffs,
+                                                Map<String, String> renames,
+                                                Map<String, Map<Integer, Integer>> offsets,
+                                                Map<String, Set<Integer>> modifiedLines) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
                 // Only consider differences if the file has not just been created or deleted and is a Java source file.
@@ -380,7 +387,7 @@ public class VmsMojo extends DiffMojo {
     /**
      * Removes newViolations of violations believed to be duplicates from violation-counts-old.
      */
-    private void removeDuplicateViolations() {
+    public void removeDuplicateViolations(Set<Violation> oldViolations, Set<Violation> newViolations) {
         Set<Violation> violationsToRemove = new HashSet<>();
         for (Violation newViolation : newViolations) {
             for (Violation oldViolation : oldViolations) {
@@ -472,7 +479,7 @@ public class VmsMojo extends DiffMojo {
     /**
      * Rewrites <code>violation-counts</code> to only include violations in newViolations.
      */
-    private void rewriteViolationCounts() throws MojoExecutionException {
+    public void rewriteViolationCounts() throws MojoExecutionException {
         List<String> lines = null;
         try {
             lines = Files.readAllLines(newViolationCounts);
@@ -525,9 +532,20 @@ public class VmsMojo extends DiffMojo {
      * created by RV-Monitor in <code>violation-counts-old</code>.
      */
     private void saveViolationCounts() throws MojoExecutionException {
+        Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
+        saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCounts, oldViolationCounts);
+    }
+
+    public static void saveViolationCounts(boolean forceSave,
+                                           boolean firstRun,
+                                           Path monitorFile,
+                                           Path gitDir,
+                                           Path lastShaPath,
+                                           Path newViolationCounts,
+                                           Path oldViolationCounts) throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
             if (forceSave || isFunctionallyClean(git)) {
-                List<String> carryoverViolations = getCarryoverViolations();
+                List<String> carryoverViolations = getCarryoverViolations(firstRun, monitorFile, oldViolationCounts);
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
                 Files.write(oldViolationCounts, carryoverViolations, StandardOpenOption.APPEND);
 
@@ -550,7 +568,7 @@ public class VmsMojo extends DiffMojo {
      * @return Boolean of whether to consider the git functionally clean for the purposes of VMS
      * @throws MojoExecutionException if error encountered at runtime
      */
-    private boolean isFunctionallyClean(Git git) throws MojoExecutionException {
+    private static boolean isFunctionallyClean(Git git) throws MojoExecutionException {
         try {
             // changes in the repo will either be untracked or uncommitted - a functionally clean repo will not have
             // any uncommitted changes but may have exactly three untracked files which were created by eMOP
@@ -565,7 +583,7 @@ public class VmsMojo extends DiffMojo {
         }
     }
 
-    private boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
+    private static boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
         IgnoreNode ignores = new IgnoreNode(Arrays.asList(
             new FastIgnoreRule("**/.starts/**"),
             new FastIgnoreRule("**/target/**"),
@@ -587,7 +605,8 @@ public class VmsMojo extends DiffMojo {
      *
      * @return List of violations to carry over
      */
-    private List<String> getCarryoverViolations() throws MojoExecutionException {
+    private static List<String> getCarryoverViolations(boolean firstRun, Path monitorFile, Path oldViolationCounts)
+            throws MojoExecutionException {
         if (firstRun || monitorFile == null) {
             return Collections.emptyList();
         }
@@ -608,7 +627,7 @@ public class VmsMojo extends DiffMojo {
 
         try {
             XMLEventReader reader = XMLInputFactory.newInstance().createXMLEventReader(
-                    new FileInputStream(Paths.get(getArtifactsDir(), monitorFile).toFile()));
+                    new FileInputStream(monitorFile.toFile()));
 
             while (reader.hasNext()) {
                 XMLEvent event = reader.nextEvent();

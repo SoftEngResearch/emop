@@ -1,8 +1,14 @@
 package edu.cornell;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import edu.cornell.emop.util.Violation;
@@ -22,7 +28,6 @@ public class RppVmsMojo extends RppMojo {
     private String executionRootDirectory;
 
     protected Path gitDir;
-
 
     // copied from VMS - is there a better way to do this?
     /**
@@ -44,11 +49,15 @@ public class RppVmsMojo extends RppMojo {
     @Parameter(property = "firstRun", required = false, defaultValue = "false")
     private boolean firstRun;
 
+    /**
+     * Filename to read the "old" violations from. The filename is resolved
+     * against the artifacts directory.
+     */
+    @Parameter(property = "lastViolationsFile", defaultValue = "violation-counts-old")
+    private String lastViolationsFile;
+
     private Path oldViolationCountsPath;
     private Path newViolationCountsPath;
-
-    private Set<Violation> oldViolations;
-    private Set<Violation> newViolations;
 
 
     public void execute() throws MojoExecutionException {
@@ -56,9 +65,46 @@ public class RppVmsMojo extends RppMojo {
         doVMSPart();
     }
 
+    protected String getLastShaHelper() throws MojoExecutionException {
+        if (lastSha != null && !lastSha.isEmpty()){
+            return lastSha;
+        }
+        Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(lastShaPath.toFile()))) {
+            String sha = bufferedReader.readLine();
+            return sha;
+        } catch (FileNotFoundException ex) {
+            throw new RuntimeException(ex);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     private void doVMSPart() throws MojoExecutionException {
         gitDir = Paths.get(executionRootDirectory, ".git");
-        List<DiffEntry> diffEntryList = VmsMojo.getCommitDiffsHelper(gitDir, lastSha, newSha);
+
+        // for now, we will emulate regular VMS by aggregating between the critical and background runs
+        // to get a singular violation-counts file, and comparing that against the previously created version
+
+        oldViolationCountsPath = Paths.get(getArtifactsDir(), lastViolationsFile);
+        Set<Violation> oldViolations = Violation.parseViolations(oldViolationCountsPath);
+        // need to get path from both critical and background phases
+        Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
+        newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
+
+        lastSha = getLastShaHelper();
+        if (lastSha == null && !lastSha.isEmpty()) firstRun = true;
+
+        if (!firstRun) {
+            List<DiffEntry> diffEntryList = VmsMojo.getCommitDiffsHelper(gitDir, lastSha, newSha);
+            Map<String, String> renames = new HashMap<>();
+            Map<String, Map<Integer, Integer>> offsets = new HashMap<>();
+            Map<String, Set<Integer>> modifiedLines = new HashMap<>();
+            VmsMojo.findLineChangesAndRenamesHelper(diffEntryList, renames, offsets, modifiedLines);
+        }
+
+        
+
 
     }
 
