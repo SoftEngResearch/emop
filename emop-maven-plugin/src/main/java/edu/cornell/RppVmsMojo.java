@@ -56,6 +56,20 @@ public class RppVmsMojo extends RppMojo {
     @Parameter(property = "lastViolationsFile", defaultValue = "violation-counts-old")
     private String lastViolationsFile;
 
+    /**
+     * Monitor file from which to read monitored specs and excluded classes. The given path is
+     * resolved relative to the artifacts directory. Can be left null to indicate that all specs and
+     * classes were monitored.
+     */
+    @Parameter(property = "monitorFile", required = false)
+    protected String monitorFile;
+
+    /**
+     * Whether to always save <code>violation-counts</code> regardless of the current git status.
+     */
+    @Parameter(property = "forceSave", defaultValue = "false")
+    private boolean forceSave;
+
     private Path oldViolationCountsPath;
     private Path newViolationCountsPath;
 
@@ -65,11 +79,10 @@ public class RppVmsMojo extends RppMojo {
         doVMSPart();
     }
 
-    protected String getLastShaHelper() throws MojoExecutionException {
+    protected String getLastShaHelper(Path lastShaPath) throws MojoExecutionException {
         if (lastSha != null && !lastSha.isEmpty()){
             return lastSha;
         }
-        Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(lastShaPath.toFile()))) {
             String sha = bufferedReader.readLine();
             return sha;
@@ -92,19 +105,21 @@ public class RppVmsMojo extends RppMojo {
         Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
         newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
 
-        lastSha = getLastShaHelper();
+        Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
+        lastSha = getLastShaHelper(lastShaPath);
         if (lastSha == null && !lastSha.isEmpty()) firstRun = true;
 
         if (!firstRun) {
-            List<DiffEntry> diffEntryList = VmsMojo.getCommitDiffsHelper(gitDir, lastSha, newSha);
+            List<DiffEntry> diffEntryList = VmsMojo.getCommitDiffs(gitDir, lastSha, newSha);
             Map<String, String> renames = new HashMap<>();
             Map<String, Map<Integer, Integer>> offsets = new HashMap<>();
             Map<String, Set<Integer>> modifiedLines = new HashMap<>();
             VmsMojo.findLineChangesAndRenamesHelper(diffEntryList, renames, offsets, modifiedLines);
+            VmsMojo.removeDuplicateViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
         }
 
-        
-
+        Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
+        VmsMojo.saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCountsPath, oldViolationCountsPath);
 
     }
 

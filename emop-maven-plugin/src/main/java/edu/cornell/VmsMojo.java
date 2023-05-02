@@ -168,7 +168,7 @@ public class VmsMojo extends DiffMojo {
         getLog().info("Number of total violations found: " + newViolations.size());
 
         if (!firstRun) {
-            removeDuplicateViolations(oldViolations, newViolations);
+            removeDuplicateViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
@@ -235,7 +235,7 @@ public class VmsMojo extends DiffMojo {
             if (filterOld) {
                 Violation newViolation = Violation.parseViolation(violation);
                 for (Violation oldViolation : oldViolations) {
-                    if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
+                    if (isSameViolationAfterDifferences(oldViolation, newViolation, renames, offsets, modifiedLines)) {
                         return true;
                     }
                 }
@@ -279,10 +279,10 @@ public class VmsMojo extends DiffMojo {
      * @throws MojoExecutionException if error is encountered at runtime
      */
     public List<DiffEntry> getCommitDiffs() throws MojoExecutionException {
-        return getCommitDiffsHelper(gitDir, lastSha, newSha);
+        return getCommitDiffs(gitDir, lastSha, newSha);
     }
 
-    public static List<DiffEntry> getCommitDiffsHelper(Path gitDir, String lastSha, String newSha) throws MojoExecutionException {
+    public static List<DiffEntry> getCommitDiffs(Path gitDir, String lastSha, String newSha) throws MojoExecutionException {
         ObjectReader objectReader;
         List<DiffEntry> diffs;
         List<AbstractTreeIterator> trees = new ArrayList<>();
@@ -387,11 +387,15 @@ public class VmsMojo extends DiffMojo {
     /**
      * Removes newViolations of violations believed to be duplicates from violation-counts-old.
      */
-    public void removeDuplicateViolations(Set<Violation> oldViolations, Set<Violation> newViolations) {
+    public static void removeDuplicateViolations(Set<Violation> oldViolations,
+                                                 Set<Violation> newViolations,
+                                                 Map<String, String> renames,
+                                                 Map<String, Map<Integer, Integer>> offsets,
+                                                 Map<String, Set<Integer>> modifiedLines) {
         Set<Violation> violationsToRemove = new HashSet<>();
         for (Violation newViolation : newViolations) {
             for (Violation oldViolation : oldViolations) {
-                if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
+                if (isSameViolationAfterDifferences(oldViolation, newViolation, renames, offsets, modifiedLines)) {
                     violationsToRemove.add(newViolation);
                     break;
                 }
@@ -409,14 +413,18 @@ public class VmsMojo extends DiffMojo {
      * @param newViolation New violation to compare
      * @return Whether the old violation can be mapped to the new violation, after code changes and renames
      */
-    private boolean isSameViolationAfterDifferences(Violation oldViolation, Violation newViolation) {
+    private static boolean isSameViolationAfterDifferences(Violation oldViolation,
+                                                           Violation newViolation,
+                                                           Map<String, String> renames,
+                                                           Map<String, Map<Integer, Integer>> offsets,
+                                                           Map<String, Set<Integer>> modifiedLines) {
         if (!oldViolation.hasKnownLocation() || !newViolation.hasKnownLocation()) {
             return false;
         }
         return oldViolation.getSpecification().equals(newViolation.getSpecification())
                 && (oldViolation.getClassName().equals(newViolation.getClassName())
-                    || isRenamed(oldViolation.getClassName(), newViolation.getClassName()))
-                && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum());
+                    || isRenamed(oldViolation.getClassName(), newViolation.getClassName(), renames))
+                && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum(), offsets, modifiedLines);
     }
 
     /**
@@ -426,7 +434,7 @@ public class VmsMojo extends DiffMojo {
      * @param newClass Rename being considered
      * @return Whether the old class name was renamed to the new one
      */
-    private boolean isRenamed(String oldClass, String newClass) {
+    private static boolean isRenamed(String oldClass, String newClass, Map<String, String> renames) {
         for (String renamedClass : renames.keySet()) {
             if (renamedClass.contains(newClass) && renames.get(renamedClass).contains(oldClass)) {
                 return true;
@@ -457,7 +465,12 @@ public class VmsMojo extends DiffMojo {
      * @param newLine New line number
      * @return Whether the original line number can be mapped to the new line number in the updated version
      */
-    private boolean hasSameLineNumber(String className, int oldLine, int newLine) {
+    private static boolean hasSameLineNumber(String className,
+                                             int oldLine,
+                                             int newLine,
+                                             Map<String, Map<Integer, Integer>> offsets,
+                                             Map<String, Set<Integer>> modifiedLines
+                                             ) {
         for (String changedClass : offsets.keySet()) {
             if (changedClass.contains(className)) {
                 // modified lines are never mapped
