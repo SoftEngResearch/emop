@@ -545,6 +545,9 @@ public class VmsMojo extends DiffMojo {
      * created by RV-Monitor in <code>violation-counts-old</code>.
      */
     private void saveViolationCounts() throws MojoExecutionException {
+        if (monitorFile == null) {
+            monitorFile = MonitorMojo.MONITOR_FILE;
+        }
         Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
         saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCounts, oldViolationCounts);
     }

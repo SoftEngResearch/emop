@@ -1,12 +1,17 @@
 package edu.cornell;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +24,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.aspectj.util.FileUtil;
 import org.eclipse.jgit.diff.DiffEntry;
 
 @Mojo(name = "rpp-vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
@@ -77,6 +83,9 @@ public class RppVmsMojo extends RppMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
+        if (monitorFile == null || monitorFile.isEmpty()) {
+            monitorFile = MonitorMojo.MONITOR_FILE;
+        }
         doVMSPart();
     }
 
@@ -104,14 +113,24 @@ public class RppVmsMojo extends RppMojo {
         // to get a singular violation-counts file, and comparing that against the previously created version
 
         oldViolationCountsPath = Paths.get(getArtifactsDir(), lastViolationsFile);
+        newViolationCountsPath = basedir.toPath().resolve("violation-counts");
         Set<Violation> oldViolations = Violation.parseViolations(oldViolationCountsPath);
         // need to get path from both critical and background phases
         Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
-        newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
+        try {
+            Files.copy(Paths.get(criticalViolationsPath), newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
+            if (bgViolationsPath != null) {
+                newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
+                Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(bgViolationsPath)), StandardOpenOption.APPEND);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+        getLog().info("Number of total violations found: " + newViolations.size());
 
         Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
         lastSha = getLastShaHelper(lastShaPath);
-        if (lastSha == null && !lastSha.isEmpty()) firstRun = true;
+        if (lastSha == null || lastSha.isEmpty()) firstRun = true;
 
         if (!firstRun) {
             List<DiffEntry> diffEntryList = VmsMojo.getCommitDiffs(gitDir, lastSha, newSha);
@@ -121,6 +140,7 @@ public class RppVmsMojo extends RppMojo {
             VmsMojo.findLineChangesAndRenamesHelper(diffEntryList, renames, offsets, modifiedLines);
             VmsMojo.removeDuplicateViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
         }
+        getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
         Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
         VmsMojo.saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCountsPath, oldViolationCountsPath);
