@@ -37,8 +37,8 @@ public class RppMojo extends RppHandlerMojo {
         this.demoteCritical = demoteCritical;
     }
 
-    protected String criticalViolationsPath;
     protected String bgViolationsPath;
+    protected String criticalViolationsPath;
 
     /**
      * Runs maven surefire.
@@ -77,7 +77,10 @@ public class RppMojo extends RppHandlerMojo {
         // read the violation-counts files and output the list of critical and background specs for next time
         // (in the case that the user doesn't provide files for critical and background specs)
         Set<String> violatedSpecs = Violation.parseViolationSpecs(Paths.get(criticalViolationsPath));
-        Set<String> bgViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
+        Set<String> bgViolatedSpecs = new HashSet<>();
+        if (bgViolationsPath != null) {
+             bgViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
+        }
         violatedSpecs.addAll(bgViolatedSpecs);
         violatedSpecs = violatedSpecs.stream().map(spec -> spec.endsWith("MonitorAspect") ? spec :
                 spec + "MonitorAspect").collect(Collectors.toSet());

@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -50,6 +51,12 @@ public class RppVmsMojo extends RppMojo {
     private boolean firstRun;
 
     /**
+     * Whether to always save <code>violation-counts</code> regardless of the current git status.
+     */
+    @Parameter(property = "forceSave", defaultValue = "false")
+    private boolean forceSave;
+
+    /**
      * Filename to read the "old" violations from. The filename is resolved
      * against the artifacts directory.
      */
@@ -64,12 +71,6 @@ public class RppVmsMojo extends RppMojo {
     @Parameter(property = "monitorFile", required = false)
     protected String monitorFile;
 
-    /**
-     * Whether to always save <code>violation-counts</code> regardless of the current git status.
-     */
-    @Parameter(property = "forceSave", defaultValue = "false")
-    private boolean forceSave;
-
     private Path oldViolationCountsPath;
     private Path newViolationCountsPath;
 
@@ -82,6 +83,9 @@ public class RppVmsMojo extends RppMojo {
     protected String getLastShaHelper(Path lastShaPath) throws MojoExecutionException {
         if (lastSha != null && !lastSha.isEmpty()){
             return lastSha;
+        }
+        if (!Files.exists(lastShaPath)) {
+            return null;
         }
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(lastShaPath.toFile()))) {
             String sha = bufferedReader.readLine();
