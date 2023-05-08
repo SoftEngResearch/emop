@@ -141,7 +141,9 @@ public class RppVmsMojo extends RppMojo {
 
         Path monitorFilePath = monitorFile != null ? Paths.get(getArtifactsDir(), monitorFile): null;
         VmsMojo.saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCountsPath, oldViolationCountsPath);
-
+        if (!firstRun) {
+            VmsMojo.rewriteViolationCounts(newViolationCountsPath, firstRun, newViolations);
+        }
     }
 
 }
