@@ -119,7 +119,7 @@ public class RppVmsMojo extends RppMojo {
         Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
         try {
             Files.copy(Paths.get(criticalViolationsPath), newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
-            if (bgViolationsPath != null) {
+            if (bgViolationsPath != null && !bgViolationsPath.isEmpty()) {
                 newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
                 Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(bgViolationsPath)), StandardOpenOption.APPEND);
             }
