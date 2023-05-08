@@ -83,9 +83,6 @@ public class RppVmsMojo extends RppMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (monitorFile == null || monitorFile.isEmpty()) {
-            monitorFile = MonitorMojo.MONITOR_FILE;
-        }
         doVMSPart();
     }
 
@@ -142,7 +139,7 @@ public class RppVmsMojo extends RppMojo {
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
-        Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
+        Path monitorFilePath = monitorFile != null ? Paths.get(getArtifactsDir(), monitorFile): null;
         VmsMojo.saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCountsPath, oldViolationCountsPath);
 
     }
