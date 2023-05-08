@@ -489,10 +489,14 @@ public class VmsMojo extends DiffMojo {
         return oldLine == newLine;
     }
 
+    public void rewriteViolationCounts() throws MojoExecutionException {
+        rewriteViolationCounts(newViolationCounts, firstRun, newViolations);
+    }
+
     /**
      * Rewrites <code>violation-counts</code> to only include violations in newViolations.
      */
-    public void rewriteViolationCounts() throws MojoExecutionException {
+    public static void rewriteViolationCounts(Path newViolationCounts, boolean firstRun, Set<Violation> newViolations) throws MojoExecutionException {
         List<String> lines = null;
         try {
             lines = Files.readAllLines(newViolationCounts);
@@ -502,7 +506,7 @@ public class VmsMojo extends DiffMojo {
 
         try (PrintWriter writer = new PrintWriter(newViolationCounts.toFile())) {
             for (String line : lines) {
-                if (isNewViolation(line)) {
+                if (isNewViolation(line, firstRun, newViolations)) {
                     writer.println(line);
                 }
             }
@@ -517,7 +521,7 @@ public class VmsMojo extends DiffMojo {
      * @param violation Violation line being considered
      * @return Whether the violation is a new violation
      */
-    private boolean isNewViolation(String violation) {
+    private static boolean isNewViolation(String violation, boolean firstRun, Set<Violation> newViolations) {
         if (firstRun) {
             return true;
         }
