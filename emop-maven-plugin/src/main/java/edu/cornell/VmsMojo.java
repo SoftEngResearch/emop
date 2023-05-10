@@ -566,6 +566,19 @@ public class VmsMojo extends DiffMojo {
         try (Git git = Git.open(gitDir.toFile())) {
             if (forceSave || isFunctionallyClean(git)) {
                 List<String> carryoverViolations = getCarryoverViolations(firstRun, monitorFile, oldViolationCounts);
+
+		// Hack code
+		if (Files.isDirectory(oldViolationCounts)) {
+			System.out.println("Sunflower");
+			System.out.println(oldViolationCounts);
+			Files.delete(oldViolationCounts);
+			oldViolationCounts.toFile().createNewFile();
+			System.out.println("Rose");
+			System.out.println(oldViolationCounts);
+		    }
+		    System.out.println("popcorn");
+		    System.out.println(oldViolationCounts);
+		
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
                 Files.write(oldViolationCounts, carryoverViolations, StandardOpenOption.APPEND);
 
