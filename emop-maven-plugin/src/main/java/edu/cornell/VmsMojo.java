@@ -569,21 +569,13 @@ public class VmsMojo extends DiffMojo {
 
 		// Hack code
 		if (Files.isDirectory(newViolationCounts)) {
-		    System.out.println("Trout");
-		    System.out.println(newViolationCounts);
 		    Files.delete(newViolationCounts);
 		    newViolationCounts.toFile().createNewFile();
 		}
 		if (Files.isDirectory(oldViolationCounts)) {
-			System.out.println("Sunflower");
-			System.out.println(oldViolationCounts);
-			Files.delete(oldViolationCounts);
-			oldViolationCounts.toFile().createNewFile();
-			System.out.println("Rose");
-			System.out.println(oldViolationCounts);
-		    }
-		    System.out.println("popcorn");
-		    System.out.println(oldViolationCounts);
+		    Files.delete(oldViolationCounts);
+		    oldViolationCounts.toFile().createNewFile();
+		}
 		
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
                 Files.write(oldViolationCounts, carryoverViolations, StandardOpenOption.APPEND);
