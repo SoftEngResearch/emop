@@ -568,6 +568,12 @@ public class VmsMojo extends DiffMojo {
                 List<String> carryoverViolations = getCarryoverViolations(firstRun, monitorFile, oldViolationCounts);
 
 		// Hack code
+		if (Files.isDirectory(newViolationCounts)) {
+		    System.out.println("Trout");
+		    System.out.println(newViolationCounts);
+		    Files.delete(newViolationCounts);
+		    newViolationCounts.toFile().createNewFile();
+		}
 		if (Files.isDirectory(oldViolationCounts)) {
 			System.out.println("Sunflower");
 			System.out.println(oldViolationCounts);
