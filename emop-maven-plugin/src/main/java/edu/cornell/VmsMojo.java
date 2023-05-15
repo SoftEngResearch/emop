@@ -13,6 +13,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +29,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 
+import edu.cornell.emop.util.Util;
 import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -146,6 +148,7 @@ public class VmsMojo extends DiffMojo {
     private Set<Violation> newViolations;
 
     public void execute() throws MojoExecutionException {
+        getLog().info("[eMOP] VMS start time: " + Util.timeFormatter.format(new Date()));
         getLog().info("[eMOP] Invoking the VMS Mojo...");
 
         gitDir = Paths.get(executionRootDirectory, ".git");
@@ -176,6 +179,7 @@ public class VmsMojo extends DiffMojo {
         if (!showAllInFile) {
             rewriteViolationCounts();
         }
+        getLog().info("[eMOP] VMS end time: " + Util.timeFormatter.format(new Date()));
     }
 
     private static class SurefireOutputHandler implements InvocationOutputHandler {

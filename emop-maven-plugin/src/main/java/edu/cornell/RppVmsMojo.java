@@ -12,11 +12,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import edu.cornell.emop.util.Util;
 import edu.cornell.emop.util.Violation;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Execute;
@@ -55,6 +57,12 @@ public class RppVmsMojo extends RppMojo {
      */
     @Parameter(property = "firstRun", required = false, defaultValue = "false")
     private boolean firstRun;
+
+    /**
+     * Whether to show all violations in <code>violation-counts</code> or only the new violations.
+     */
+    @Parameter(property = "showAllInFile", defaultValue = "false")
+    private boolean showAllInFile;
 
     /**
      * Whether to always save <code>violation-counts</code> regardless of the current git status.
@@ -104,6 +112,7 @@ public class RppVmsMojo extends RppMojo {
     }
 
     private void doVMSPart() throws MojoExecutionException {
+        getLog().info("[eMOP] VMS start time: " + Util.timeFormatter.format(new Date()));
         gitDir = Paths.get(executionRootDirectory, ".git");
 
         // for now, we will emulate regular VMS by aggregating between the critical and background runs
@@ -141,9 +150,10 @@ public class RppVmsMojo extends RppMojo {
 
         Path monitorFilePath = monitorFile != null ? Paths.get(getArtifactsDir(), monitorFile): null;
         VmsMojo.saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCountsPath, oldViolationCountsPath);
-        if (!firstRun) {
+        if (!showAllInFile) {
             VmsMojo.rewriteViolationCounts(newViolationCountsPath, firstRun, newViolations);
         }
+        getLog().info("[eMOP] VMS end time: " + Util.timeFormatter.format(new Date()));
     }
 
 }
