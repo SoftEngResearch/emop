@@ -122,6 +122,9 @@
               <goal>monitor</goal>
               <goal>rpp-handler</goal>
             </goals>
+            <configuration>
+              <rpsRpp>true</rpsRpp>
+            </configuration>
           </execution>
           <execution>
             <goals>
