@@ -125,22 +125,18 @@ public class RppHandlerMojo extends MonitorMojo {
      * @return The path to the created JAR.
      */
     private String setUpSingleJar(String mode, Set<String> specsToMonitor) {
-        if (specsToMonitor.isEmpty()) {
-            return "";
-        } else {
-            File javamopAgentFile = new File(javamopAgent);
-            File createdJar = new File(metaInfoDirectory, mode + "-javamop.jar");
-            try {
-                Files.copy(javamopAgentFile.toPath(), createdJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                Util.generateNewMonitorFile(metaInfoDirectory + File.separator + mode + "-ajc.xml",
-                        specsToMonitor, MonitorMojo.monitorIncludes, MonitorMojo.monitorExcludes);
-                Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
-                        metaInfoDirectory + File.separator + mode + "-ajc.xml");
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-            return createdJar.getAbsolutePath();
+        File javamopAgentFile = new File(javamopAgent);
+        File createdJar = new File(metaInfoDirectory, mode + "-javamop.jar");
+        try {
+            Files.copy(javamopAgentFile.toPath(), createdJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Util.generateNewMonitorFile(metaInfoDirectory + File.separator + mode + "-ajc.xml",
+                    specsToMonitor, MonitorMojo.monitorIncludes, MonitorMojo.monitorExcludes);
+            Util.replaceFileInJar(createdJar.getAbsolutePath(), "/META-INF/aop-ajc.xml",
+                    metaInfoDirectory + File.separator + mode + "-ajc.xml");
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
+        return createdJar.getAbsolutePath();
     }
 
     /**
