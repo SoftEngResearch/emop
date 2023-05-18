@@ -56,8 +56,12 @@ public class MonitorMojo extends AffectedSpecsMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (hasLibraryChanges()) {
+        String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
+        List<String> sfPathElements = getCleanClassPath(cpString);
+        if (!isSameClassPath(sfPathElements) || !hasSameJarChecksum(sfPathElements)) {
             includeLibraries = true;
+            Writer.writeClassPath(cpString, artifactsDir);
+            Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
         }
         if (getImpacted().isEmpty()) {
             System.setProperty("exiting-rps", "true");
@@ -122,18 +126,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
             }
         }
         return stringBuilder.toString();
-    }
-
-    /**
-     * Checks whether third-party library changes are involved by looking at whether:
-     * 1. Classpath has been changed
-     * 2. Jar checksums have been changed
-     * @return Whether a third-party library change is involved
-     */
-    private boolean hasLibraryChanges() throws MojoExecutionException {
-        String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
-        List<String> sfPathElements = getCleanClassPath(cpString);
-        return !isSameClassPath(sfPathElements) || !hasSameJarChecksum(sfPathElements);
     }
 
     // Copied from STARTS
