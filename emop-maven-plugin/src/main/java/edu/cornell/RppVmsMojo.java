@@ -125,10 +125,11 @@ public class RppVmsMojo extends RppMojo {
         Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
         try {
             Path criticalViolationsPathPath = Paths.get(criticalViolationsPath);
-            System.out.println("Copying from " + criticalViolationsPathPath + " to " + newViolationCountsPath);
+            getLog().info("Copying critical violations from " + criticalViolationsPathPath + " to " + newViolationCountsPath);
             Files.copy(criticalViolationsPathPath, newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
             if (bgViolationsPath != null && !bgViolationsPath.isEmpty()) {
                 newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
+                getLog().info("Copying background violations from " + Paths.get(bgViolationsPath) + " to " + newViolationCountsPath);
                 Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(bgViolationsPath)), StandardOpenOption.APPEND);
             }
         } catch (IOException ex) {
