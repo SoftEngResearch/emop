@@ -187,9 +187,9 @@ public class Util {
             if (!violationCounts.exists()) {
                 newViolationCounts.delete();
                 newViolationCounts.createNewFile();
-                return "";
+            } else {
+                Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
-            Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
             return newViolationCounts.getAbsolutePath();
         } catch (IOException ex) {
             throw new RuntimeException(ex);
