@@ -124,7 +124,9 @@ public class RppVmsMojo extends RppMojo {
         // need to get path from both critical and background phases
         Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
         try {
-            Files.copy(Paths.get(criticalViolationsPath), newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
+            Path criticalViolationsPathPath = Paths.get(criticalViolationsPath);
+            System.out.println("Copying from " + criticalViolationsPathPath + " to " + newViolationCountsPath);
+            Files.copy(criticalViolationsPathPath, newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
             if (bgViolationsPath != null && !bgViolationsPath.isEmpty()) {
                 newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
                 Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(bgViolationsPath)), StandardOpenOption.APPEND);
