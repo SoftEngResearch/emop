@@ -24,11 +24,11 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
-    private static final String TARGET = "target";
-    public static final String MONITOR_FILE = "new-aop-ajc.xml";
 
+    public static final String MONITOR_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
+    private static final String TARGET = "target";
 
     protected List<Pair> jarCheckSums = null;
 
