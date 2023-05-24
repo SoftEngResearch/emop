@@ -24,14 +24,24 @@ public class ImpactedClassMojo extends ImpactedMojo {
      */
     @Parameter(
             property = "closureOption",
-            defaultValue = "TRANSITIVE"
+            defaultValue = "PS3"
     )
     private TransitiveClosureOptions closureOption;
+
+    public void setTransitiveClosureOption() {
+        if (closureOption.equals("PS1")) {
+            setTransitiveClosureOption(TransitiveClosureOptions.TRANSITIVE_OF_INVERSE_TRANSITIVE);
+        } else if (closureOption.equals("PS2")) {
+            setTransitiveClosureOption(TransitiveClosureOptions.TRANSITIVE_AND_INVERSE_TRANSITIVE);
+        } else {
+            setTransitiveClosureOption(TransitiveClosureOptions.TRANSITIVE);
+        }
+    }
 
     public void execute() throws MojoExecutionException {
         setUpdateImpactedChecksums(updateChecksums);
         setTrackNewClasses(true);
-        setTransitiveClosureOption(closureOption);
+        setTransitiveClosureOption();
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedClasses Mojo...");
         super.execute();
