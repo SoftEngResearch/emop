@@ -24,7 +24,7 @@ public class ImpactedClassMojo extends ImpactedMojo {
             property = "closureOption",
             defaultValue = "PS3"
     )
-    private TransitiveClosureOptions closureOption;
+    private String closureOption;
 
     public void setTransitiveClosureOption() {
         if (closureOption.equals("PS1")) {
