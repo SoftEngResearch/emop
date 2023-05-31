@@ -2,20 +2,11 @@ package edu.cornell;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import edu.cornell.emop.maven.AgentLoader;
 import edu.cornell.emop.util.Util;
-import edu.illinois.starts.helpers.Writer;
-import edu.illinois.starts.util.Pair;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -28,9 +19,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
     public static final String MONITOR_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
-    private static final String TARGET = "target";
-
-    protected List<Pair> jarCheckSums = null;
 
     /**
      * The path that specify the Javamop Agent JAR file.
@@ -56,13 +44,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
-        String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
-        List<String> sfPathElements = getCleanClassPath(cpString);
-        if (!isSameClassPath(sfPathElements) || !hasSameJarChecksum(sfPathElements)) {
-            includeLibraries = true;
-            Writer.writeClassPath(cpString, artifactsDir);
-            Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
-        }
         if (getImpacted().isEmpty()) {
             System.setProperty("exiting-rps", "true");
             System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
@@ -126,79 +107,5 @@ public class MonitorMojo extends AffectedSpecsMojo {
             }
         }
         return stringBuilder.toString();
-    }
-
-    // Copied from STARTS
-    private boolean isSameClassPath(List<String> sfPathString) throws MojoExecutionException {
-        if (sfPathString.isEmpty()) {
-            return true;
-        }
-        String oldSfPathFileName = Paths.get(getArtifactsDir(), SF_CLASSPATH).toString();
-        if (!new File(oldSfPathFileName).exists()) {
-            return false;
-        }
-        try {
-            List<String> oldClassPathLines = Files.readAllLines(Paths.get(oldSfPathFileName));
-            if (oldClassPathLines.size() != 1) {
-                throw new MojoExecutionException(SF_CLASSPATH + " is corrupt! Expected only 1 line.");
-            }
-            List<String> oldClassPathelements = getCleanClassPath(oldClassPathLines.get(0));
-            // comparing lists and not sets in case order changes
-            if (sfPathString.equals(oldClassPathelements)) {
-                return true;
-            }
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
-        return false;
-    }
-
-    // Copied from STARTS
-    private boolean hasSameJarChecksum(List<String> cleanSfClassPath) throws MojoExecutionException {
-        if (cleanSfClassPath.isEmpty()) {
-            return true;
-        }
-        String oldChecksumPathFileName = Paths.get(getArtifactsDir(), JAR_CHECKSUMS).toString();
-        if (!new File(oldChecksumPathFileName).exists()) {
-            return false;
-        }
-        boolean noException = true;
-        try {
-            List<String> lines = Files.readAllLines(Paths.get(oldChecksumPathFileName));
-            Map<String, String> checksumMap = new HashMap<>();
-            for (String line : lines) {
-                String[] elems = line.split(COMMA);
-                checksumMap.put(elems[0], elems[1]);
-            }
-            jarCheckSums = new ArrayList<>();
-            for (String path : cleanSfClassPath) {
-                Pair<String, String> pair = Writer.getJarToChecksumMapping(path);
-                jarCheckSums.add(pair);
-                String oldCS = checksumMap.get(pair.getKey());
-                noException &= pair.getValue().equals(oldCS);
-            }
-        } catch (IOException ioe) {
-            noException = false;
-            // reset to null because we don't know what/when exception happened
-            jarCheckSums = null;
-            ioe.printStackTrace();
-        }
-        return noException;
-    }
-
-    // Copied from STARTS
-    private List<String> getCleanClassPath(String cp) {
-        List<String> cpPaths = new ArrayList<>();
-        String[] paths = cp.split(File.pathSeparator);
-        String classes = File.separator + TARGET +  File.separator + CLASSES;
-        String testClasses = File.separator + TARGET + File.separator + TEST_CLASSES;
-        for (int i = 0; i < paths.length; i++) {
-            // TODO: should we also exclude SNAPSHOTS from same project?
-            if (paths[i].contains(classes) || paths[i].contains(testClasses)) {
-                continue;
-            }
-            cpPaths.add(paths[i]);
-        }
-        return cpPaths;
     }
 }
