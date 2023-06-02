@@ -63,8 +63,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             if (rpsRpp) {
                 getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
                 try {
-                    Util.writeSpecsToFile(affectedSpecs, new File(
-                            getArtifactsDir(), "affected-specs.txt"));
+                    Util.writeSpecsToFile(affectedSpecs, new File(getArtifactsDir(), "affected-specs.txt"));
                 } catch (FileNotFoundException ex) {
                     throw new RuntimeException(ex);
                 }
