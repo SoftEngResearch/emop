@@ -78,6 +78,10 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
+        if (dependencyChangeDetected) {
+            getLog().info("Reverting to Base RV.");
+            return;
+        }
         if (getImpacted().isEmpty()) {
             return;
         }

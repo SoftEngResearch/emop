@@ -32,11 +32,18 @@ import org.eclipse.jgit.diff.DiffEntry;
 @Mojo(name = "rpp-vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp-vms")
 public class RppVmsMojo extends RppMojo {
+    protected Path gitDir;
+
+    /**
+     * Monitor file from which to read monitored specs and excluded classes. The given path is
+     * resolved relative to the artifacts directory. Can be left null to indicate that all specs and
+     * classes were monitored.
+     */
+    @Parameter(property = "monitorFile", required = false)
+    protected String monitorFile;
 
     @Parameter(defaultValue = "${session.executionRootDirectory}", required = true, readonly = true)
     private String executionRootDirectory;
-
-    protected Path gitDir;
 
     // copied from VMS - is there a better way to do this?
     /**
@@ -77,14 +84,6 @@ public class RppVmsMojo extends RppMojo {
     @Parameter(property = "lastViolationsFile", defaultValue = "violation-counts-old")
     private String lastViolationsFile;
 
-    /**
-     * Monitor file from which to read monitored specs and excluded classes. The given path is
-     * resolved relative to the artifacts directory. Can be left null to indicate that all specs and
-     * classes were monitored.
-     */
-    @Parameter(property = "monitorFile", required = false)
-    protected String monitorFile;
-
     private Path oldViolationCountsPath;
     private Path newViolationCountsPath;
 
@@ -95,7 +94,7 @@ public class RppVmsMojo extends RppMojo {
     }
 
     protected String getLastShaHelper(Path lastShaPath) throws MojoExecutionException {
-        if (lastSha != null && !lastSha.isEmpty()){
+        if (lastSha != null && !lastSha.isEmpty()) {
             return lastSha;
         }
         if (!Files.exists(lastShaPath)) {
@@ -125,12 +124,15 @@ public class RppVmsMojo extends RppMojo {
         Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
         try {
             Path criticalViolationsPathPath = Paths.get(criticalViolationsPath);
-            getLog().info("Copying critical violations from " + criticalViolationsPathPath + " to " + newViolationCountsPath);
+            getLog().info("Copying critical violations from " + criticalViolationsPathPath
+                    + " to " + newViolationCountsPath);
             Files.copy(criticalViolationsPathPath, newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
             if (bgViolationsPath != null && !bgViolationsPath.isEmpty()) {
                 newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
-                getLog().info("Copying background violations from " + Paths.get(bgViolationsPath) + " to " + newViolationCountsPath);
-                Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(bgViolationsPath)), StandardOpenOption.APPEND);
+                getLog().info("Copying background violations from " + Paths.get(bgViolationsPath)
+                        + " to " + newViolationCountsPath);
+                Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(bgViolationsPath)),
+                        StandardOpenOption.APPEND);
             }
         } catch (IOException ex) {
             throw new RuntimeException(ex);
@@ -139,7 +141,9 @@ public class RppVmsMojo extends RppMojo {
 
         Path lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
         lastSha = getLastShaHelper(lastShaPath);
-        if (lastSha == null || lastSha.isEmpty()) firstRun = true;
+        if (lastSha == null || lastSha.isEmpty()) {
+            firstRun = true;
+        }
 
         if (!firstRun) {
             List<DiffEntry> diffEntryList = VmsMojo.getCommitDiffs(gitDir, lastSha, newSha);
@@ -151,8 +155,9 @@ public class RppVmsMojo extends RppMojo {
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
-        Path monitorFilePath = monitorFile != null ? Paths.get(getArtifactsDir(), monitorFile): null;
-        VmsMojo.saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCountsPath, oldViolationCountsPath);
+        Path monitorFilePath = monitorFile != null ? Paths.get(getArtifactsDir(), monitorFile) : null;
+        VmsMojo.saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCountsPath,
+                oldViolationCountsPath);
         if (!showAllInFile) {
             VmsMojo.rewriteViolationCounts(newViolationCountsPath, firstRun, newViolations);
         }

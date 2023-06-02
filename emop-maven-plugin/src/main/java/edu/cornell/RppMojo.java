@@ -30,15 +30,15 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
 
+    protected String bgViolationsPath;
+    protected String criticalViolationsPath;
+
     @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
     private boolean demoteCritical;
 
     public void setDemoteCritical(boolean demoteCritical) {
         this.demoteCritical = demoteCritical;
     }
-
-    protected String bgViolationsPath;
-    protected String criticalViolationsPath;
 
     /**
      * Runs maven surefire.
@@ -79,7 +79,7 @@ public class RppMojo extends RppHandlerMojo {
         Set<String> violatedSpecs = Violation.parseViolationSpecs(Paths.get(criticalViolationsPath));
         Set<String> bgViolatedSpecs = new HashSet<>();
         if (bgViolationsPath != null) {
-             bgViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
+            bgViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
         }
         violatedSpecs.addAll(bgViolatedSpecs);
         violatedSpecs = violatedSpecs.stream().map(spec -> spec.endsWith("MonitorAspect") ? spec :
