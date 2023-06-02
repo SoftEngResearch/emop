@@ -64,6 +64,9 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
+    // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
+    // and deletions
+    private static final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
     /**
      * Monitor file from which to read monitored specs and excluded classes. The given path is
@@ -124,10 +127,6 @@ public class VmsMojo extends DiffMojo {
     private Path oldViolationCounts;
     private Path newViolationCounts;
     private Path lastShaPath;
-
-    // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
-    // and deletions
-    private static final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
     // Map from a file to a map representing the number of additional lines added or deleted at each line
     // of the original file. If the value is 0, the line has been modified in place.
@@ -428,7 +427,8 @@ public class VmsMojo extends DiffMojo {
         return oldViolation.getSpecification().equals(newViolation.getSpecification())
                 && (oldViolation.getClassName().equals(newViolation.getClassName())
                     || isRenamed(oldViolation.getClassName(), newViolation.getClassName(), renames))
-                && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum(), offsets, modifiedLines);
+                && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum(),
+                    offsets, modifiedLines);
     }
 
     /**
@@ -500,7 +500,8 @@ public class VmsMojo extends DiffMojo {
     /**
      * Rewrites <code>violation-counts</code> to only include violations in newViolations.
      */
-    public static void rewriteViolationCounts(Path newViolationCounts, boolean firstRun, Set<Violation> newViolations) throws MojoExecutionException {
+    public static void rewriteViolationCounts(Path newViolationCounts, boolean firstRun, Set<Violation> newViolations)
+            throws MojoExecutionException {
         List<String> lines = null;
         try {
             lines = Files.readAllLines(newViolationCounts);
@@ -557,7 +558,8 @@ public class VmsMojo extends DiffMojo {
             monitorFile = MonitorMojo.MONITOR_FILE;
         }
         Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
-        saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCounts, oldViolationCounts);
+        saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCounts,
+                oldViolationCounts);
     }
 
     public static void saveViolationCounts(boolean forceSave,
@@ -571,16 +573,16 @@ public class VmsMojo extends DiffMojo {
             if (forceSave || isFunctionallyClean(git)) {
                 List<String> carryoverViolations = getCarryoverViolations(firstRun, monitorFile, oldViolationCounts);
 
-		// Hack code
-		if (Files.isDirectory(newViolationCounts)) {
-		    Files.delete(newViolationCounts);
-		    newViolationCounts.toFile().createNewFile();
-		}
-		if (Files.isDirectory(oldViolationCounts)) {
-		    Files.delete(oldViolationCounts);
-		    oldViolationCounts.toFile().createNewFile();
-		}
-		
+                // Hack code
+                if (Files.isDirectory(newViolationCounts)) {
+                    Files.delete(newViolationCounts);
+                    newViolationCounts.toFile().createNewFile();
+                }
+                if (Files.isDirectory(oldViolationCounts)) {
+                    Files.delete(oldViolationCounts);
+                    oldViolationCounts.toFile().createNewFile();
+                }
+
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
                 Files.write(oldViolationCounts, carryoverViolations, StandardOpenOption.APPEND);
 
