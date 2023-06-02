@@ -79,7 +79,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
         if (dependencyChangeDetected) {
-            getLog().info("Switched to MOP run");
+            getLog().info("Reverting to Base RV.");
             return;
         }
         if (getImpacted().isEmpty()) {

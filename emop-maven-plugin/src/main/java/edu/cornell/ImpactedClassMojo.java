@@ -60,12 +60,11 @@ public class ImpactedClassMojo extends ImpactedMojo {
             Writer.writeClassPath(cpString, artifactsDir);
             Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
             dependencyChangeDetected = true;
-            getLog().info("Dependency changes detected");
+            getLog().info("Dependencies changed!");
         }
 
         if (!dependencyChangeDetected && getImpacted().isEmpty()) {
             getLog().info("[eMOP] No impacted classes, returning...");
-//            System.exit(0);
         }
     }
 
