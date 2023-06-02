@@ -1,14 +1,5 @@
 package edu.cornell;
 
-import edu.illinois.starts.enums.TransitiveClosureOptions;
-import edu.illinois.starts.helpers.Writer;
-import edu.illinois.starts.jdeps.ImpactedMojo;
-import edu.illinois.starts.util.Pair;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,6 +8,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import edu.illinois.starts.enums.TransitiveClosureOptions;
+import edu.illinois.starts.helpers.Writer;
+import edu.illinois.starts.jdeps.ImpactedMojo;
+import edu.illinois.starts.util.Pair;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "impacted", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class ImpactedClassMojo extends ImpactedMojo {
