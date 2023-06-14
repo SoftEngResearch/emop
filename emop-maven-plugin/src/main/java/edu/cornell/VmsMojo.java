@@ -690,7 +690,8 @@ public class VmsMojo extends DiffMojo {
                 }
             }
         } catch (IOException | XMLStreamException ex) {
-            throw new MojoExecutionException("Failed to parse monitor file", ex);
+            return Collections.emptyList();
+//            throw new MojoExecutionException("Failed to parse monitor file", ex);
         }
 
         return lines.stream()
