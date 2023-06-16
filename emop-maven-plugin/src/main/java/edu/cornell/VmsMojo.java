@@ -398,7 +398,8 @@ public class VmsMojo extends DiffMojo {
         Set<Violation> violationsToRemove = new HashSet<>();
         for (Violation newViolation : newViolations) {
             for (Violation oldViolation : oldViolations) {
-                if (isSameViolationAfterDifferences(oldViolation, newViolation, renames, offsets, modifiedLines)) {
+                if (isSameViolationAfterDifferences(oldViolation, newViolation, renames, offsets, modifiedLines)
+                        || oldViolation.equals(newViolation)) {
                     violationsToRemove.add(newViolation);
                     break;
                 }
