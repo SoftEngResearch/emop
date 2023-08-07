@@ -85,7 +85,7 @@ public class Util {
     /**
      * Recursive routine accumulating the set of package names within the project.
      *
-     * @param currRoot the current directory location.
+     * @param currRoot       the current directory location.
      * @param classesDirName the absolute path of the classes directory.
      * @return set of all package names within the project.
      */
@@ -103,10 +103,14 @@ public class Util {
             }
         });
         if (classFiles.length > 0) {
-            // we found a class file, which means we are in a directory with class files (package)
-            // No need to traverse further because AspectJ within(${PACKAGE_NAME}..*) syntax instruments subpackages.
-            // The [1] here points to the part of the path after the location of the classes directory.
-            // ex) for commons-fileupload, classesDirName would be /home/*/commons-fileupload/target/classes/
+            // we found a class file, which means we are in a directory with class files
+            // (package)
+            // No need to traverse further because AspectJ within(${PACKAGE_NAME}..*) syntax
+            // instruments subpackages.
+            // The [1] here points to the part of the path after the location of the classes
+            // directory.
+            // ex) for commons-fileupload, classesDirName would be
+            // /home/*/commons-fileupload/target/classes/
             // and packageName would be org/apache/commons/fileupload2
             String packageName = currRoot.getAbsolutePath().split(classesDirName + File.separator)[1];
             packageNameSet.add(packageName.replace(File.separator, "."));
@@ -135,9 +139,15 @@ public class Util {
     }
 
     public static void generateNewMonitorFile(String monitorFilePath,
-                                              Set<String> specsToMonitor,
-                                              Set<String> includesPackageNames,
-                                              Set<String> nonAffectedClasses) {
+            Set<String> specsToMonitor,
+            Set<String> includesPackageNames,
+            Set<String> nonAffectedClasses) {
+
+        System.out.println("Generating new monitor file at " + monitorFilePath);
+        System.out.println("Specs to monitor: " + specsToMonitor);
+        System.out.println("Packages to include: " + includesPackageNames);
+        System.out.println("Classes to exclude: " + nonAffectedClasses);
+
         try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
             // Write header
             writer.println("<aspectj>");
@@ -170,13 +180,18 @@ public class Util {
 
     /**
      * Relocates the generated violation-counts file.
-     * @param originalDir directory that should contain the original violation-counts
-     * @param newDir directory where violation-counts should be moved to
-     * @param mode the phase for the relocated violation-counts file (either "critical" or "background")
-     * @return absolute path to the new location of violation-counts if move was successful, empty string if not
+     * 
+     * @param originalDir directory that should contain the original
+     *                    violation-counts
+     * @param newDir      directory where violation-counts should be moved to
+     * @param mode        the phase for the relocated violation-counts file (either
+     *                    "critical" or "background")
+     * @return absolute path to the new location of violation-counts if move was
+     *         successful, empty string if not
      */
     public static String moveViolationCounts(File originalDir, String newDir, String mode) {
-        // If we get a handle on violation-counts from VMS, then we don't have to do this in the first place...
+        // If we get a handle on violation-counts from VMS, then we don't have to do
+        // this in the first place...
         File violationCounts = new File(originalDir + File.separator + "violation-counts");
         try {
             File newViolationCounts = new File(newDir + File.separator + mode + "-violation-counts.txt");
@@ -193,9 +208,11 @@ public class Util {
     }
 
     /**
-     * Writes the provided set of specifications to the specified file, delimited by newline.
+     * Writes the provided set of specifications to the specified file, delimited by
+     * newline.
+     * 
      * @param specs set of specs to write to the file
-     * @param file the file to write to
+     * @param file  the file to write to
      * @throws FileNotFoundException when file cannot be found
      */
     public static void writeSpecsToFile(Set<String> specs, File file) throws FileNotFoundException {

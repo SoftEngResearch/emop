@@ -41,7 +41,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
     /**
      * The path that specify the Javamop Agent JAR file.
      */
-    @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
+    @Parameter(property = "includeNonAffected", required = false, defaultValue = "false")
     private boolean includeNonAffected;
 
     /**
