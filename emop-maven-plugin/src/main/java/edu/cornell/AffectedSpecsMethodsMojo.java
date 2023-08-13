@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 
 import edu.cornell.emop.util.Util;
 import edu.illinois.starts.helpers.Writer;
+import edu.illinois.starts.jdeps.MethodsMojo;
 import edu.illinois.starts.util.ChecksumUtil;
 
 import org.apache.maven.plugin.MojoExecutionException;
@@ -40,12 +41,13 @@ import org.apache.maven.surefire.booter.Classpath;
 import org.aspectj.bridge.IMessage;
 import org.aspectj.bridge.MessageHandler;
 import org.aspectj.tools.ajc.Main;
+import org.jboss.forge.roaster.ParserException;
 
-import edu.cornell.emop.util.MethodsLineNumbers;
+import edu.cornell.emop.util.MethodsHelper;
 
 // @Mojo(name = "affected-specs-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Mojo(name = "asm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class AffectedSpecsMethodsMojo extends ImpactedClassMojo {
+public class AffectedSpecsMethodsMojo extends MethodsMojo {
 
     private static final int CLASS_INDEX_IN_MSG = 3;
     private static final int SPEC_LINE_NUMBER = 4;
@@ -110,36 +112,51 @@ public class AffectedSpecsMethodsMojo extends ImpactedClassMojo {
         try {
             computeMapFromMessage(ms);
         } catch (Exception e) {
-            // throw new RuntimeException(e.toString());
             e.printStackTrace();
         }
-        // // Update map
-        // changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue,
-        // newValue) -> newValue));
-        // computeAffectedSpecs();
-        // end = System.currentTimeMillis();
-        // getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) +
-        // " ms");
-        // start = System.currentTimeMillis();
-        // // Write map
+        computeAffectedSpecs();
+        end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) +
+                " ms");
+        start = System.currentTimeMillis();
+        // Write map
         // writeMapToFile(OutputFormat.BIN);
-        // // Write affectedSpecs
+        // Write affectedSpecs
         // writeMapToFile(OutputFormat.TXT);
-        // end = System.currentTimeMillis();
-        // getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end -
-        // start) + " ms");
-        // getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
-        // getLog().info("[eMOP] Number of messages to process: " +
-        // Arrays.asList(ms).size());
-        // }
+        end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end -
+                start) + " ms");
+        getLog().info("[eMOP] Number of changed methods: " + getChangedMethods().size());
+        getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
+        getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
+        getLog().info("[eMOP] Number of messages to process: " +
+                Arrays.asList(ms).size());
+    }
 
-        // private void computeAffectedSpecs() throws MojoExecutionException {
-        // for (String impactedClass : getImpacted()) {
-        // Set<String> associatedSpecs = classToSpecs.get(impactedClass);
-        // if (associatedSpecs != null) {
-        // affectedSpecs.addAll(associatedSpecs);
-        // }
-        // }
+    private void computeAffectedSpecs() throws MojoExecutionException {
+        for (String changedMethod : getChangedMethods()) {
+            // Convert method name from asm to java
+            System.out.println("changedMethod: " + changedMethod);
+            String javaMethodName = MethodsHelper.convertAsmToJava(changedMethod);
+
+            System.out.println(javaMethodName);
+
+            // Set<String> associatedSpecs = methodsToSpecs.get(changedMethod);
+            // if (associatedSpecs != null) {
+            // affectedSpecs.addAll(associatedSpecs);
+            // }
+        }
+    }
+
+    private String getFullPath(String methodSignature) {
+        // String klas = ChecksumUtil.toClassName(klasName);
+        // URL url = loader.getResource(klas);
+        // String filePath = url.getPath();
+
+        // filePath = filePath.replace(".class", ".java").replace("target",
+        // "src").replace("test-classes", "test/java")
+        // .replace("classes", "main/java");
+        return null;
     }
 
     /**
@@ -152,11 +169,10 @@ public class AffectedSpecsMethodsMojo extends ImpactedClassMojo {
     private void computeMapFromMessage(IMessage[] ms) throws Exception {
         Classpath sfClassPath = getSureFireClassPath();
         ClassLoader loader = createClassLoader(sfClassPath);
-        Map<String, ArrayList<String>> klasLineNumberToSepcs = new HashMap<>();
-
         for (IMessage message : ms) {
             String[] lexedMessage = message.getMessage().split("'");
             String klasName = lexedMessage[CLASS_INDEX_IN_MSG];
+            String spec = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
             int specLineNumber = Integer
                     .parseInt(lexedMessage[SPEC_LINE_NUMBER].split(" ")[1].split(":")[1].replace(")", ""));
 
@@ -164,25 +180,24 @@ public class AffectedSpecsMethodsMojo extends ImpactedClassMojo {
             URL url = loader.getResource(klas);
             String filePath = url.getPath();
 
-            filePath = filePath.replace(".class", ".java").replace("target", "src").replace("test-classes", "test/java").replace("classes", "main/java");
+            filePath = filePath.replace(".class", ".java").replace("target", "src").replace("test-classes", "test/java")
+                    .replace("classes", "main/java");
 
-            // System.out.println(filePath);
-            MethodsLineNumbers.getMethodLineNumbers(filePath);
-            String m = MethodsLineNumbers.getWrapMethod(filePath, specLineNumber);
-
-            System.out.println("klasName: " + klasName);
-            System.out.println("specLineNumber: " + specLineNumber);
-            System.out.println("mthod: " + m);
-
-            // String value =
-            // lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
-            // if (!changedMap.containsKey(key)) {
-            // changedMap.put(key, new HashSet<>());
-            // }
-            // changedMap.get(key).add(value);
-            // System.out.println("ms: " + message.getMessage());
+            try {
+                MethodsHelper.getMethodLineNumbers(filePath);
+            } catch (ParserException e) {
+                getLog().warn("Cannot find method line numbers for " + filePath);
+            }
+            String method = MethodsHelper.getWrapMethod(filePath, specLineNumber);
+            if (method == null) {
+                getLog().warn("Cannot find method for " + filePath + " at line " + specLineNumber);
+                continue;
+            }
+            String key = filePath.replace(".java", "#") + method;
+            Set<String> methodSpecs = methodsToSpecs.getOrDefault(key, new HashSet<>());
+            methodSpecs.add(spec);
+            methodsToSpecs.put(key, methodSpecs);
         }
-
     }
 
     /**
@@ -191,23 +206,22 @@ public class AffectedSpecsMethodsMojo extends ImpactedClassMojo {
      * @param format Output format of the map, text or binary
      */
     private void writeMapToFile(OutputFormat format) throws MojoExecutionException {
-        // switch (format) {
-        // case BIN:
-        // // Referenced from
-        // https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
-        // try (FileOutputStream fos
-        // = new FileOutputStream(getArtifactsDir() + File.separator +
-        // "classToSpecs.bin");
-        // ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-        // oos.writeObject(classToSpecs);
-        // } catch (IOException ex) {
-        // ex.printStackTrace();
-        // }
-        // break;
-        // case TXT:
-        // default:
-        // writeToText(classToSpecsContent);
-        // }
+        switch (format) {
+            case BIN:
+                // Referenced from
+                https: // www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
+                try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator +
+                        "classToSpecs.bin");
+                        ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                    oos.writeObject(methodsToSpecs);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                break;
+            case TXT:
+            default:
+                writeToText(classToSpecsContent);
+        }
     }
 
     /**
@@ -216,23 +230,22 @@ public class AffectedSpecsMethodsMojo extends ImpactedClassMojo {
      * @param content What to output
      */
     private void writeToText(OutputContent content) throws MojoExecutionException {
-        // try (PrintWriter writer
-        // = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
-        // switch (classToSpecsContent) {
-        // case MAP:
-        // for (Map.Entry<String, Set<String>> entry : classToSpecs.entrySet()) {
-        // writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
-        // }
-        // break;
-        // case SET:
-        // default:
-        // for (String affectedSpec : affectedSpecs) {
-        // writer.println(affectedSpec);
-        // }
-        // }
-        // } catch (IOException ex) {
-        // ex.printStackTrace();
-        // }
+        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
+            switch (classToSpecsContent) {
+                case MAP:
+                    for (Map.Entry<String, Set<String>> entry : methodsToSpecs.entrySet()) {
+                        writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
+                    }
+                    break;
+                case SET:
+                default:
+                    for (String affectedSpec : affectedSpecs) {
+                        writer.println(affectedSpec);
+                    }
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
     /**
@@ -344,7 +357,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedClassMojo {
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
 
-        classes: for (String changedClass : getChanged()) {
+        classes: for (String changedClass : getChangedClasses()) {
             if (changedClass.contains("$")) {
                 changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
             }
