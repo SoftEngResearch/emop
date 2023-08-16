@@ -279,7 +279,6 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
-
         classes:
         for (String changedClass : getChanged()) {
             if (changedClass.contains("$")) {

@@ -108,7 +108,10 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
-        methodsToSpecs = readMapFromFile();
+        // methodsToSpecs = readMapFromFile();
+        for (IMessage m : ms){
+            System.out.println(m.getMessage());
+        }
         try {
             computeMapFromMessage(ms);
         } catch (Exception e) {
@@ -134,30 +137,27 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
     }
 
     private void computeAffectedSpecs() throws MojoExecutionException {
+        System.out.println("specs: " + methodsToSpecs);
         for (String changedMethod : getChangedMethods()) {
             // Convert method name from asm to java
             System.out.println("changedMethod: " + changedMethod);
             String javaMethodName = MethodsHelper.convertAsmToJava(changedMethod);
-
-            System.out.println(javaMethodName);
-
-            // Set<String> associatedSpecs = methodsToSpecs.get(changedMethod);
-            // if (associatedSpecs != null) {
-            // affectedSpecs.addAll(associatedSpecs);
-            // }
+            Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>() );
+            affectedSpecs.addAll(specs);
+            System.out.println("specs: " + specs);
         }
     }
 
-    private String getFullPath(String methodSignature) {
-        // String klas = ChecksumUtil.toClassName(klasName);
-        // URL url = loader.getResource(klas);
-        // String filePath = url.getPath();
+    // private String getFullPath(String methodSignature) {
+    //     // String klas = ChecksumUtil.toClassName(klasName);
+    //     // URL url = loader.getResource(klas);
+    //     // String filePath = url.getPath();
 
-        // filePath = filePath.replace(".class", ".java").replace("target",
-        // "src").replace("test-classes", "test/java")
-        // .replace("classes", "main/java");
-        return null;
-    }
+    //     // filePath = filePath.replace(".class", ".java").replace("target",
+    //     // "src").replace("test-classes", "test/java")
+    //     // .replace("classes", "main/java");
+    //     return null;
+    // }
 
     /**
      * Compute a mapping from affected classes to specifications based on the
@@ -196,6 +196,7 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
             String key = filePath.replace(".java", "#") + method;
             Set<String> methodSpecs = methodsToSpecs.getOrDefault(key, new HashSet<>());
             methodSpecs.add(spec);
+            key = klas.replace(".class", "")+"#"+method;
             methodsToSpecs.put(key, methodSpecs);
         }
     }
@@ -205,70 +206,70 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
      * 
      * @param format Output format of the map, text or binary
      */
-    private void writeMapToFile(OutputFormat format) throws MojoExecutionException {
-        switch (format) {
-            case BIN:
-                // Referenced from
-                https: // www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
-                try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator +
-                        "classToSpecs.bin");
-                        ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-                    oos.writeObject(methodsToSpecs);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-                break;
-            case TXT:
-            default:
-                writeToText(classToSpecsContent);
-        }
-    }
+    // private void writeMapToFile(OutputFormat format) throws MojoExecutionException {
+    //     switch (format) {
+    //         case BIN:
+    //             // Referenced from
+    //             https: // www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
+    //             try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator +
+    //                     "classToSpecs.bin");
+    //                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+    //                 oos.writeObject(methodsToSpecs);
+    //             } catch (IOException ex) {
+    //                 ex.printStackTrace();
+    //             }
+    //             break;
+    //         case TXT:
+    //         default:
+    //             writeToText(classToSpecsContent);
+    //     }
+    // }
 
     /**
      * Write class and specification information to text file.
      * 
      * @param content What to output
      */
-    private void writeToText(OutputContent content) throws MojoExecutionException {
-        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
-            switch (classToSpecsContent) {
-                case MAP:
-                    for (Map.Entry<String, Set<String>> entry : methodsToSpecs.entrySet()) {
-                        writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
-                    }
-                    break;
-                case SET:
-                default:
-                    for (String affectedSpec : affectedSpecs) {
-                        writer.println(affectedSpec);
-                    }
-            }
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
+    // private void writeToText(OutputContent content) throws MojoExecutionException {
+    //     try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
+    //         switch (classToSpecsContent) {
+    //             case MAP:
+    //                 for (Map.Entry<String, Set<String>> entry : methodsToSpecs.entrySet()) {
+    //                     writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
+    //                 }
+    //                 break;
+    //             case SET:
+    //             default:
+    //                 for (String affectedSpec : affectedSpecs) {
+    //                     writer.println(affectedSpec);
+    //                 }
+    //         }
+    //     } catch (IOException ex) {
+    //         ex.printStackTrace();
+    //     }
+    // }
 
     /**
      * Reads the binary file that stores the map.
      * 
      * @return The map read from file
      */
-    private Map<String, Set<String>> readMapFromFile() throws MojoExecutionException {
-        // Referenced from
-        // https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
-        Map<String, Set<String>> map = new HashMap<>();
-        File oldMap = new File(getArtifactsDir() + File.separator + "classToSpecs.bin");
-        if (oldMap.exists()) {
-            try (FileInputStream fileInput = new FileInputStream(
-                    getArtifactsDir() + File.separator + "classToSpecs.bin");
-                    ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
-                map = (Map) objectInput.readObject();
-            } catch (IOException | ClassNotFoundException ex) {
-                ex.printStackTrace();
-            }
-        }
-        return map;
-    }
+    // private Map<String, Set<String>> readMapFromFile() throws MojoExecutionException {
+    //     // Referenced from
+    //     // https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
+    //     Map<String, Set<String>> map = new HashMap<>();
+    //     File oldMap = new File(getArtifactsDir() + File.separator + "classToSpecs.bin");
+    //     if (oldMap.exists()) {
+    //         try (FileInputStream fileInput = new FileInputStream(
+    //                 getArtifactsDir() + File.separator + "classToSpecs.bin");
+    //                 ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+    //             map = (Map) objectInput.readObject();
+    //         } catch (IOException | ClassNotFoundException ex) {
+    //             ex.printStackTrace();
+    //         }
+    //     }
+    //     return map;
+    // }
 
     private String[] createAJCArguments() throws MojoExecutionException {
         // extract the aspects for all available specs from the jar and make a list of
@@ -356,7 +357,7 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
-
+        System.out.println(getChangedClasses());
         classes: for (String changedClass : getChangedClasses()) {
             if (changedClass.contains("$")) {
                 changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
