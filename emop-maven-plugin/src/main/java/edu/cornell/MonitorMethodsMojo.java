@@ -21,7 +21,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-@Mojo(name = "mmk", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
+@Mojo(name = "monitor-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
 
 
@@ -73,16 +73,6 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         monitorExcludes = new HashSet<>();
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
-        if (rpsRpp) {
-            getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
-            try {
-                Util.writeSpecsToFile(affectedSpecs, new File(
-                        getArtifactsDir(), "affected-specs.txt"));
-            } catch (FileNotFoundException ex) {
-                throw new RuntimeException(ex);
-            }
-            System.setProperty("rpsRpp", "true");
-        }
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"

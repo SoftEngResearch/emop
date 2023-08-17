@@ -109,9 +109,9 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
         // methodsToSpecs = readMapFromFile();
-        for (IMessage m : ms){
-            System.out.println(m.getMessage());
-        }
+        // for (IMessage m : ms){
+        //     System.out.println(m.getMessage());
+        // }
         try {
             computeMapFromMessage(ms);
         } catch (Exception e) {
@@ -357,7 +357,7 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
-        System.out.println(getChangedClasses());
+        System.out.println("changed classes: " + getChangedClasses());
         classes: for (String changedClass : getChangedClasses()) {
             if (changedClass.contains("$")) {
                 changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
