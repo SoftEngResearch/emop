@@ -16,12 +16,24 @@ public class ImpactedMethodsMojo extends MethodsMojo {
     @Parameter(property = "updateChecksums", defaultValue = "true")
     private boolean updateChecksums;
 
+    /**
+     * Parameter to determine whether file checksums are updated.
+     */
+    @Parameter(property = "computeImpactedMethods", defaultValue = "true")
+    private boolean computeImpactedMethods;
+
     public void execute() throws MojoExecutionException {
-        setUpdateMethodsChecksums(updateChecksums);
+        setUpdateMethodsChecksums(true);
+        setComputeImpactedMethods(true);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Execute ImpactedMethods Mojo takes " + (end - start) + " ms");
     }
+
+    public boolean getComputeImpactedMethods() {
+        return computeImpactedMethods;
+    }
+
 }

@@ -22,7 +22,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "monitor-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
+public class MonitorMethodsMojo extends ImpactedSpecsMethodsMojo {
 
 
     public static final String MONITOR_FILE = "new-aop-ajc.xml";

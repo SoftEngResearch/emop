@@ -42,7 +42,7 @@ import edu.cornell.emop.util.MethodsHelper;
 
 // @Mojo(name = "affected-specs-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Mojo(name = "asm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
+public class ImpactedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     private static final int CLASS_INDEX_IN_MSG = 3;
     private static final int SPEC_LINE_NUMBER = 4;
@@ -84,16 +84,20 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
-        // if (getImpacted().isEmpty()) {
-        // return;
-        // }
+        boolean computeImpactedMethods = getComputeImpactedMethods();
+        if (computeImpactedMethods && getImpactedMethods().isEmpty()) {
+
+            return;
+
+        } else if (getAffectedMethods().isEmpty()) {
+            return;
+        }
+
         getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
         long start = System.currentTimeMillis();
         // If only computing changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
-
         Main compiler = new Main();
-
         MessageHandler mh = new MessageHandler();
         compiler.run(arguments, mh);
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
@@ -107,7 +111,13 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        computeAffectedSpecs();
+        if (computeImpactedMethods) {
+            computeImpactedSpecs();
+
+        } else {
+            computeAffectedSpecs();
+        }
+
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) +
                 " ms");
@@ -115,7 +125,14 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end -
                 start) + " ms");
-        getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
+
+        if (computeImpactedMethods) {
+            getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
+
+        } else {
+            getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
+        }
+
         getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
         getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
         getLog().info("[eMOP] Number of messages to process: " +
@@ -124,6 +141,15 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     private void computeAffectedSpecs() throws MojoExecutionException {
         for (String affectedMethod : getAffectedMethods()) {
+            // Convert method name from asm to java
+            String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
+            Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
+            affectedSpecs.addAll(specs);
+        }
+    }
+
+    private void computeImpactedSpecs() throws MojoExecutionException {
+        for (String affectedMethod : getImpactedMethods()) {
             // Convert method name from asm to java
             String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
             Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
