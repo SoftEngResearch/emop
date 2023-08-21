@@ -51,13 +51,11 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     private boolean includeLibraries;
 
-    @Parameter(property = "rpsRpp", defaultValue = "false")
-    private boolean rpsRpp;
 
     public void execute() throws MojoExecutionException {
         super.execute();
 
-        if (getChangedMethods().isEmpty()) {
+        if (getAffectedMethods().isEmpty()) {
             System.setProperty("exiting-rps", "true");
             System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
             if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
@@ -71,6 +69,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = new HashSet<>();
+        System.out.println("affectedSpecs: " + affectedSpecs);
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {

@@ -1,13 +1,9 @@
 package edu.cornell;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
 import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -29,7 +25,6 @@ import java.util.stream.Stream;
 
 import edu.cornell.emop.util.Util;
 import edu.illinois.starts.helpers.Writer;
-import edu.illinois.starts.jdeps.MethodsMojo;
 import edu.illinois.starts.util.ChecksumUtil;
 
 import org.apache.maven.plugin.MojoExecutionException;
@@ -47,7 +42,7 @@ import edu.cornell.emop.util.MethodsHelper;
 
 // @Mojo(name = "affected-specs-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Mojo(name = "asm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class AffectedSpecsMethodsMojo extends MethodsMojo {
+public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     private static final int CLASS_INDEX_IN_MSG = 3;
     private static final int SPEC_LINE_NUMBER = 4;
@@ -72,19 +67,17 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
         BIN, TXT
     }
 
-    private Map<String, Set<String>> changedMap = new HashMap<>();
-
     /**
      * Defines whether the output content is a set or a map.
      */
     @Parameter(property = "methodsToSpecsContent", defaultValue = "SET")
-    private OutputContent classToSpecsContent;
+    private OutputContent methodsToSpecsContent;
 
     /**
      * Defines the output format of the map.
      */
     @Parameter(property = "methodsToSpecsFormat", defaultValue = "TXT")
-    private OutputFormat classToSpecsFormat;
+    private OutputFormat methodsToSpecsFormat;
 
     @Parameter(defaultValue = "${project}", required = true, readonly = true)
     private MavenProject mavenProject;
@@ -108,10 +101,7 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
-        // methodsToSpecs = readMapFromFile();
-        // for (IMessage m : ms){
-        //     System.out.println(m.getMessage());
-        // }
+
         try {
             computeMapFromMessage(ms);
         } catch (Exception e) {
@@ -122,14 +112,10 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) +
                 " ms");
         start = System.currentTimeMillis();
-        // Write map
-        // writeMapToFile(OutputFormat.BIN);
-        // Write affectedSpecs
-        // writeMapToFile(OutputFormat.TXT);
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end -
                 start) + " ms");
-        getLog().info("[eMOP] Number of changed methods: " + getChangedMethods().size());
+        getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
         getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
         getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
         getLog().info("[eMOP] Number of messages to process: " +
@@ -137,27 +123,13 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
     }
 
     private void computeAffectedSpecs() throws MojoExecutionException {
-        System.out.println("specs: " + methodsToSpecs);
-        for (String changedMethod : getChangedMethods()) {
+        for (String affectedMethod : getAffectedMethods()) {
             // Convert method name from asm to java
-            System.out.println("changedMethod: " + changedMethod);
-            String javaMethodName = MethodsHelper.convertAsmToJava(changedMethod);
-            Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>() );
+            String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
+            Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
             affectedSpecs.addAll(specs);
-            System.out.println("specs: " + specs);
         }
     }
-
-    // private String getFullPath(String methodSignature) {
-    //     // String klas = ChecksumUtil.toClassName(klasName);
-    //     // URL url = loader.getResource(klas);
-    //     // String filePath = url.getPath();
-
-    //     // filePath = filePath.replace(".class", ".java").replace("target",
-    //     // "src").replace("test-classes", "test/java")
-    //     // .replace("classes", "main/java");
-    //     return null;
-    // }
 
     /**
      * Compute a mapping from affected classes to specifications based on the
@@ -196,80 +168,10 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
             String key = filePath.replace(".java", "#") + method;
             Set<String> methodSpecs = methodsToSpecs.getOrDefault(key, new HashSet<>());
             methodSpecs.add(spec);
-            key = klas.replace(".class", "")+"#"+method;
+            key = klas.replace(".class", "") + "#" + method;
             methodsToSpecs.put(key, methodSpecs);
         }
     }
-
-    /**
-     * Write map from class to specs in either text or binary format.
-     * 
-     * @param format Output format of the map, text or binary
-     */
-    // private void writeMapToFile(OutputFormat format) throws MojoExecutionException {
-    //     switch (format) {
-    //         case BIN:
-    //             // Referenced from
-    //             https: // www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
-    //             try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator +
-    //                     "classToSpecs.bin");
-    //                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-    //                 oos.writeObject(methodsToSpecs);
-    //             } catch (IOException ex) {
-    //                 ex.printStackTrace();
-    //             }
-    //             break;
-    //         case TXT:
-    //         default:
-    //             writeToText(classToSpecsContent);
-    //     }
-    // }
-
-    /**
-     * Write class and specification information to text file.
-     * 
-     * @param content What to output
-     */
-    // private void writeToText(OutputContent content) throws MojoExecutionException {
-    //     try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
-    //         switch (classToSpecsContent) {
-    //             case MAP:
-    //                 for (Map.Entry<String, Set<String>> entry : methodsToSpecs.entrySet()) {
-    //                     writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
-    //                 }
-    //                 break;
-    //             case SET:
-    //             default:
-    //                 for (String affectedSpec : affectedSpecs) {
-    //                     writer.println(affectedSpec);
-    //                 }
-    //         }
-    //     } catch (IOException ex) {
-    //         ex.printStackTrace();
-    //     }
-    // }
-
-    /**
-     * Reads the binary file that stores the map.
-     * 
-     * @return The map read from file
-     */
-    // private Map<String, Set<String>> readMapFromFile() throws MojoExecutionException {
-    //     // Referenced from
-    //     // https://www.geeksforgeeks.org/how-to-serialize-hashmap-in-java/
-    //     Map<String, Set<String>> map = new HashMap<>();
-    //     File oldMap = new File(getArtifactsDir() + File.separator + "classToSpecs.bin");
-    //     if (oldMap.exists()) {
-    //         try (FileInputStream fileInput = new FileInputStream(
-    //                 getArtifactsDir() + File.separator + "classToSpecs.bin");
-    //                 ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
-    //             map = (Map) objectInput.readObject();
-    //         } catch (IOException | ClassNotFoundException ex) {
-    //             ex.printStackTrace();
-    //         }
-    //     }
-    //     return map;
-    // }
 
     private String[] createAJCArguments() throws MojoExecutionException {
         // extract the aspects for all available specs from the jar and make a list of
@@ -357,7 +259,6 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
-        System.out.println("changed classes: " + getChangedClasses());
         classes: for (String changedClass : getChangedClasses()) {
             if (changedClass.contains("$")) {
                 changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
@@ -434,28 +335,3 @@ public class AffectedSpecsMethodsMojo extends MethodsMojo {
         return files;
     }
 }
-
-// ajc command that Owolabi ran locally:
-
-/*
- * time ajc -classpath
- * /home/owolabi/.m2/repository/junit/junit/4.12/junit-4.12.jar:/home/owolabi/.
- * m2/repository/org/hamcre
- * st/hamcrest-core/1.3/hamcrest-core-1.3.jar:/home/owolabi/.m2/repository/javax
- * /servlet/servlet-api/2.4/servlet-api-2.4.ja
- * r:/home/owolabi/.m2/repository/portlet-api/portlet-api/1.0/portlet-api-1.0.
- * jar:/home/owolabi/.m2/repository/commons-io/c
- * ommons-io/2.2/commons-io-2.2.jar:target/classes:target/test-classes:/home/
- * owolabi/projects/emop/scripts/lib/rv-monitor-r
- * t.jar:/home/owolabi/projects/emop/scripts/lib/aspectjrt.jar -argfile args.lst
- * -d test-ajc -argfile aspects.lst -argfile
- * sources.lst &> a.txt
- */
-
-// String processing command to get the map of specs to tests
-
-/*
- * paste -d, <(grep "Join point" ${weave_out} | cut -d\' -f4) <(grep
- * "Join point" ${weave_out} | rev | cut -d\( -f1 | rev |
- * cut -d. -f1) | sort -u
- */

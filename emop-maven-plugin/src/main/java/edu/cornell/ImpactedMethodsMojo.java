@@ -18,17 +18,10 @@ public class ImpactedMethodsMojo extends MethodsMojo {
 
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(updateChecksums);
-        // setTrackNewClasses(true);
-        // setTransitiveClosureOption(closureOption);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Execute ImpactedMethods Mojo takes " + (end - start) + " ms");
-//         getLog().info("[eMOP] Total number of methods: " + (getOldClasses().size() + getNewClasses().size()));
-//         if (getImpacted().isEmpty()) {
-//             getLog().info("[eMOP] No impacted methods, returning...");
-// //            System.exit(0);
-//         }
     }
 }
