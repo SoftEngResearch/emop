@@ -78,10 +78,6 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (dependencyChangeDetected) {
-            getLog().info("Reverting to Base RV.");
-            return;
-        }
         if (getImpacted().isEmpty()) {
             return;
         }
@@ -100,7 +96,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         computeMapFromMessage(ms);
         // Update map
         changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-        computeAffectedSpecs();
+        computeAffectedSpecs(dependencyChangeDetected);
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
@@ -114,8 +110,16 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
-    private void computeAffectedSpecs() throws MojoExecutionException {
-        for (String impactedClass : getImpacted()) {
+    private void computeAffectedSpecs(boolean dependencyChangeDetected) throws MojoExecutionException {
+        Set<String> impactedClasses = new HashSet<>();
+        if (dependencyChangeDetected) {
+            // Revert to base RV, everything is affected.
+            impactedClasses.addAll(getOldClasses());
+            impactedClasses.addAll(getNewClasses());
+        } else {
+            impactedClasses.addAll(getImpacted());
+        }
+        for (String impactedClass : impactedClasses) {
             Set<String> associatedSpecs = classToSpecs.get(impactedClass);
             if (associatedSpecs != null) {
                 affectedSpecs.addAll(associatedSpecs);

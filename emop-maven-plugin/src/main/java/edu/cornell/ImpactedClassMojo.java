@@ -60,7 +60,7 @@ public class ImpactedClassMojo extends ImpactedMojo {
             Writer.writeClassPath(cpString, artifactsDir);
             Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
             dependencyChangeDetected = true;
-            getLog().info("Dependencies changed!");
+            getLog().info("Dependencies changed! Reverting to Base RV.");
         }
 
         if (!dependencyChangeDetected && getImpacted().isEmpty()) {
