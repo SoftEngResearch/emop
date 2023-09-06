@@ -104,4 +104,13 @@ public class MethodsHelper {
         return null;
     }
 
+    //test use 
+    public static void putclassTomethod(String a, ArrayList<String> b){
+        classToMethods.put(a,b);
+    }
+    //test use
+    public static void putmethodsToLineNumbers(String a,ArrayList<Integer> b){
+        methodsToLineNumbers.put(a, b);
+    }
+
 }
