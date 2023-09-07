@@ -53,32 +53,30 @@ public class MonitorMojo extends AffectedSpecsMojo {
             getLog().info("No impacted classes mode detected MonitorMojo");
             return;
         }
-        if (!dependencyChangeDetected) {
-            getLog().info("[eMOP] Invoking the Monitor Mojo...");
-            long start = System.currentTimeMillis();
-            monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
-            monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
-            Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
-                    monitorIncludes, monitorExcludes);
-            if (rpsRpp) {
-                getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
-                try {
-                    Util.writeSpecsToFile(affectedSpecs, new File(getArtifactsDir(), "affected-specs.txt"));
-                } catch (FileNotFoundException ex) {
-                    throw new RuntimeException(ex);
-                }
-                System.setProperty("rpsRpp", "true");
+        getLog().info("[eMOP] Invoking the Monitor Mojo...");
+        long start = System.currentTimeMillis();
+        monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
+        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
+        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
+                monitorIncludes, monitorExcludes);
+        if (rpsRpp) {
+            getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
+            try {
+                Util.writeSpecsToFile(affectedSpecs, new File(getArtifactsDir(), "affected-specs.txt"));
+            } catch (FileNotFoundException ex) {
+                throw new RuntimeException(ex);
             }
-            if (javamopAgent == null) {
-                javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
-                        + File.separator + "javamop-agent"
-                        + File.separator + "1.0"
-                        + File.separator + "javamop-agent-1.0.jar";
-            }
-            Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + MONITOR_FILE);
-            long end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
+            System.setProperty("rpsRpp", "true");
         }
+        if (javamopAgent == null) {
+            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
+                    + File.separator + "javamop-agent"
+                    + File.separator + "1.0"
+                    + File.separator + "javamop-agent-1.0.jar";
+        }
+        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + MONITOR_FILE);
+        long end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
     }
 
     /**
