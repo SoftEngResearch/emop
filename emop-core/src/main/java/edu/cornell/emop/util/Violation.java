@@ -10,6 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/** Represents the Java object for a violation. */
 public class Violation {
 
     /**

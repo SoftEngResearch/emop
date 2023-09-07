@@ -23,7 +23,10 @@ public class ImpactedClassMojo extends ImpactedMojo {
 
     private static final String TARGET = "target";
 
+    /** Denotes whether a project dependency (jar or Maven dependency) has changed. */
     protected boolean dependencyChangeDetected = false;
+
+    /** A list that stores the checksums of jar files. */
     protected List<Pair> jarCheckSums = null;
 
     /**
@@ -42,11 +45,11 @@ public class ImpactedClassMojo extends ImpactedMojo {
     )
     private TransitiveClosureOptions closureOption;
 
-
     public void execute() throws MojoExecutionException {
         setUpdateImpactedChecksums(updateChecksums);
         setTrackNewClasses(true);
         setTransitiveClosureOption(closureOption);
+
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedClasses Mojo...");
         super.execute();
@@ -55,16 +58,13 @@ public class ImpactedClassMojo extends ImpactedMojo {
         getLog().info("[eMOP] Total number of classes: " + (getOldClasses().size() + getNewClasses().size()));
 
         String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
+        // TODO: Change STARTS so that it exposes the three methods needed here
         List<String> sfPathElements = getCleanClassPath(cpString);
         if (!isSameClassPath(sfPathElements) || !hasSameJarChecksum(sfPathElements)) {
             Writer.writeClassPath(cpString, artifactsDir);
             Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
             dependencyChangeDetected = true;
             getLog().info("Dependencies changed! Reverting to Base RV.");
-        }
-
-        if (!dependencyChangeDetected && getImpacted().isEmpty()) {
-            getLog().info("[eMOP] No impacted classes, returning...");
         }
     }
 
