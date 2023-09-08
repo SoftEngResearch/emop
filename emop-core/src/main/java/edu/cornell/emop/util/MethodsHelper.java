@@ -21,7 +21,7 @@ public class MethodsHelper {
     private static Map<String, ArrayList<Integer>> methodsToLineNumbers = new HashMap<>();
     /* Mapping to keep classes to all the their methods */
     private static Map<String, ArrayList<String>> classToMethods = new HashMap<>();
-
+    /* Set to keep track of files that have been parsed */
     private static Set<String> cachedFile = new HashSet<>();
 
     /**
@@ -87,6 +87,7 @@ public class MethodsHelper {
      * types from the ASM signature.
      * The method then constructs a Java method signature by appending the class
      * names of the argument types.
+     * Example: (Ljava/lang/String;I)V -> (String,int)
      *
      * @param asmSignature The ASM method signature to be converted.
      * @return The Java method signature corresponding to the given ASM signature.
@@ -108,12 +109,10 @@ public class MethodsHelper {
     }
 
     /**
-     * This method converts an ASM method signature to a Java method signature.
-     * The method splits the given ASM signature into its name and argument parts.
-     * The method then calls convertAsmSignatureToJava to convert the argument part
-     * of the ASM signature to a Java signature.
-     * The method finally constructs the full Java method signature by appending the
-     * name and argument parts.
+     * This method is the higher level method that converts an ASM method signature
+     * to a Java method signature.
+     * The main part of conversion is done in the convertAsmSignatureToJava method.
+     * Example: (Ljava/lang/String;I)V -> (String,int)
      *
      * @param methodAsmSignature The ASM method signature to be converted. It should
      *                           have the format filePath#methodSignature.
@@ -139,7 +138,7 @@ public class MethodsHelper {
      * @param filePath The path of the Java source file to be searched.
      * @param lineNum  The line number to be searched for.
      * @return The name of the wrapping method, or null if no wrapping method is
-     *         found.
+     *         found. (Null means there is probably a bug)
      */
     public static String getWrapMethod(String filePath, int lineNum) {
         ArrayList<String> methods = classToMethods.getOrDefault(filePath, new ArrayList<>());

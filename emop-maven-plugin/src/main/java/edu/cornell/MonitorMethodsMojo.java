@@ -73,8 +73,8 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
 
     /**
      * Generates the set of package names of classes that should be monitored. If
-     * the set is non-empty, then any
-     * package not included in this set will not be monitored.
+     * the set is non-empty, then any package not included in this set will not be
+     * monitored.
      * 
      * @return created set of package names for weaving. An empty set is returned if
      *         the includeLibraries is true.
