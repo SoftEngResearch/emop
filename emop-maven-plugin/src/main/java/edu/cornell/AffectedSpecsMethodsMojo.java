@@ -42,7 +42,7 @@ import edu.cornell.emop.util.MethodsHelper;
 
 // @Mojo(name = "affected-specs-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Mojo(name = "asm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class ImpactedSpecsMethodsMojo extends ImpactedMethodsMojo {
+public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     private static final int CLASS_INDEX_IN_MSG = 3;
     private static final int SPEC_LINE_NUMBER = 4;
@@ -199,6 +199,17 @@ public class ImpactedSpecsMethodsMojo extends ImpactedMethodsMojo {
         }
     }
 
+    /**
+     * This method creates an array of arguments for the AspectJ compiler (AJC).
+     * It extracts aspects from the jar and writes them to a file, then prepares a
+     * list of source files to weave.
+     * The method also extracts an argument file from the jar and prepares the
+     * classpath for AJC.
+     * Finally, it returns an array of arguments that can be used to call AJC.
+     *
+     * @return An array of arguments for the AspectJ compiler
+     * @throws MojoExecutionException if an error occurs during execution
+     */
     private String[] createAJCArguments() throws MojoExecutionException {
         // extract the aspects for all available specs from the jar and make a list of
         // them in a file
@@ -237,6 +248,13 @@ public class ImpactedSpecsMethodsMojo extends ImpactedMethodsMojo {
         return String.join(File.pathSeparator, runtimeJars);
     }
 
+    /**
+     * This method returns the classpath for Surefire as a String.
+     * It is used to pass the classpath to the AspectJ compiler.
+     * 
+     * @return The classpath for Surefire as a String
+     * @throws MojoExecutionException if an error occurs during execution
+     */
     protected String getClassPath() throws MojoExecutionException {
         return Writer.pathToString(getSureFireClassPath().getClassPath());
     }
