@@ -9,6 +9,6 @@ if (!firstRun.exists()) {
     // No expectations for the first run
 } else {
     println("The affectedSpecs are: " + affectedSpecsMessage)
-    assert affectedSpecsMessage == "Collections_SynchronizedCollectionMonitorAspect" : "Unexpected affected specs message for subsequent runs!"
+    assert affectedSpecsMessage == "StringBuilder_ThreadSafeMonitorAspect,Map_UnsafeIteratorMonitorAspect" : "Unexpected affected specs message for subsequent runs!"
     firstRun.delete()
 }

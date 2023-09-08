@@ -8,6 +8,7 @@ if (!firstRun.exists()) {
     firstRun.createNewFile();
     // No expectations for the first run
 } else {
+    println("The affectedSpecs are: " + affectedSpecsMessage)
     assert affectedSpecsMessage == "Collections_SynchronizedCollectionMonitorAspect, StringTokenizer_HasMoreElementsMonitorAspect" : "Unexpected affected specs message for subsequent runs!"
     firstRun.delete()
 }

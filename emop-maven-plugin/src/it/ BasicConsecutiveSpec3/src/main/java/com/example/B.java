@@ -6,7 +6,7 @@ public class B extends A {
         // -
         i = Amethod1(l, " ");
         // +
-//         i = Amethod1(Collections.synchronizedList(l), " ");
+//      i = Amethod1(Collections.synchronizedList(l), " ");
         return i.trim();
     }
 
