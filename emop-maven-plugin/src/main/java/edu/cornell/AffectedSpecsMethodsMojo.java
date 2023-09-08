@@ -160,6 +160,10 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     /**
      * Compute a mapping from affected methods to specifications based on the
      * messages from AJC.
+     * It utilizes relevant methods from the MethodsHelper class. The idea is
+     * that we can use the line numbers of the methods to find the corresponding
+     * specs inside that method. This is becayse the messages from AJC contain only
+     * the class and line number of the spec not the method.
      * 
      * @param ms An array of IMessage objects
      * @throws Exception
