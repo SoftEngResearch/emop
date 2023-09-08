@@ -40,8 +40,8 @@ public class MethodsHelper {
             return methodsToLineNumbers;
         }
 
-        String tp = filePath.replace(".java", "");
-        String[] classesNames = tp.split("\\$");
+        String tempPath = filePath.replace(".java", "");
+        String[] classesNames = tempPath.split("\\$");
         File file = new File(classesNames[0] + ".java");
 
         JavaClassSource javaClass = Roaster.parse(JavaClassSource.class, Files.newInputStream(file.toPath()));
