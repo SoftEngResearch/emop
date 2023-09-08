@@ -1,21 +1,12 @@
 package edu.cornell;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+
 import java.util.Set;
 
 import edu.cornell.emop.maven.AgentLoader;
 import edu.cornell.emop.util.Util;
-import edu.illinois.starts.helpers.Writer;
-import edu.illinois.starts.util.Pair;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -28,9 +19,6 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     public static final String MONITOR_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
-    private static final String TARGET = "target";
-
-    protected List<Pair> jarCheckSums = null;
 
     /**
      * The path that specify the Javamop Agent JAR file.

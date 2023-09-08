@@ -2,12 +2,10 @@ package edu.cornell;
 
 import java.io.File;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import edu.cornell.emop.maven.AgentLoader;
 import edu.cornell.emop.util.Util;
-import edu.illinois.starts.util.Pair;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
