@@ -28,13 +28,13 @@
     <dependency>
       <groupId>edu.illinois</groupId>
       <artifactId>starts-core</artifactId>
-      <version>1.4-SNAPSHOT</version>
+      <version>1.5-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>edu.illinois</groupId>
       <artifactId>starts-maven-plugin</artifactId>
-      <version>1.4-SNAPSHOT</version>
+      <version>1.5-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
