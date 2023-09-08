@@ -39,7 +39,6 @@ import org.aspectj.tools.ajc.Main;
 import org.jboss.forge.roaster.ParserException;
 
 import edu.cornell.emop.util.MethodsHelper;
-
 // @Mojo(name = "affected-specs-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Mojo(name = "hsm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class ImpactedSpecsHybridMojo extends ImpactedHybridMojo {
