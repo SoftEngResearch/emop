@@ -1,11 +1,5 @@
 package edu.cornell.emop.util;
 
-import org.jboss.forge.roaster.Roaster;
-import org.jboss.forge.roaster.model.JavaType;
-import org.jboss.forge.roaster.model.source.JavaClassSource;
-import org.jboss.forge.roaster.model.source.MethodSource;
-import org.objectweb.asm.Type;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -14,6 +8,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.jboss.forge.roaster.Roaster;
+import org.jboss.forge.roaster.model.JavaType;
+import org.jboss.forge.roaster.model.source.JavaClassSource;
+import org.jboss.forge.roaster.model.source.MethodSource;
+import org.objectweb.asm.Type;
 
 public class MethodsHelper {
 
@@ -25,7 +25,7 @@ public class MethodsHelper {
     private static Set<String> cachedFile = new HashSet<>();
 
     /**
-     * This method returns a map of method names to their beginning and ending line
+     * Returns a map of method names to their beginning and ending line
      * numbers in the given filepath.
      * The method uses Roaster to parse the Java source code and extract the line
      * numbers of each method.
@@ -126,8 +126,8 @@ public class MethodsHelper {
     }
 
     /**
-     * This method returns the name of the method that wraps the given line number
-     * in the given file.
+     * Returns the name of the method that wraps the given line number in the given
+     * file.
      * The method first retrieves the list of methods in the given file from a
      * cache.
      * The method then iterates over the methods and checks if their line numbers
@@ -152,13 +152,13 @@ public class MethodsHelper {
     }
 
     // test use
-    public static void putclassTomethod(String a, ArrayList<String> b) {
-        classToMethods.put(a, b);
+    public static void putclassTomethod(String key, ArrayList<String> value) {
+        classToMethods.put(key, value);
     }
 
     // test use
-    public static void putmethodsToLineNumbers(String a, ArrayList<Integer> b) {
-        methodsToLineNumbers.put(a, b);
+    public static void putmethodsToLineNumbers(String key, ArrayList<Integer> value) {
+        methodsToLineNumbers.put(key, value);
     }
 
 }

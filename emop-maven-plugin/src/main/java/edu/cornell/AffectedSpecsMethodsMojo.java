@@ -23,6 +23,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import edu.cornell.emop.util.MethodsHelper;
 import edu.cornell.emop.util.Util;
 import edu.illinois.starts.helpers.Writer;
 import edu.illinois.starts.util.ChecksumUtil;
@@ -38,9 +39,6 @@ import org.aspectj.bridge.MessageHandler;
 import org.aspectj.tools.ajc.Main;
 import org.jboss.forge.roaster.ParserException;
 
-import edu.cornell.emop.util.MethodsHelper;
-
-// @Mojo(name = "affected-specs-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Mojo(name = "asm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
@@ -117,8 +115,8 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
         try {
             computeMapFromMessage(ms);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            exception.printStackTrace();
         }
 
         // Compute affected specs from changed methods or impacted methods
@@ -130,12 +128,10 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         }
 
         end = System.currentTimeMillis();
-        getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) +
-                " ms");
+        getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
         end = System.currentTimeMillis();
-        getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end -
-                start) + " ms");
+        getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
 
         if (computeImpactedMethods) {
             getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
@@ -146,8 +142,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
         getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
         getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
-        getLog().info("[eMOP] Number of messages to process: " +
-                Arrays.asList(ms).size());
+        getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
     private void computeAffectedSpecs(Set<String> methods) throws MojoExecutionException {
@@ -166,9 +161,8 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      * that we can use the line numbers of the methods to find the corresponding
      * specs inside that method. This is becayse the messages from AJC contain only
      * the class and line number of the spec not the method.
-     * 
+     *
      * @param ms An array of IMessage objects
-     * @throws Exception
      */
     private void computeMapFromMessage(IMessage[] ms) throws Exception {
         Classpath sfClassPath = getSureFireClassPath();
@@ -189,7 +183,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
             try {
                 MethodsHelper.getMethodLineNumbers(filePath);
-            } catch (ParserException e) {
+            } catch (ParserException exception) {
                 getLog().warn("Cannot find method line numbers for " + filePath);
             }
             String method = MethodsHelper.getWrapMethod(filePath, specLineNumber);
@@ -244,7 +238,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     /**
      * We need to put aspectjrt and rv-monitor-rt on the classpath for AJC.
-     * 
+     *
      * @return classpath with only the runtime jars
      * @throws MojoExecutionException throws MojoExecutionException
      */
@@ -255,9 +249,8 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     }
 
     /**
-     * This method returns the classpath for Surefire as a String.
-     * It is used to pass the classpath to the AspectJ compiler.
-     * 
+     * Returns the classpath for Surefire as a String.
+     *
      * @return The classpath for Surefire as a String
      * @throws MojoExecutionException if an error occurs during execution
      */
@@ -270,7 +263,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      * file. Assumes a standard directory
      * layout, i.e., one where the source for {@code com.abc.A} resides in
      * {@code sourceDir/com/abc/A.java}.
-     * 
+     *
      * @param classFile  the path to the class file
      * @param classesDir the base class file directory
      * @param sourceDir  the base sources directory
