@@ -85,6 +85,7 @@ public class ImpactedSpecsMethodsMojo extends ImpactedMethodsMojo {
     public void execute() throws MojoExecutionException {
         super.execute();
         boolean computeImpactedMethods = getComputeImpactedMethods();
+       getLog().info("The impacted or compacted mode is : " + computeImpactedMethods);
         if (computeImpactedMethods && getImpactedMethods().isEmpty()) {
 
             return;
@@ -113,7 +114,6 @@ public class ImpactedSpecsMethodsMojo extends ImpactedMethodsMojo {
         }
         if (computeImpactedMethods) {
             computeImpactedSpecs();
-
         } else {
             computeAffectedSpecs();
         }
@@ -127,8 +127,7 @@ public class ImpactedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 start) + " ms");
 
         if (computeImpactedMethods) {
-            getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
-
+            getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
         } else {
             getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
         }

@@ -20,9 +20,11 @@ public class ImpactedMethodsMojo extends MethodsMojo {
      * Parameter to determine whether file checksums are updated.
      */
     @Parameter(property = "computeImpactedMethods", defaultValue = "true")
-    private boolean computeImpactedMethods;
+    private boolean computeImpactedMethodOption;
 
     public void execute() throws MojoExecutionException {
+        getLog().info("The computeImpactedMethods value is : " + computeImpactedMethodOption);
+
         setUpdateMethodsChecksums(true);
         setComputeImpactedMethods(true);
         long start = System.currentTimeMillis();
@@ -33,7 +35,7 @@ public class ImpactedMethodsMojo extends MethodsMojo {
     }
 
     public boolean getComputeImpactedMethods() {
-        return computeImpactedMethods;
+        return computeImpactedMethodOption;
     }
 
 }
