@@ -31,7 +31,7 @@ public class Util {
     public static SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 
     /**
-     * Find files under path that matches the extension.
+     * Find files under a path that matches the extension.
      *
      * @param path The path in which to search for files
      * @param extension The file extension being searched for

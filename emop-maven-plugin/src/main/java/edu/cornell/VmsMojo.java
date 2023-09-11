@@ -66,7 +66,7 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 public class VmsMojo extends DiffMojo {
     /**
      * DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
-     * and deletions
+     * and deletions.
      */
     private static final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
