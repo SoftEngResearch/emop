@@ -31,8 +31,8 @@ public class RppVmsMojo extends RppMojo {
     protected Path gitDir;
 
     /**
-     * Monitor file from which to read monitored specs and excluded classes. The given path is
-     * resolved relative to the artifacts directory. Can be left null to indicate that all specs and
+     * Agent configuration file from which to read monitored specs and excluded classes. The given path is
+     * resolved relative to the artifacts directory. This property can be left null to indicate that all specs and
      * classes were monitored.
      */
     @Parameter(property = "monitorFile", required = false)
@@ -44,7 +44,7 @@ public class RppVmsMojo extends RppMojo {
     // copied from VMS - is there a better way to do this?
     /**
      * Specific SHA to use as the "old" version of code when making comparisons.
-     * Should correspond to the previous run of VMS.
+     * The SHA should correspond to the previous run of VMS.
      */
     @Parameter(property = "lastSha", required = false)
     private String lastSha;
@@ -123,11 +123,11 @@ public class RppVmsMojo extends RppMojo {
             getLog().info("Copying critical violations from " + criticalViolationsPathPath
                     + " to " + newViolationCountsPath);
             Files.copy(criticalViolationsPathPath, newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
-            if (bgViolationsPath != null && !bgViolationsPath.isEmpty()) {
-                newViolations.addAll(Violation.parseViolations(Paths.get(bgViolationsPath)));
-                getLog().info("Copying background violations from " + Paths.get(bgViolationsPath)
+            if (backgroundViolationsPath != null && !backgroundViolationsPath.isEmpty()) {
+                newViolations.addAll(Violation.parseViolations(Paths.get(backgroundViolationsPath)));
+                getLog().info("Copying background violations from " + Paths.get(backgroundViolationsPath)
                         + " to " + newViolationCountsPath);
-                Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(bgViolationsPath)),
+                Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(backgroundViolationsPath)),
                         StandardOpenOption.APPEND);
             }
         } catch (IOException ex) {
@@ -147,7 +147,7 @@ public class RppVmsMojo extends RppMojo {
             Map<String, Map<Integer, Integer>> offsets = new HashMap<>();
             Map<String, Set<Integer>> modifiedLines = new HashMap<>();
             VmsMojo.findLineChangesAndRenamesHelper(diffEntryList, renames, offsets, modifiedLines);
-            VmsMojo.removeDuplicateViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
+            VmsMojo.filterOutOldViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
@@ -159,5 +159,4 @@ public class RppVmsMojo extends RppMojo {
         }
         getLog().info("[eMOP] VMS end time: " + Util.timeFormatter.format(new Date()));
     }
-
 }

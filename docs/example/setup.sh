@@ -1,6 +1,10 @@
 #!/bin/bash
 #
 # Sets up the environment for demo
+(
+  cd scripts
+  bash install-starts.sh
+)
 git clone https://github.com/SoftEngResearch/javamop-agent-bundle.git
 (
   cd javamop-agent-bundle

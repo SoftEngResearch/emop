@@ -24,7 +24,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
 
-    protected String bgViolationsPath;
+    protected String backgroundViolationsPath;
     protected String criticalViolationsPath;
 
     @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
@@ -71,11 +71,11 @@ public class RppMojo extends RppHandlerMojo {
         // read the violation-counts files and output the list of critical and background specs for next time
         // (in the case that the user doesn't provide files for critical and background specs)
         Set<String> violatedSpecs = Violation.parseViolationSpecs(Paths.get(criticalViolationsPath));
-        Set<String> bgViolatedSpecs = new HashSet<>();
+        Set<String> backgroundViolatedSpecs = new HashSet<>();
         if (bgViolationsPath != null) {
-            bgViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
+            backgroundViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
         }
-        violatedSpecs.addAll(bgViolatedSpecs);
+        violatedSpecs.addAll(backgroundViolatedSpecs);
         violatedSpecs = violatedSpecs.stream().map(spec -> spec.endsWith("MonitorAspect") ? spec :
                 spec + "MonitorAspect").collect(Collectors.toSet());
         // implicitly demote all specs that were not violated and not already in the critical specs set
@@ -105,12 +105,12 @@ public class RppMojo extends RppHandlerMojo {
             if (!invokeSurefire()) {
                 getLog().info("Surefire run threw an exception.");
             }
-            bgViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
+            backgroundViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
         } else { // edge case where critical phase runs all specs
             getLog().info("No specs to monitor for background phase, terminating...");
         }
         try {
-            updateCriticalAndBackgroundSpecs(criticalViolationsPath, bgViolationsPath, previousJavamopAgent);
+            updateCriticalAndBackgroundSpecs(criticalViolationsPath, backgroundViolationsPath, previousJavamopAgent);
         } catch (FileNotFoundException ex) {
             getLog().error("Failed to automatically update critical and background specs.");
             System.exit(1);

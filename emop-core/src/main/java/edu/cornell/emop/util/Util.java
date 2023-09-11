@@ -33,9 +33,9 @@ public class Util {
     /**
      * Find files under path that matches the extension.
      *
-     * @param path The path to search files for
-     * @param extension The extension to search files for
-     * @return A list of file names under specified path that matches the extension
+     * @param path The path in which to search for files
+     * @param extension The file extension being searched for
+     * @return A list of file names under the specified path that matches the extension
      */
     public static List<String> findFilesOfType(File path, String extension) {
         List<String> returnedFileNames = new ArrayList<>();
@@ -58,11 +58,11 @@ public class Util {
     }
 
     /**
-     * Replace a file at a specified location inside the jar with a new file.
+     * Replace a file inside a jar.
      *
      * @param jarPath Path to the jar file
-     * @param oldPath Path to the file w.r.t. the jar file
-     * @param newPath Path to the new file that should replace the old
+     * @param oldPath Path to the file being replaced in the jar
+     * @param newPath Path to the new file on the user's filesystem
      */
     public static void replaceFileInJar(String jarPath, String oldPath, String newPath) {
         Map<String, String> env = new HashMap<>();
@@ -152,17 +152,17 @@ public class Util {
     }
 
     /**
-     * Generates a new monitor file.
+     * Generates a new agent configuration file, usually, aop-ajc.xml.
      *
-     * @param monitorFilePath The path to store the new monitor file
-     * @param specsToMonitor The set of specs to monitor
-     * @param includesPackageNames The set of package names to include
-     * @param nonAffectedClasses The set of non-affected classes
+     * @param monitorFilePath The path to store the new agent configuration file in
+     * @param specsToMonitor The set of specs to instrument
+     * @param includedPackageNames The set of the client program's package names to instrument
+     * @param excludedClasses The set of client program's classes to NOT instrument
      */
-    public static void generateNewMonitorFile(String monitorFilePath,
-                                              Set<String> specsToMonitor,
-                                              Set<String> includesPackageNames,
-                                              Set<String> nonAffectedClasses) {
+    public static void generateNewAgentConfigurationFile(String monitorFilePath,
+                                                         Set<String> specsToMonitor,
+                                                         Set<String> includedPackageNames,
+                                                         Set<String> excludedClasses) {
         try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
             // Write header
             writer.println("<aspectj>");
@@ -175,13 +175,13 @@ public class Util {
             writer.println("</aspects>");
             // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
             writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
-            if (includesPackageNames != null) {
-                for (String packageName : includesPackageNames) {
+            if (includedPackageNames != null) {
+                for (String packageName : includedPackageNames) {
                     writer.println("<include within=\"" + packageName + "..*\"/>");
                 }
             }
-            if (nonAffectedClasses != null) {
-                for (String nonAffectedClass : nonAffectedClasses) {
+            if (excludedClasses != null) {
+                for (String nonAffectedClass : excludedClasses) {
                     writer.println("<exclude within=\"" + nonAffectedClass + "\"/>");
                 }
             }

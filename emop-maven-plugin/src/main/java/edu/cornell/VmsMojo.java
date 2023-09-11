@@ -64,8 +64,10 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
-    // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
-    // and deletions
+    /**
+     * DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
+     * and deletions
+     */
     private static final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
     /**
@@ -128,19 +130,23 @@ public class VmsMojo extends DiffMojo {
     private Path newViolationCounts;
     private Path lastShaPath;
 
-    // Map from a file to a map representing the number of additional lines added or deleted at each line
-    // of the original file. If the value is 0, the line has been modified in place.
-    // Note: If renames are involved, the old name of the file is used.
-    // More information about how differences are represented in JGit can be found here:
-    // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/Edit.html
+    /**
+     * Map from a file to a map representing the number of additional lines added or deleted at each line
+     * of the original file. If the value is 0, the line has been modified in place.
+     * Note: If renames are involved, the old name of the file is used.
+     * More information about how differences are represented in JGit can be found here:
+     * https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/Edit.html
+     */
     //          file        line     lines modified
     private Map<String, Map<Integer, Integer>> offsets = new HashMap<>();
 
-    // Maps files to lines of code in the original version which have not been modified
-    // Note: If renames are involved, the old name of the file is used.
+    /**
+     * Maps files to lines of code in the original version which have not been modified
+     * Note: If renames are involved, the old name of the file is used.
+     */
     private Map<String, Set<Integer>> modifiedLines = new HashMap<>();
 
-    // Maps renamed files to the original names
+    /** Maps renamed files to the original names. */
     private Map<String, String> renames = new HashMap<>();
 
     private Set<Violation> oldViolations;
@@ -170,7 +176,7 @@ public class VmsMojo extends DiffMojo {
         getLog().info("Number of total violations found: " + newViolations.size());
 
         if (!firstRun) {
-            removeDuplicateViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
+            filterOutOldViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
@@ -390,11 +396,11 @@ public class VmsMojo extends DiffMojo {
     /**
      * Removes newViolations of violations believed to be duplicates from violation-counts-old.
      */
-    public static void removeDuplicateViolations(Set<Violation> oldViolations,
-                                                 Set<Violation> newViolations,
-                                                 Map<String, String> renames,
-                                                 Map<String, Map<Integer, Integer>> offsets,
-                                                 Map<String, Set<Integer>> modifiedLines) {
+    public static void filterOutOldViolations(Set<Violation> oldViolations,
+                                              Set<Violation> newViolations,
+                                              Map<String, String> renames,
+                                              Map<String, Map<Integer, Integer>> offsets,
+                                              Map<String, Set<Integer>> modifiedLines) {
         Set<Violation> violationsToRemove = new HashSet<>();
 
         Set<Violation> likelyNewViolations = new HashSet<>();
@@ -418,6 +424,9 @@ public class VmsMojo extends DiffMojo {
      *
      * @param oldViolation Original violation to compare
      * @param newViolation New violation to compare
+     * @param renames See JavaDoc for <code>renames</code> field in this class
+     * @param offsets See JavaDoc for <code>offsets</code> field in this class
+     * @param modifiedLines See JavaDoc for <code>modifiedLines</code> field in this class
      * @return Whether the old violation can be mapped to the new violation, after code changes and renames
      */
     private static boolean isSameViolationAfterDifferences(Violation oldViolation,
@@ -471,6 +480,8 @@ public class VmsMojo extends DiffMojo {
      * @param className Particular class being considered (if the class was renamed, this is the old name)
      * @param oldLine Original line number
      * @param newLine New line number
+     * @param offsets See JavaDoc for <code>offsets</code> field in this class
+     * @param modifiedLines See JavaDoc for <code>modifiedLines</code> field in this class
      * @return Whether the original line number can be mapped to the new line number in the updated version
      */
     private static boolean hasSameLineNumber(String className,
@@ -528,6 +539,8 @@ public class VmsMojo extends DiffMojo {
      * Whether a violation line is a new violation. Violations without known locations are always treated as new.
      *
      * @param violation Violation line being considered
+     * @param firstRun Whether the current run is the first run
+     * @param newViolations New violations discovered in the most recent run
      * @return Whether the violation is a new violation
      */
     private static boolean isNewViolation(String violation, boolean firstRun, Set<Violation> newViolations) {
@@ -695,7 +708,6 @@ public class VmsMojo extends DiffMojo {
             }
         } catch (IOException | XMLStreamException ex) {
             return Collections.emptyList();
-//            throw new MojoExecutionException("Failed to parse monitor file", ex);
         }
 
         return lines.stream()

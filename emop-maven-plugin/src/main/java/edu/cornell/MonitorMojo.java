@@ -57,7 +57,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
-        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
+        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (rpsRpp) {
             getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
