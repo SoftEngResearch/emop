@@ -572,7 +572,7 @@ public class VmsMojo extends DiffMojo {
      */
     private void saveViolationCounts() throws MojoExecutionException {
         if (monitorFile == null) {
-            monitorFile = MonitorMojo.MONITOR_FILE;
+            monitorFile = MonitorMojo.AGENT_CONFIGURATION_FILE;
         }
         Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
         saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCounts,

@@ -154,16 +154,16 @@ public class Util {
     /**
      * Generates a new agent configuration file, usually, aop-ajc.xml.
      *
-     * @param monitorFilePath The path to store the new agent configuration file in
+     * @param agentConfigurationPath The path to store the new agent configuration file in
      * @param specsToMonitor The set of specs to instrument
      * @param includedPackageNames The set of the client program's package names to instrument
      * @param excludedClasses The set of client program's classes to NOT instrument
      */
-    public static void generateNewAgentConfigurationFile(String monitorFilePath,
+    public static void generateNewAgentConfigurationFile(String agentConfigurationPath,
                                                          Set<String> specsToMonitor,
                                                          Set<String> includedPackageNames,
                                                          Set<String> excludedClasses) {
-        try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
+        try (PrintWriter writer = new PrintWriter(agentConfigurationPath)) {
             // Write header
             writer.println("<aspectj>");
             writer.println("<aspects>");

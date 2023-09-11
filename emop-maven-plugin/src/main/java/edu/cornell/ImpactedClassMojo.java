@@ -69,6 +69,8 @@ public class ImpactedClassMojo extends ImpactedMojo {
     }
 
     // Copied from STARTS
+    // Determines whether classpath for the project has been modified.
+    // For instance, version changes in jars may be reflected by renames to jar files.
     private boolean isSameClassPath(List<String> sfPathString) throws MojoExecutionException {
         if (sfPathString.isEmpty()) {
             return true;
@@ -94,6 +96,7 @@ public class ImpactedClassMojo extends ImpactedMojo {
     }
 
     // Copied from STARTS
+    // Determines whether jar dependencies still have the same checksum.
     private boolean hasSameJarChecksum(List<String> cleanSfClassPath) throws MojoExecutionException {
         if (cleanSfClassPath.isEmpty()) {
             return true;
@@ -127,6 +130,7 @@ public class ImpactedClassMojo extends ImpactedMojo {
     }
 
     // Copied from STARTS
+    // Return a list of classpath.
     private List<String> getCleanClassPath(String cp) {
         List<String> cpPaths = new ArrayList<>();
         String[] paths = cp.split(File.pathSeparator);

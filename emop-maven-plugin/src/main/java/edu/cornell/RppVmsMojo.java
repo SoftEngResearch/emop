@@ -110,24 +110,25 @@ public class RppVmsMojo extends RppMojo {
         getLog().info("[eMOP] VMS start time: " + Util.timeFormatter.format(new Date()));
         gitDir = Paths.get(executionRootDirectory, ".git");
 
-        // for now, we will emulate regular VMS by aggregating between the critical and background runs
-        // to get a singular violation-counts file, and comparing that against the previously created version
+        // Currently, RPP-VMS emulates regular VMS by aggregating between the critical and background runs
+        // to get a singular violation-counts file, and comparing that against the previously created version.
+        // TODO: Implement a finer-grained RPP-VMS that distinguishes critical and background phase violations.
+        // For instance, "foo is a new violation that came from a background specification."
 
         oldViolationCountsPath = Paths.get(getArtifactsDir(), lastViolationsFile);
         newViolationCountsPath = basedir.toPath().resolve("violation-counts");
         Set<Violation> oldViolations = Violation.parseViolations(oldViolationCountsPath);
         // need to get path from both critical and background phases
-        Set<Violation> newViolations = Violation.parseViolations(Paths.get(criticalViolationsPath));
+        Set<Violation> newViolations = Violation.parseViolations(criticalViolationsPath);
         try {
-            Path criticalViolationsPathPath = Paths.get(criticalViolationsPath);
-            getLog().info("Copying critical violations from " + criticalViolationsPathPath
+            getLog().info("Copying critical violations from " + criticalViolationsPath
                     + " to " + newViolationCountsPath);
-            Files.copy(criticalViolationsPathPath, newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
-            if (backgroundViolationsPath != null && !backgroundViolationsPath.isEmpty()) {
-                newViolations.addAll(Violation.parseViolations(Paths.get(backgroundViolationsPath)));
-                getLog().info("Copying background violations from " + Paths.get(backgroundViolationsPath)
+            Files.copy(criticalViolationsPath, newViolationCountsPath, StandardCopyOption.REPLACE_EXISTING);
+            if (backgroundViolationsPath != null && !backgroundViolationsPath.toString().isEmpty()) {
+                newViolations.addAll(Violation.parseViolations(backgroundViolationsPath));
+                getLog().info("Copying background violations from " + backgroundViolationsPath
                         + " to " + newViolationCountsPath);
-                Files.write(newViolationCountsPath, Files.readAllBytes(Paths.get(backgroundViolationsPath)),
+                Files.write(newViolationCountsPath, Files.readAllBytes(backgroundViolationsPath),
                         StandardOpenOption.APPEND);
             }
         } catch (IOException ex) {
@@ -140,7 +141,7 @@ public class RppVmsMojo extends RppMojo {
         if (lastSha == null || lastSha.isEmpty()) {
             firstRun = true;
         }
-
+        // Does not apply to first run because there are no commit differences to be obtained.
         if (!firstRun) {
             List<DiffEntry> diffEntryList = VmsMojo.getCommitDiffs(gitDir, lastSha, newSha);
             Map<String, String> renames = new HashMap<>();

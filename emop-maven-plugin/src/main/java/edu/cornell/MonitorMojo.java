@@ -16,7 +16,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 public class MonitorMojo extends AffectedSpecsMojo {
 
 
-    public static final String MONITOR_FILE = "new-aop-ajc.xml";
+    public static final String AGENT_CONFIGURATION_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
 
@@ -57,7 +57,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
-        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
+        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (rpsRpp) {
             getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
@@ -74,7 +74,8 @@ public class MonitorMojo extends AffectedSpecsMojo {
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
         }
-        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + MONITOR_FILE);
+        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
+                getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
     }
