@@ -7,6 +7,9 @@ emop-plugin/target/
 .idea
 **/*.iml
 
+# VSCode specific
+.vscode/
+
 # Mac OS X specific
 **/.DS_Store
 

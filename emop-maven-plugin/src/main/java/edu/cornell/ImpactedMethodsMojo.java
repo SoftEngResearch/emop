@@ -23,7 +23,6 @@ public class ImpactedMethodsMojo extends MethodsMojo {
     private boolean computeImpactedMethodOption;
 
     public void execute() throws MojoExecutionException {
-        getLog().info("The computeImpactedMethods value is : " + computeImpactedMethodOption);
 
         setUpdateMethodsChecksums(true);
         setComputeImpactedMethods(true);
