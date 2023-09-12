@@ -3,13 +3,9 @@ package edu.cornell;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -29,8 +25,15 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "rpp")
 public class RppMojo extends RppHandlerMojo {
 
+    protected Path backgroundViolationsPath;
+    protected Path criticalViolationsPath;
+
     @Parameter(property = "demoteCritical", defaultValue = "false", required = false)
     private boolean demoteCritical;
+
+    public void setDemoteCritical(boolean demoteCritical) {
+        this.demoteCritical = demoteCritical;
+    }
 
     /**
      * Runs maven surefire.
@@ -58,7 +61,9 @@ public class RppMojo extends RppHandlerMojo {
         return true;
     }
 
-    public void updateCriticalAndBackgroundSpecs(String criticalViolationsPath, String bgViolationsPath, String javamopAgent)
+    public void updateCriticalAndBackgroundSpecs(Path criticalViolationsPath,
+                                                 Path backgroundViolationsPath,
+                                                 String javamopAgent)
             throws MojoExecutionException, FileNotFoundException {
         Set<String> criticalSpecsSet = new HashSet<>();
         Set<String> allSpecs = Util.retrieveSpecListFromJar(javamopAgent, getLog());
@@ -68,9 +73,12 @@ public class RppMojo extends RppHandlerMojo {
         }
         // read the violation-counts files and output the list of critical and background specs for next time
         // (in the case that the user doesn't provide files for critical and background specs)
-        Set<String> violatedSpecs = Violation.parseViolationSpecs(Paths.get(criticalViolationsPath));
-        Set<String> bgViolatedSpecs = Violation.parseViolationSpecs(Paths.get(bgViolationsPath));
-        violatedSpecs.addAll(bgViolatedSpecs);
+        Set<String> violatedSpecs = Violation.parseViolationSpecs(criticalViolationsPath);
+        Set<String> backgroundViolatedSpecs = new HashSet<>();
+        if (backgroundViolationsPath != null) {
+            backgroundViolatedSpecs = Violation.parseViolationSpecs(backgroundViolationsPath);
+        }
+        violatedSpecs.addAll(backgroundViolatedSpecs);
         violatedSpecs = violatedSpecs.stream().map(spec -> spec.endsWith("MonitorAspect") ? spec :
                 spec + "MonitorAspect").collect(Collectors.toSet());
         // implicitly demote all specs that were not violated and not already in the critical specs set
@@ -91,11 +99,7 @@ public class RppMojo extends RppHandlerMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("RPP background phase start: " + timeFormatter.format(new Date()));
         // by the time this method is invoked, we have finished invoking the critical specs surefire run
-        String criticalViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical");
-        String bgViolationsPath = "";
-        if (criticalViolationsPath.isEmpty()) {
-            getLog().info("violation-counts file for critical run was not produced, skipping moving...");
-        }
+        criticalViolationsPath = Paths.get(Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "critical"));
         String previousJavamopAgent = System.getProperty("rpp-agent");
         String backgroundAgent = System.getProperty("background-agent");
         if (!backgroundAgent.isEmpty()) {
@@ -104,15 +108,12 @@ public class RppMojo extends RppHandlerMojo {
             if (!invokeSurefire()) {
                 getLog().info("Surefire run threw an exception.");
             }
-            bgViolationsPath = Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background");
-            if (bgViolationsPath.isEmpty()) {
-                getLog().info("violation-counts file for background run was not produced, skipping moving...");
-            }
+            backgroundViolationsPath = Paths.get(Util.moveViolationCounts(getBasedir(), getArtifactsDir(), "background"));
         } else { // edge case where critical phase runs all specs
             getLog().info("No specs to monitor for background phase, terminating...");
         }
         try {
-            updateCriticalAndBackgroundSpecs(criticalViolationsPath, bgViolationsPath, previousJavamopAgent);
+            updateCriticalAndBackgroundSpecs(criticalViolationsPath, backgroundViolationsPath, previousJavamopAgent);
         } catch (FileNotFoundException ex) {
             getLog().error("Failed to automatically update critical and background specs.");
             System.exit(1);

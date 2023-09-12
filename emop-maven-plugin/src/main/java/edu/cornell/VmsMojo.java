@@ -13,6 +13,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +29,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 
+import edu.cornell.emop.util.Util;
 import edu.cornell.emop.util.Violation;
 import edu.illinois.starts.jdeps.DiffMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -62,6 +64,11 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 @Mojo(name = "vms", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "vms")
 public class VmsMojo extends DiffMojo {
+    /**
+     * DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
+     * and deletions.
+     */
+    private static final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
 
     /**
      * Monitor file from which to read monitored specs and excluded classes. The given path is
@@ -77,6 +84,13 @@ public class VmsMojo extends DiffMojo {
      */
     @Parameter(property = "lastSha", required = false)
     private String lastSha;
+
+    /**
+     * Filename to read the "old" violations from. The filename is resolved
+     * against the artifacts directory.
+     */
+    @Parameter(property = "lastViolationsFile", defaultValue = "violation-counts-old")
+    private String lastViolationsFile;
 
     /**
      * Specific SHA to use as the "new" version of code when making comparisons.
@@ -116,33 +130,34 @@ public class VmsMojo extends DiffMojo {
     private Path newViolationCounts;
     private Path lastShaPath;
 
-    // DiffFormatter is used to analyze differences between versions of code including both renames and line insertions
-    // and deletions
-    private final DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE);
-
-    // Map from a file to a map representing the number of additional lines added or deleted at each line
-    // of the original file. If the value is 0, the line has been modified in place.
-    // Note: If renames are involved, the old name of the file is used.
-    // More information about how differences are represented in JGit can be found here:
-    // https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/Edit.html
+    /**
+     * Map from a file to a map representing the number of additional lines added or deleted at each line
+     * of the original file. If the value is 0, the line has been modified in place.
+     * Note: If renames are involved, the old name of the file is used.
+     * More information about how differences are represented in JGit can be found here:
+     * https://archive.eclipse.org/jgit/docs/jgit-2.0.0.201206130900-r/apidocs/org/eclipse/jgit/diff/Edit.html
+     */
     //          file        line     lines modified
     private Map<String, Map<Integer, Integer>> offsets = new HashMap<>();
 
-    // Maps files to lines of code in the original version which have not been modified
-    // Note: If renames are involved, the old name of the file is used.
+    /**
+     * Maps files to lines of code in the original version which have not been modified
+     * Note: If renames are involved, the old name of the file is used.
+     */
     private Map<String, Set<Integer>> modifiedLines = new HashMap<>();
 
-    // Maps renamed files to the original names
+    /** Maps renamed files to the original names. */
     private Map<String, String> renames = new HashMap<>();
 
     private Set<Violation> oldViolations;
     private Set<Violation> newViolations;
 
     public void execute() throws MojoExecutionException {
+        getLog().info("[eMOP] VMS start time: " + Util.timeFormatter.format(new Date()));
         getLog().info("[eMOP] Invoking the VMS Mojo...");
 
         gitDir = Paths.get(executionRootDirectory, ".git");
-        oldViolationCounts = Paths.get(getArtifactsDir(), "violation-counts-old");
+        oldViolationCounts = Paths.get(getArtifactsDir(), lastViolationsFile);
         newViolationCounts = basedir.toPath().resolve("violation-counts");
         lastShaPath = Paths.get(getArtifactsDir(), "last-SHA");
 
@@ -161,7 +176,7 @@ public class VmsMojo extends DiffMojo {
         getLog().info("Number of total violations found: " + newViolations.size());
 
         if (!firstRun) {
-            removeDuplicateViolations();
+            filterOutOldViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
@@ -169,6 +184,7 @@ public class VmsMojo extends DiffMojo {
         if (!showAllInFile) {
             rewriteViolationCounts();
         }
+        getLog().info("[eMOP] VMS end time: " + Util.timeFormatter.format(new Date()));
     }
 
     private static class SurefireOutputHandler implements InvocationOutputHandler {
@@ -228,7 +244,7 @@ public class VmsMojo extends DiffMojo {
             if (filterOld) {
                 Violation newViolation = Violation.parseViolation(violation);
                 for (Violation oldViolation : oldViolations) {
-                    if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
+                    if (isSameViolationAfterDifferences(oldViolation, newViolation, renames, offsets, modifiedLines)) {
                         return true;
                     }
                 }
@@ -271,7 +287,11 @@ public class VmsMojo extends DiffMojo {
      * @return List of differences between two most recent commits of the repository
      * @throws MojoExecutionException if error is encountered at runtime
      */
-    private List<DiffEntry> getCommitDiffs() throws MojoExecutionException {
+    public List<DiffEntry> getCommitDiffs() throws MojoExecutionException {
+        return getCommitDiffs(gitDir, lastSha, newSha);
+    }
+
+    public static List<DiffEntry> getCommitDiffs(Path gitDir, String lastSha, String newSha) throws MojoExecutionException {
         ObjectReader objectReader;
         List<DiffEntry> diffs;
         List<AbstractTreeIterator> trees = new ArrayList<>();
@@ -312,6 +332,13 @@ public class VmsMojo extends DiffMojo {
      * @throws MojoExecutionException if error is encountered at runtime
      */
     private void findLineChangesAndRenames(List<DiffEntry> diffs) throws MojoExecutionException {
+        findLineChangesAndRenamesHelper(diffs, renames, offsets, modifiedLines);
+    }
+
+    public static void findLineChangesAndRenamesHelper(List<DiffEntry> diffs,
+                                                Map<String, String> renames,
+                                                Map<String, Map<Integer, Integer>> offsets,
+                                                Map<String, Set<Integer>> modifiedLines) throws MojoExecutionException {
         try {
             for (DiffEntry diff : diffs) {
                 // Only consider differences if the file has not just been created or deleted and is a Java source file.
@@ -369,12 +396,20 @@ public class VmsMojo extends DiffMojo {
     /**
      * Removes newViolations of violations believed to be duplicates from violation-counts-old.
      */
-    private void removeDuplicateViolations() {
+    public static void filterOutOldViolations(Set<Violation> oldViolations,
+                                              Set<Violation> newViolations,
+                                              Map<String, String> renames,
+                                              Map<String, Map<Integer, Integer>> offsets,
+                                              Map<String, Set<Integer>> modifiedLines) {
         Set<Violation> violationsToRemove = new HashSet<>();
-        for (Violation newViolation : newViolations) {
+
+        Set<Violation> likelyNewViolations = new HashSet<>();
+        likelyNewViolations.addAll(newViolations);
+        likelyNewViolations.removeAll(oldViolations);
+        for (Violation likelyNewViolation : likelyNewViolations) {
             for (Violation oldViolation : oldViolations) {
-                if (isSameViolationAfterDifferences(oldViolation, newViolation)) {
-                    violationsToRemove.add(newViolation);
+                if (isSameViolationAfterDifferences(oldViolation, likelyNewViolation, renames, offsets, modifiedLines)) {
+                    violationsToRemove.add(likelyNewViolation);
                     break;
                 }
             }
@@ -389,16 +424,24 @@ public class VmsMojo extends DiffMojo {
      *
      * @param oldViolation Original violation to compare
      * @param newViolation New violation to compare
+     * @param renames See JavaDoc for <code>renames</code> field in this class
+     * @param offsets See JavaDoc for <code>offsets</code> field in this class
+     * @param modifiedLines See JavaDoc for <code>modifiedLines</code> field in this class
      * @return Whether the old violation can be mapped to the new violation, after code changes and renames
      */
-    private boolean isSameViolationAfterDifferences(Violation oldViolation, Violation newViolation) {
+    private static boolean isSameViolationAfterDifferences(Violation oldViolation,
+                                                           Violation newViolation,
+                                                           Map<String, String> renames,
+                                                           Map<String, Map<Integer, Integer>> offsets,
+                                                           Map<String, Set<Integer>> modifiedLines) {
         if (!oldViolation.hasKnownLocation() || !newViolation.hasKnownLocation()) {
             return false;
         }
         return oldViolation.getSpecification().equals(newViolation.getSpecification())
                 && (oldViolation.getClassName().equals(newViolation.getClassName())
-                    || isRenamed(oldViolation.getClassName(), newViolation.getClassName()))
-                && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum());
+                    || isRenamed(oldViolation.getClassName(), newViolation.getClassName(), renames))
+                && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum(),
+                    offsets, modifiedLines);
     }
 
     /**
@@ -408,7 +451,7 @@ public class VmsMojo extends DiffMojo {
      * @param newClass Rename being considered
      * @return Whether the old class name was renamed to the new one
      */
-    private boolean isRenamed(String oldClass, String newClass) {
+    private static boolean isRenamed(String oldClass, String newClass, Map<String, String> renames) {
         for (String renamedClass : renames.keySet()) {
             if (renamedClass.contains(newClass) && renames.get(renamedClass).contains(oldClass)) {
                 return true;
@@ -437,9 +480,16 @@ public class VmsMojo extends DiffMojo {
      * @param className Particular class being considered (if the class was renamed, this is the old name)
      * @param oldLine Original line number
      * @param newLine New line number
+     * @param offsets See JavaDoc for <code>offsets</code> field in this class
+     * @param modifiedLines See JavaDoc for <code>modifiedLines</code> field in this class
      * @return Whether the original line number can be mapped to the new line number in the updated version
      */
-    private boolean hasSameLineNumber(String className, int oldLine, int newLine) {
+    private static boolean hasSameLineNumber(String className,
+                                             int oldLine,
+                                             int newLine,
+                                             Map<String, Map<Integer, Integer>> offsets,
+                                             Map<String, Set<Integer>> modifiedLines
+                                             ) {
         for (String changedClass : offsets.keySet()) {
             if (changedClass.contains(className)) {
                 // modified lines are never mapped
@@ -458,10 +508,15 @@ public class VmsMojo extends DiffMojo {
         return oldLine == newLine;
     }
 
+    public void rewriteViolationCounts() throws MojoExecutionException {
+        rewriteViolationCounts(newViolationCounts, firstRun, newViolations);
+    }
+
     /**
      * Rewrites <code>violation-counts</code> to only include violations in newViolations.
      */
-    private void rewriteViolationCounts() throws MojoExecutionException {
+    public static void rewriteViolationCounts(Path newViolationCounts, boolean firstRun, Set<Violation> newViolations)
+            throws MojoExecutionException {
         List<String> lines = null;
         try {
             lines = Files.readAllLines(newViolationCounts);
@@ -471,7 +526,7 @@ public class VmsMojo extends DiffMojo {
 
         try (PrintWriter writer = new PrintWriter(newViolationCounts.toFile())) {
             for (String line : lines) {
-                if (isNewViolation(line)) {
+                if (isNewViolation(line, firstRun, newViolations)) {
                     writer.println(line);
                 }
             }
@@ -484,9 +539,11 @@ public class VmsMojo extends DiffMojo {
      * Whether a violation line is a new violation. Violations without known locations are always treated as new.
      *
      * @param violation Violation line being considered
+     * @param firstRun Whether the current run is the first run
+     * @param newViolations New violations discovered in the most recent run
      * @return Whether the violation is a new violation
      */
-    private boolean isNewViolation(String violation) {
+    private static boolean isNewViolation(String violation, boolean firstRun, Set<Violation> newViolations) {
         if (firstRun) {
             return true;
         }
@@ -514,9 +571,35 @@ public class VmsMojo extends DiffMojo {
      * created by RV-Monitor in <code>violation-counts-old</code>.
      */
     private void saveViolationCounts() throws MojoExecutionException {
+        if (monitorFile == null) {
+            monitorFile = MonitorMojo.AGENT_CONFIGURATION_FILE;
+        }
+        Path monitorFilePath = Paths.get(getArtifactsDir(), monitorFile);
+        saveViolationCounts(forceSave, firstRun, monitorFilePath, gitDir, lastShaPath, newViolationCounts,
+                oldViolationCounts);
+    }
+
+    public static void saveViolationCounts(boolean forceSave,
+                                           boolean firstRun,
+                                           Path monitorFile,
+                                           Path gitDir,
+                                           Path lastShaPath,
+                                           Path newViolationCounts,
+                                           Path oldViolationCounts) throws MojoExecutionException {
         try (Git git = Git.open(gitDir.toFile())) {
             if (forceSave || isFunctionallyClean(git)) {
-                List<String> carryoverViolations = getCarryoverViolations();
+                List<String> carryoverViolations = getCarryoverViolations(firstRun, monitorFile, oldViolationCounts);
+
+                // Hack code
+                if (Files.isDirectory(newViolationCounts)) {
+                    Files.delete(newViolationCounts);
+                    newViolationCounts.toFile().createNewFile();
+                }
+                if (Files.isDirectory(oldViolationCounts)) {
+                    Files.delete(oldViolationCounts);
+                    oldViolationCounts.toFile().createNewFile();
+                }
+
                 Files.copy(newViolationCounts, oldViolationCounts, StandardCopyOption.REPLACE_EXISTING);
                 Files.write(oldViolationCounts, carryoverViolations, StandardOpenOption.APPEND);
 
@@ -539,7 +622,7 @@ public class VmsMojo extends DiffMojo {
      * @return Boolean of whether to consider the git functionally clean for the purposes of VMS
      * @throws MojoExecutionException if error encountered at runtime
      */
-    private boolean isFunctionallyClean(Git git) throws MojoExecutionException {
+    private static boolean isFunctionallyClean(Git git) throws MojoExecutionException {
         try {
             // changes in the repo will either be untracked or uncommitted - a functionally clean repo will not have
             // any uncommitted changes but may have exactly three untracked files which were created by eMOP
@@ -554,7 +637,7 @@ public class VmsMojo extends DiffMojo {
         }
     }
 
-    private boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
+    private static boolean untrackedFilesAreFunctionallyClean(Set<String> untracked) {
         IgnoreNode ignores = new IgnoreNode(Arrays.asList(
             new FastIgnoreRule("**/.starts/**"),
             new FastIgnoreRule("**/target/**"),
@@ -576,7 +659,8 @@ public class VmsMojo extends DiffMojo {
      *
      * @return List of violations to carry over
      */
-    private List<String> getCarryoverViolations() throws MojoExecutionException {
+    private static List<String> getCarryoverViolations(boolean firstRun, Path monitorFile, Path oldViolationCounts)
+            throws MojoExecutionException {
         if (firstRun || monitorFile == null) {
             return Collections.emptyList();
         }
@@ -597,7 +681,7 @@ public class VmsMojo extends DiffMojo {
 
         try {
             XMLEventReader reader = XMLInputFactory.newInstance().createXMLEventReader(
-                    new FileInputStream(Paths.get(getArtifactsDir(), monitorFile).toFile()));
+                    new FileInputStream(monitorFile.toFile()));
 
             while (reader.hasNext()) {
                 XMLEvent event = reader.nextEvent();
@@ -623,7 +707,7 @@ public class VmsMojo extends DiffMojo {
                 }
             }
         } catch (IOException | XMLStreamException ex) {
-            throw new MojoExecutionException("Failed to parse monitor file", ex);
+            return Collections.emptyList();
         }
 
         return lines.stream()

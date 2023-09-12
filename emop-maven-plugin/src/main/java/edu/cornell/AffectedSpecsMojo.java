@@ -78,10 +78,12 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (getImpacted().isEmpty()) {
+        if (!dependencyChangeDetected && getImpacted().isEmpty()) {
+            getLog().info("[eMOP] No impacted classes, returning...");
             return;
         }
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
+
         long start = System.currentTimeMillis();
         // If only computing changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
@@ -91,27 +93,39 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
+
         start = System.currentTimeMillis();
         classToSpecs = readMapFromFile();
         computeMapFromMessage(ms);
         // Update map
         changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-        computeAffectedSpecs();
+        computeAffectedSpecs(dependencyChangeDetected);
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+
         start = System.currentTimeMillis();
         // Write map
         writeMapToFile(OutputFormat.BIN);
         // Write affectedSpecs
+        // TODO: This is not really a map anymore, make sure the implementation matches the name
         writeMapToFile(OutputFormat.TXT);
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
+
         getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
-    private void computeAffectedSpecs() throws MojoExecutionException {
-        for (String impactedClass : getImpacted()) {
+    private void computeAffectedSpecs(boolean dependencyChangeDetected) throws MojoExecutionException {
+        Set<String> impactedClasses = new HashSet<>();
+        if (dependencyChangeDetected) {
+            // Revert to base RV, everything is affected.
+            impactedClasses.addAll(getOldClasses());
+            impactedClasses.addAll(getNewClasses());
+        } else {
+            impactedClasses.addAll(getImpacted());
+        }
+        for (String impactedClass : impactedClasses) {
             Set<String> associatedSpecs = classToSpecs.get(impactedClass);
             if (associatedSpecs != null) {
                 affectedSpecs.addAll(associatedSpecs);
@@ -201,6 +215,12 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         return map;
     }
 
+    /**
+     * Create an array of String as arguments to AspectJ Compiler (AJC).
+     *
+     * @return The arguments to AJC
+     * @throws MojoExecutionException Exception that occurs during Mojo execution
+     */
     private String[] createAJCArguments() throws MojoExecutionException {
         // extract the aspects for all available specs from the jar and make a list of them in a file
         String destinationDir = getArtifactsDir() + File.separator + "weaved-specs";
