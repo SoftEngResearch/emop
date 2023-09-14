@@ -29,9 +29,7 @@ public class ImpactedClassMojo extends ImpactedMojo {
     /** A list that stores the checksums of jar files. */
     protected List<Pair> jarCheckSums = null;
 
-    /**
-     * Parameter to determine whether file checksums are updated.
-     */
+    /** Parameter to determine whether file checksums are updated. */
     @Parameter(property = "updateChecksums", defaultValue = "true")
     private boolean updateChecksums;
 
@@ -39,10 +37,7 @@ public class ImpactedClassMojo extends ImpactedMojo {
      * Parameter to determine which closure to use for impacted classes.
      * Options are PS1, PS2, PS3.
      */
-    @Parameter(
-            property = "closureOption",
-            defaultValue = "PS3"
-    )
+    @Parameter(property = "closureOption", defaultValue = "PS3")
     private TransitiveClosureOptions closureOption;
 
     public void execute() throws MojoExecutionException {
