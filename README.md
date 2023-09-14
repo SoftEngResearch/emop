@@ -65,12 +65,12 @@ To integrate eMOP as a plugin into your Maven project, add the following segment
       ...
       <plugin>
       	<groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven−sureﬁre−plugin</artifactId>
+        <artifactId>maven-surefire-plugin</artifactId>
         <version>2.20</version> <!-- 2.20 or greater -->
         <configuration>
           <!-- Use $HOME/.m2/repository/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar -->
           <!-- if you do not have a specific javamop agent jar that you want to use. -->
-        	<argLine>−javaagent:${JavaMOP jar}</argLine>
+        	<argLine>-javaagent:${JavaMOP jar}</argLine>
         </configuration>
       </plugin>
       <plugin>
