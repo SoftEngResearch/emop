@@ -15,7 +15,6 @@
   </parent>
 
   <artifactId>test-Example</artifactId>
-  <description>This integration test would test the basic case with
-  code change: if there is a change between two versions, then the
-  affected test should be run the second time as well.</description>
+  <description>This intergration test modify the method1 in E class which should have the result affectedspec:URLDecoder_DecodeUTF8MonitorAspect,
+Throwable_InitCauseOnceMonitorAspect.</description>
 </project>
