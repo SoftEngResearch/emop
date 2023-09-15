@@ -47,7 +47,7 @@
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.20</version>
-          <configuration><argLine>-javaagent:/Users/pyjiang/.m2/repository/javamop-agent-emop/javamop-agent-emop/1.0/javamop-agent-emop-1.0.jar</argLine></configuration>
+          <configuration></configuration>
         </plugin>
         <plugin>
           <artifactId>emop-maven-plugin</artifactId>
