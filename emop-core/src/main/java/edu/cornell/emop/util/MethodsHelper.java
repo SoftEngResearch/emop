@@ -150,15 +150,4 @@ public class MethodsHelper {
         }
         return null;
     }
-
-    // test use
-    public static void putclassTomethod(String key, ArrayList<String> value) {
-        classToMethods.put(key, value);
-    }
-
-    // test use
-    public static void putmethodsToLineNumbers(String key, ArrayList<Integer> value) {
-        methodsToLineNumbers.put(key, value);
-    }
-
 }
