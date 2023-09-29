@@ -15,7 +15,6 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor-hybrid", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
 
-
     public static final String MONITOR_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
@@ -39,7 +38,6 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     private boolean includeLibraries;
 
-
     public void execute() throws MojoExecutionException {
         super.execute();
 
@@ -57,7 +55,7 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = new HashSet<>();
-        getLog().info("affectedSpecs: " + affectedSpecs);
+        getLog().info("AffectedSpecs: " + affectedSpecs.size());
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {
@@ -72,9 +70,12 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     }
 
     /**
-     * Generates the set of package names of classes that should be monitored. If the set is non-empty, then any
+     * Generates the set of package names of classes that should be monitored. If
+     * the set is non-empty, then any
      * package not included in this set will not be monitored.
-     * @return created set of package names for weaving. An empty set is returned if the includeLibraries is true.
+     *
+     * @return created set of package names for weaving. An empty set is returned if
+     *         the includeLibraries is true.
      */
     private Set<String> retrieveIncludePackages() {
         if (!includeLibraries) {

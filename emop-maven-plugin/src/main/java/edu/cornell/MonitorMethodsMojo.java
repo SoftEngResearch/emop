@@ -55,7 +55,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = new HashSet<>();
-        getLog().info("affectedSpecs: " + affectedSpecs);
+        getLog().info("AffectedSpecs: " + affectedSpecs.size());
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {
