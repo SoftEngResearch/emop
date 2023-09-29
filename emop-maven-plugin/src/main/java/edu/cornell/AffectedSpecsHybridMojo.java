@@ -170,7 +170,7 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
             int specLineNumber = Integer
                     .parseInt(lexedMessage[SPEC_LINE_NUMBER].split(" ")[1].split(":")[1].replace(")", ""));
 
-            String klas = ChecksumUtil.toClassName(klasName);
+            String klas = ChecksumUtil.toClassOrJavaName(klasName, false);
             URL url = loader.getResource(klas);
             String filePath = url.getPath();
 
