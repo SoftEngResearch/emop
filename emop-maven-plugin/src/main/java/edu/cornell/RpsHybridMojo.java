@@ -10,7 +10,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Execute(phase = LifecyclePhase.TEST, lifecycle = "hybrid")
 public class RpsHybridMojo extends MonitorHybridMojo {
     public void execute() throws MojoExecutionException {
-        getLog().info("[eMOP] Invoking the RPS Methods Mojo...");
+        getLog().info("[eMOP] Invoking the RPS Hybrid Mojo...");
         System.setProperty("exiting-rps", "false");
     }
 }

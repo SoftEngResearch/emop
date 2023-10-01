@@ -41,19 +41,19 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
      * Parameter to determine whether file checksums are updated.
      */
     @Parameter(property = "updateChecksums", defaultValue = "true")
-    protected boolean updateChecksumsTemp;
+    private boolean updateChecksumsTemp;
 
     /**
      * Parameter to determine whether file checksums are updated.
      */
     @Parameter(property = "computeImpactedMethods", defaultValue = "true")
-    protected boolean computeImpactedMethodsTemp;
+    private boolean computeImpactedMethodsTemp;
 
     /*
      * Parameter to determine whether to include variables in the impacted methods.
      */
     @Parameter(property = "includeVariables", defaultValue = "false")
-    protected boolean includeVariablesTemp;
+    private boolean includeVariablesTemp;
 
     @Parameter(property = "debug", defaultValue = "flase")
     private boolean debugTemp;
@@ -78,9 +78,13 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
 
         getLog().info("[eMOP] Invoking the Monitor Mojo...");
         long start = System.currentTimeMillis();
+
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = new HashSet<>();
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
+        if (debug) {
+            getLog().info("AffectedSpecs: " + affectedSpecs);
+        }
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {

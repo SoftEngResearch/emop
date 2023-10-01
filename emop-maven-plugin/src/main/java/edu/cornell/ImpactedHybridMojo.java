@@ -13,14 +13,22 @@ public class ImpactedHybridMojo extends HybridMojo {
     /**
      * Parameter to determine whether file checksums are updated.
      */
-    @Parameter(property = "updateChecksums", defaultValue = "true")
-    private boolean updateChecksums;
+    protected boolean updateChecksums;
 
     /**
      * Parameter to determine whether file checksums are updated.
      */
-    @Parameter(property = "computeImpactedMethods", defaultValue = "true")
-    private boolean computeImpactedMethods;
+    protected boolean computeImpactedMethods;
+
+    /*
+     * Parameter to determine whether to include variables in the impacted methods.
+     */
+    protected boolean includeVariables;
+
+    /**
+     * Parameter to determine whether to include variables in the impacted methods.
+     */
+    protected boolean debug;
 
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(true);
@@ -30,10 +38,6 @@ public class ImpactedHybridMojo extends HybridMojo {
         super.execute();
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Execute ImpactedMethods Mojo takes " + (end - start) + " ms");
-    }
-
-    public boolean getComputeImpactedMethods() {
-        return computeImpactedMethods;
     }
 
 }

@@ -38,24 +38,52 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     private boolean includeLibraries;
 
+    /**
+     * Parameter to determine whether file checksums are updated.
+     */
+    @Parameter(property = "updateChecksums", defaultValue = "true")
+    private boolean updateChecksumsTemp;
+
+    /**
+     * Parameter to determine whether file checksums are updated.
+     */
+    @Parameter(property = "computeImpactedMethods", defaultValue = "true")
+    private boolean computeImpactedMethodsTemp;
+
+    /*
+     * Parameter to determine whether to include variables in the impacted methods.
+     */
+    @Parameter(property = "includeVariables", defaultValue = "false")
+    private boolean includeVariablesTemp;
+
+    @Parameter(property = "debug", defaultValue = "flase")
+    private boolean debugTemp;
+
     public void execute() throws MojoExecutionException {
+        includeVariables = includeVariablesTemp;
+        updateChecksums = updateChecksumsTemp;
+        computeImpactedMethods = computeImpactedMethodsTemp;
+        debug = debugTemp;
         super.execute();
 
-        if (getAffectedMethods().isEmpty()) {
+        if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
             System.setProperty("exiting-rps", "true");
             System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
             if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
                 throw new MojoExecutionException("Could not attach agent");
             }
-            getLog().info("No impacted classes mode detected MonitorMojo");
+            getLog().info("No impacted classes mode detected Hybrid MonitorMojo");
             return;
         }
 
-        getLog().info("[eMOP] Invoking the Monitor Mojo...");
+        getLog().info("[eMOP] Invoking the Hybrid Monitor Mojo...");
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = new HashSet<>();
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
+        if (debug) {
+            getLog().info("AffectedSpecs: " + affectedSpecs);
+        }
         Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {

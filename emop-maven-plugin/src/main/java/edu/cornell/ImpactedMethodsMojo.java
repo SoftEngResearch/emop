@@ -33,17 +33,13 @@ public class ImpactedMethodsMojo extends MethodsMojo {
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(updateChecksums);
         setComputeImpactedMethods(computeImpactedMethods);
-        setIncludeVariables(includeVariables);  
+        setIncludeVariables(includeVariables);
         setDebug(debug);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Execute ImpactedMethods Mojo takes " + (end - start) + " ms");
-    }
-
-    public boolean getComputeImpactedMethods() {
-        return computeImpactedMethods;
     }
 
 }

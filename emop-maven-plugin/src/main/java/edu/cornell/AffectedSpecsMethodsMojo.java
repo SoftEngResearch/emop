@@ -1,9 +1,12 @@
 package edu.cornell;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -46,11 +49,13 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     private static final int SPEC_LINE_NUMBER = 4;
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
+    private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
 
     /**
      * A map from affected classes to affected specs, for debugging purposes.
      */
     protected Map<String, Set<String>> methodsToSpecs = new HashMap<>();
+    protected Map<String, Set<String>> changedMethodsToSpecs = new HashMap<>();
 
     /**
      * A set of affected specs to monitor for javamop agent.
@@ -91,7 +96,6 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
-        boolean computeImpactedMethods = getComputeImpactedMethods();
         if (computeImpactedMethods && getImpactedMethods().isEmpty()) {
 
             return;
@@ -108,16 +112,19 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         MessageHandler mh = new MessageHandler();
         compiler.run(arguments, mh);
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
-
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
+
         start = System.currentTimeMillis();
+        methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
 
         try {
             computeMapFromMessage(ms);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
+        changedMethodsToSpecs
+                .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
         // Compute affected specs from changed methods or impacted methods
         if (computeImpactedMethods) {
@@ -127,12 +134,6 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             computeAffectedSpecs(getAffectedMethods());
         }
 
-        end = System.currentTimeMillis();
-        getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
-        start = System.currentTimeMillis();
-        end = System.currentTimeMillis();
-        getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
-
         if (computeImpactedMethods) {
             getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
 
@@ -140,9 +141,46 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
         }
 
+        end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+        start = System.currentTimeMillis();
+        writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME);
+        end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
+
         getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
         getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
+    }
+
+    /**
+     * Write map from class to specs in either text or binary format.
+     * @param format Output format of the map, text or binary
+     */
+    private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
+
+        try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
+                ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(map);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+    }
+
+    private Map<String, Set<String>> readMapFromFile(String fileName) throws MojoExecutionException {
+        Map<String, Set<String>> map = new HashMap<>();
+        File oldMap = new File(getArtifactsDir() + File.separator + fileName);
+        if (oldMap.exists()) {
+            try (FileInputStream fileInput = new FileInputStream(
+                    getArtifactsDir() + File.separator + fileName);
+                    ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+                map = (Map) objectInput.readObject();
+            } catch (IOException | ClassNotFoundException ex) {
+                ex.printStackTrace();
+            }
+        }
+        return map;
     }
 
     private void computeAffectedSpecs(Set<String> methods) throws MojoExecutionException {
@@ -150,10 +188,10 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             // Convert method name from asm to java
 
             // Skip variables that are not in the format of a method
-            if (!affectedMethod.matches(".*\\(.*\\)")){
+            if (!affectedMethod.matches(".*\\(.*\\)")) {
                 continue;
             }
-            
+
             String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
             Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
             affectedSpecs.addAll(specs);
@@ -198,10 +236,10 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 continue;
             }
             String key = filePath.replace(".java", "#") + method;
-            Set<String> methodSpecs = methodsToSpecs.getOrDefault(key, new HashSet<>());
+            Set<String> methodSpecs = changedMethodsToSpecs.getOrDefault(key, new HashSet<>());
             methodSpecs.add(spec);
             key = klas.replace(".class", "") + "#" + method;
-            methodsToSpecs.put(key, methodSpecs);
+            changedMethodsToSpecs.put(key, methodSpecs);
         }
     }
 

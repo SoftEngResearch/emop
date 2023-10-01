@@ -1,9 +1,12 @@
 package edu.cornell;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -46,11 +49,15 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
     private static final int SPEC_LINE_NUMBER = 4;
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
-
+    private static final String CLASSES_TO_SPECS_FILE_NAME = "classesToSpecs.bin";
+    private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
     /**
      * A map from affected classes to affected specs, for debugging purposes.
      */
+    protected Map<String, Set<String>> changedMethodsToSpecs = new HashMap<>();
+    protected Map<String, Set<String>> changedClassesToSpecs = new HashMap<>();
     protected Map<String, Set<String>> methodsToSpecs = new HashMap<>();
+    protected Map<String, Set<String>> classesToSpecs = new HashMap<>();
 
     /**
      * A set of affected specs to monitor for javamop agent.
@@ -91,17 +98,18 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
-        boolean computeImpactedMethods = getComputeImpactedMethods();
-        if (computeImpactedMethods && getImpactedMethods().isEmpty()) {
+        if (computeImpactedMethods && getImpactedMethods().isEmpty() && getImpactedClasses().isEmpty()) {
 
             return;
 
-        } else if (getAffectedMethods().isEmpty()) {
+            // Affected classes are new classes, changed classes with changed headers only
+        } else if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
             return;
         }
 
-        getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
+        getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
         long start = System.currentTimeMillis();
+
         // If only computing changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
         Main compiler = new Main();
@@ -111,46 +119,109 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
 
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
+
         start = System.currentTimeMillis();
+        classesToSpecs = readMapFromFile(CLASSES_TO_SPECS_FILE_NAME);
+        methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
 
         try {
-            computeMapFromMessage(ms);
+            computeMethodsToSpecsMapFromMessage(ms);
+            computeClassesToSpecsMapFromMessage(ms);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
 
+        changedMethodsToSpecs
+                .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+        changedClassesToSpecs
+                .forEach((key, value) -> classesToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+
         // Compute affected specs from changed methods or impacted methods
         if (computeImpactedMethods) {
-            computeAffectedSpecs(getImpactedMethods());
+            computeMethodsAffectedSpecs(getImpactedMethods());
+            computeClassesAffectedSpecs(getImpactedClasses());
 
         } else {
-            computeAffectedSpecs(getAffectedMethods());
+            computeMethodsAffectedSpecs(getAffectedMethods());
+            computeClassesAffectedSpecs(getAffectedClasses());
+        }
+        if (computeImpactedMethods) {
+            getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
+            getLog().info("[eMOP] Number of Impacted classes: " + getImpactedClasses().size());
+
+        } else {
+            getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
+            getLog().info("[eMOP] Number of affected classes: " + getAffectedClasses().size());
         }
 
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+
         start = System.currentTimeMillis();
+
+        writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME);
+        writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME);
+
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
-
-        if (computeImpactedMethods) {
-            getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
-
-        } else {
-            getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
-        }
-
-        getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
-        getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
-    private void computeAffectedSpecs(Set<String> methods) throws MojoExecutionException {
+    private void computeClassesAffectedSpecs(Set<String> classes) throws MojoExecutionException {
+        for (String affectedClass : classes) {
+            Set<String> specs = classesToSpecs.getOrDefault(affectedClass.replace("/", "."), new HashSet<>());
+            affectedSpecs.addAll(specs);
+        }
+    }
+
+    private void computeMethodsAffectedSpecs(Set<String> methods) throws MojoExecutionException {
         for (String affectedMethod : methods) {
             // Convert method name from asm to java
             String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
             Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
             affectedSpecs.addAll(specs);
+        }
+    }
+
+    private Map<String, Set<String>> readMapFromFile(String fileName) throws MojoExecutionException {
+        Map<String, Set<String>> map = new HashMap<>();
+        File oldMap = new File(getArtifactsDir() + File.separator + fileName);
+        if (oldMap.exists()) {
+            try (FileInputStream fileInput = new FileInputStream(
+                    getArtifactsDir() + File.separator + fileName);
+                    ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+                map = (Map) objectInput.readObject();
+            } catch (IOException | ClassNotFoundException ex) {
+                ex.printStackTrace();
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Write map from class to specs in either text or binary format.
+     * @param format Output format of the map, text or binary
+     */
+    private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
+
+        try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
+                ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(map);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+    }
+
+    private void computeClassesToSpecsMapFromMessage(IMessage[] ms) throws Exception {
+        for (IMessage message : ms) {
+            String[] lexedMessage = message.getMessage().split("'");
+            String key = lexedMessage[CLASS_INDEX_IN_MSG];
+            String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
+            if (!changedClassesToSpecs.containsKey(key)) {
+                changedClassesToSpecs.put(key, new HashSet<>());
+            }
+            changedClassesToSpecs.get(key).add(value);
         }
     }
 
@@ -160,7 +231,7 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
      *
      * @param ms An array of IMessage objects
      */
-    private void computeMapFromMessage(IMessage[] ms) throws Exception {
+    private void computeMethodsToSpecsMapFromMessage(IMessage[] ms) throws Exception {
         Classpath sfClassPath = getSureFireClassPath();
         ClassLoader loader = createClassLoader(sfClassPath);
         for (IMessage message : ms) {
@@ -188,10 +259,10 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
                 continue;
             }
             String key = filePath.replace(".java", "#") + method;
-            Set<String> methodSpecs = methodsToSpecs.getOrDefault(key, new HashSet<>());
+            Set<String> methodSpecs = changedMethodsToSpecs.getOrDefault(key, new HashSet<>());
             methodSpecs.add(spec);
             key = klas.replace(".class", "") + "#" + method;
-            methodsToSpecs.put(key, methodSpecs);
+            changedMethodsToSpecs.put(key, methodSpecs);
         }
     }
 
