@@ -148,6 +148,12 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     private void computeAffectedSpecs(Set<String> methods) throws MojoExecutionException {
         for (String affectedMethod : methods) {
             // Convert method name from asm to java
+
+            // Skip variables that are not in the format of a method
+            if (!affectedMethod.matches(".*\\(.*\\)")){
+                continue;
+            }
+            
             String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
             Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
             affectedSpecs.addAll(specs);

@@ -37,7 +37,32 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     private boolean includeLibraries;
 
+    /**
+     * Parameter to determine whether file checksums are updated.
+     */
+    @Parameter(property = "updateChecksums", defaultValue = "true")
+    protected boolean updateChecksumsTemp;
+
+    /**
+     * Parameter to determine whether file checksums are updated.
+     */
+    @Parameter(property = "computeImpactedMethods", defaultValue = "true")
+    protected boolean computeImpactedMethodsTemp;
+
+    /*
+     * Parameter to determine whether to include variables in the impacted methods.
+     */
+    @Parameter(property = "includeVariables", defaultValue = "false")
+    protected boolean includeVariablesTemp;
+
+    @Parameter(property = "debug", defaultValue = "flase")
+    private boolean debugTemp;
+
     public void execute() throws MojoExecutionException {
+        includeVariables = includeVariablesTemp;
+        updateChecksums = updateChecksumsTemp;
+        computeImpactedMethods = computeImpactedMethodsTemp;
+        debug = debugTemp;
         super.execute();
 
         // If there is no affected methods, then we should not instrument anything.

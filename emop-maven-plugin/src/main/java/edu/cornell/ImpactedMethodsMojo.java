@@ -13,18 +13,28 @@ public class ImpactedMethodsMojo extends MethodsMojo {
     /**
      * Parameter to determine whether file checksums are updated.
      */
-    @Parameter(property = "updateChecksums", defaultValue = "true")
-    private boolean updateChecksums;
+    protected boolean updateChecksums;
 
     /**
      * Parameter to determine whether file checksums are updated.
      */
-    @Parameter(property = "computeImpactedMethods", defaultValue = "true")
-    private boolean computeImpactedMethods;
+    protected boolean computeImpactedMethods;
+
+    /*
+     * Parameter to determine whether to include variables in the impacted methods.
+     */
+    protected boolean includeVariables;
+
+    /**
+     * Parameter to determine whether to include variables in the impacted methods.
+     */
+    protected boolean debug;
 
     public void execute() throws MojoExecutionException {
-        setUpdateMethodsChecksums(true);
-        setComputeImpactedMethods(true);
+        setUpdateMethodsChecksums(updateChecksums);
+        setComputeImpactedMethods(computeImpactedMethods);
+        setIncludeVariables(includeVariables);  
+        setDebug(debug);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();
