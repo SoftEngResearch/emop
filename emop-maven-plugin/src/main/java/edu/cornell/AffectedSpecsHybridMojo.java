@@ -180,11 +180,11 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
             try {
                 MethodsHelper.getMethodLineNumbers(filePath);
             } catch (ParserException exception) {
-                getLog().warn("Cannot find method line numbers for " + filePath);
+                getLog().warn("File contains interface only, no methods found in " + filePath);
             }
             String method = MethodsHelper.getWrapMethod(filePath, specLineNumber);
             if (method == null) {
-                getLog().warn("Cannot find method for " + filePath + " at line " + specLineNumber);
+                getLog().warn("Spec at line " + specLineNumber + " in " + filePath + " is not within a method");
                 continue;
             }
             String key = filePath.replace(".java", "#") + method;
@@ -276,7 +276,7 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
             }
 
             // Source file not found in any standard directory
-            getLog().error("No source file found for class " + newClass);
+            getLog().warn("No source file for external class " + newClass);
         }
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
