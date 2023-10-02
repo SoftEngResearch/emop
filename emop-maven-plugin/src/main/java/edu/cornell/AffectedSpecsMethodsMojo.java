@@ -155,7 +155,6 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     /**
      * Write map from class to specs in either text or binary format.
-     * 
      * @param format Output format of the map, text or binary
      */
     private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
