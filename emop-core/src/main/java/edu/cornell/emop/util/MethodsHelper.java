@@ -45,12 +45,6 @@ public class MethodsHelper {
         String[] classesNames = tempPath.split("\\$");
         File file = new File(classesNames[0] + ".java");
 
-        // try{
-
-        // }catch (ParserException exception) {
-
-        // }
-
         JavaClassSource javaClass = Roaster.parse(JavaClassSource.class, Files.newInputStream(file.toPath()));
         String sourceCode = new String(Files.readAllBytes(Paths.get(file.toURI())));
         ArrayList<String> methods = new ArrayList<>();

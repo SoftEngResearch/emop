@@ -155,6 +155,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
     /**
      * Write map from class to specs in either text or binary format.
+     * 
      * @param format Output format of the map, text or binary
      */
     private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
@@ -225,7 +226,12 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             filePath = filePath.replace(".class", ".java").replace("target", "src").replace("test-classes", "test/java")
                     .replace("classes", "main/java");
 
-            MethodsHelper.getMethodLineNumbers(filePath);
+            try {
+                MethodsHelper.getMethodLineNumbers(filePath);
+            } catch (ParserException exception) {
+                getLog().warn("File contains interface only, no methods found in " + filePath);
+            }
+
             String method = MethodsHelper.getWrapMethod(filePath, specLineNumber);
             if (method == null) {
                 getLog().warn("Cannot find method for " + filePath + " at line " + specLineNumber);
