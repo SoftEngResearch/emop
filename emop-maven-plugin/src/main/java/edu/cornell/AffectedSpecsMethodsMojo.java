@@ -211,13 +211,13 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     private void computeMapFromMessage(IMessage[] ms) throws Exception {
         Classpath sfClassPath = getSureFireClassPath();
         ClassLoader loader = createClassLoader(sfClassPath);
+
         for (IMessage message : ms) {
             String[] lexedMessage = message.getMessage().split("'");
             String klasName = lexedMessage[CLASS_INDEX_IN_MSG];
             String spec = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
             int specLineNumber = Integer
                     .parseInt(lexedMessage[SPEC_LINE_NUMBER].split(" ")[1].split(":")[1].replace(")", ""));
-
             String klas = ChecksumUtil.toClassOrJavaName(klasName, false);
             URL url = loader.getResource(klas);
             String filePath = url.getPath();
@@ -225,21 +225,16 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             filePath = filePath.replace(".class", ".java").replace("target", "src").replace("test-classes", "test/java")
                     .replace("classes", "main/java");
 
-            try {
-                MethodsHelper.getMethodLineNumbers(filePath);
-            } catch (ParserException exception) {
-                getLog().warn("Cannot find method line numbers for " + filePath);
-            }
+            MethodsHelper.getMethodLineNumbers(filePath);
             String method = MethodsHelper.getWrapMethod(filePath, specLineNumber);
             if (method == null) {
                 getLog().warn("Cannot find method for " + filePath + " at line " + specLineNumber);
                 continue;
             }
-            String key = filePath.replace(".java", "#") + method;
+            String key = klas.replace(".class", "") + "#" + method;
             Set<String> methodSpecs = changedMethodsToSpecs.getOrDefault(key, new HashSet<>());
-            methodSpecs.add(spec);
-            key = klas.replace(".class", "") + "#" + method;
             changedMethodsToSpecs.put(key, methodSpecs);
+            methodSpecs.add(spec);
         }
     }
 

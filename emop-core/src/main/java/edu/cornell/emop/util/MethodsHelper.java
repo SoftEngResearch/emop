@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.jboss.forge.roaster.ParserException;
 import org.jboss.forge.roaster.Roaster;
 import org.jboss.forge.roaster.model.JavaType;
 import org.jboss.forge.roaster.model.source.JavaClassSource;
@@ -43,6 +44,12 @@ public class MethodsHelper {
         String tempPath = filePath.replace(".java", "");
         String[] classesNames = tempPath.split("\\$");
         File file = new File(classesNames[0] + ".java");
+
+        // try{
+
+        // }catch (ParserException exception) {
+
+        // }
 
         JavaClassSource javaClass = Roaster.parse(JavaClassSource.class, Files.newInputStream(file.toPath()));
         String sourceCode = new String(Files.readAllBytes(Paths.get(file.toURI())));

@@ -258,11 +258,10 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
                 getLog().warn("Spec at line " + specLineNumber + " in " + filePath + " is not within a method");
                 continue;
             }
-            String key = filePath.replace(".java", "#") + method;
+            String key = klas.replace(".class", "") + "#" + method;
             Set<String> methodSpecs = changedMethodsToSpecs.getOrDefault(key, new HashSet<>());
-            methodSpecs.add(spec);
-            key = klas.replace(".class", "") + "#" + method;
             changedMethodsToSpecs.put(key, methodSpecs);
+            methodSpecs.add(spec);
         }
     }
 
