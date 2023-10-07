@@ -1,14 +1,14 @@
 package edu.cornell;
 
-import edu.illinois.starts.jdeps.MethodsMojo;
+import edu.illinois.starts.jdeps.HybridMojo;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-@Mojo(name = "impacted-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class ImpactedMethodsMojo extends MethodsMojo {
+@Mojo(name = "hybrid", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
+public class ImpactedHybridMojo extends HybridMojo {
 
     /**
      * Parameter to determine whether file checksums are updated.
@@ -31,10 +31,8 @@ public class ImpactedMethodsMojo extends MethodsMojo {
     protected boolean debug;
 
     public void execute() throws MojoExecutionException {
-        setUpdateMethodsChecksums(updateChecksums);
-        setComputeImpactedMethods(computeImpactedMethods);
-        setIncludeVariables(includeVariables);
-        setDebug(debug);
+        setUpdateMethodsChecksums(true);
+        setComputeImpactedMethods(true);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();

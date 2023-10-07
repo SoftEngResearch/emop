@@ -2,6 +2,7 @@ package edu.cornell;
 
 import java.io.File;
 import java.util.HashSet;
+
 import java.util.Set;
 
 import edu.cornell.emop.maven.AgentLoader;
@@ -11,8 +12,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-@Mojo(name = "monitor-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
+@Mojo(name = "monitor-hybrid", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
+public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
 
     public static final String MONITOR_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
@@ -65,20 +66,18 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         debug = debugTemp;
         super.execute();
 
-        // If there is no affected methods, then we should not instrument anything.
-        if (getAffectedMethods().isEmpty()) {
+        if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
             System.setProperty("exiting-rps", "true");
             System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
             if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
                 throw new MojoExecutionException("Could not attach agent");
             }
-            getLog().info("No impacted classes mode detected MonitorMojo");
+            getLog().info("No impacted classes mode detected Hybrid MonitorMojo");
             return;
         }
 
-        getLog().info("[eMOP] Invoking the Monitor Mojo...");
+        getLog().info("[eMOP] Invoking the Hybrid Monitor Mojo...");
         long start = System.currentTimeMillis();
-
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = new HashSet<>();
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
@@ -100,8 +99,8 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
 
     /**
      * Generates the set of package names of classes that should be monitored. If
-     * the set is non-empty, then any package not included in this set will not be
-     * monitored.
+     * the set is non-empty, then any
+     * package not included in this set will not be monitored.
      *
      * @return created set of package names for weaving. An empty set is returned if
      *         the includeLibraries is true.

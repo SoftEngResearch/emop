@@ -42,20 +42,22 @@ import org.aspectj.bridge.MessageHandler;
 import org.aspectj.tools.ajc.Main;
 import org.jboss.forge.roaster.ParserException;
 
-@Mojo(name = "asm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
+@Mojo(name = "hsm", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
+public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
 
     private static final int CLASS_INDEX_IN_MSG = 3;
     private static final int SPEC_LINE_NUMBER = 4;
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
+    private static final String CLASSES_TO_SPECS_FILE_NAME = "classesToSpecs.bin";
     private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
-
     /**
      * A map from affected classes to affected specs, for debugging purposes.
      */
-    protected Map<String, Set<String>> methodsToSpecs = new HashMap<>();
     protected Map<String, Set<String>> changedMethodsToSpecs = new HashMap<>();
+    protected Map<String, Set<String>> changedClassesToSpecs = new HashMap<>();
+    protected Map<String, Set<String>> methodsToSpecs = new HashMap<>();
+    protected Map<String, Set<String>> classesToSpecs = new HashMap<>();
 
     /**
      * A set of affected specs to monitor for javamop agent.
@@ -96,76 +98,89 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (computeImpactedMethods && getImpactedMethods().isEmpty()) {
+        if (computeImpactedMethods && getImpactedMethods().isEmpty() && getImpactedClasses().isEmpty()) {
 
             return;
 
-        } else if (getAffectedMethods().isEmpty()) {
+            // Affected classes are new classes, changed classes with changed headers only
+        } else if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
             return;
         }
 
-        getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
+        getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
         long start = System.currentTimeMillis();
+
         // If only computing changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
         Main compiler = new Main();
         MessageHandler mh = new MessageHandler();
         compiler.run(arguments, mh);
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
+
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
 
         start = System.currentTimeMillis();
+        classesToSpecs = readMapFromFile(CLASSES_TO_SPECS_FILE_NAME);
         methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
 
         try {
-            computeMapFromMessage(ms);
+            computeMethodsToSpecsMapFromMessage(ms);
+            computeClassesToSpecsMapFromMessage(ms);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
+
         changedMethodsToSpecs
                 .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+        changedClassesToSpecs
+                .forEach((key, value) -> classesToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
         // Compute affected specs from changed methods or impacted methods
         if (computeImpactedMethods) {
-            computeAffectedSpecs(getImpactedMethods());
+            computeMethodsAffectedSpecs(getImpactedMethods());
+            computeClassesAffectedSpecs(getImpactedClasses());
 
         } else {
-            computeAffectedSpecs(getAffectedMethods());
+            computeMethodsAffectedSpecs(getAffectedMethods());
+            computeClassesAffectedSpecs(getAffectedClasses());
         }
-
         if (computeImpactedMethods) {
-            getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
+            getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
+            getLog().info("[eMOP] Number of Impacted classes: " + getImpactedClasses().size());
 
         } else {
             getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
+            getLog().info("[eMOP] Number of affected classes: " + getAffectedClasses().size());
         }
 
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+
         start = System.currentTimeMillis();
+
+        writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME);
         writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME);
+
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
-
-        getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
-        getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
         getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
     }
 
-    /**
-     * Write map from class to specs in either text or binary format.
-     * @param format Output format of the map, text or binary
-     */
-    private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
-
-        try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
-                ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-            oos.writeObject(map);
-        } catch (IOException ex) {
-            ex.printStackTrace();
+    private void computeClassesAffectedSpecs(Set<String> classes) throws MojoExecutionException {
+        for (String affectedClass : classes) {
+            Set<String> specs = classesToSpecs.getOrDefault(affectedClass.replace("/", "."), new HashSet<>());
+            affectedSpecs.addAll(specs);
         }
+    }
 
+    private void computeMethodsAffectedSpecs(Set<String> methods) throws MojoExecutionException {
+        for (String affectedMethod : methods) {
+            // Convert method name from asm to java
+            String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
+            Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
+            affectedSpecs.addAll(specs);
+        }
     }
 
     private Map<String, Set<String>> readMapFromFile(String fileName) throws MojoExecutionException {
@@ -183,41 +198,49 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         return map;
     }
 
-    private void computeAffectedSpecs(Set<String> methods) throws MojoExecutionException {
-        for (String affectedMethod : methods) {
-            // Convert method name from asm to java
+    /**
+     * Write map from class to specs in either text or binary format.
+     * @param format Output format of the map, text or binary
+     */
+    private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
 
-            // Skip variables that are not in the format of a method
-            if (!affectedMethod.matches(".*\\(.*\\)")) {
-                continue;
+        try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
+                ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(map);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+    }
+
+    private void computeClassesToSpecsMapFromMessage(IMessage[] ms) throws Exception {
+        for (IMessage message : ms) {
+            String[] lexedMessage = message.getMessage().split("'");
+            String key = lexedMessage[CLASS_INDEX_IN_MSG];
+            String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
+            if (!changedClassesToSpecs.containsKey(key)) {
+                changedClassesToSpecs.put(key, new HashSet<>());
             }
-
-            String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
-            Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
-            affectedSpecs.addAll(specs);
+            changedClassesToSpecs.get(key).add(value);
         }
     }
 
     /**
-     * Compute a mapping from affected methods to specifications based on the
+     * Compute a mapping from affected classes to specifications based on the
      * messages from AJC.
-     * It utilizes relevant methods from the MethodsHelper class. The idea is
-     * that we can use the line numbers of the methods to find the corresponding
-     * specs inside that method. This is becayse the messages from AJC contain only
-     * the class and line number of the spec not the method.
      *
      * @param ms An array of IMessage objects
      */
-    private void computeMapFromMessage(IMessage[] ms) throws Exception {
+    private void computeMethodsToSpecsMapFromMessage(IMessage[] ms) throws Exception {
         Classpath sfClassPath = getSureFireClassPath();
         ClassLoader loader = createClassLoader(sfClassPath);
-
         for (IMessage message : ms) {
             String[] lexedMessage = message.getMessage().split("'");
             String klasName = lexedMessage[CLASS_INDEX_IN_MSG];
             String spec = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
             int specLineNumber = Integer
                     .parseInt(lexedMessage[SPEC_LINE_NUMBER].split(" ")[1].split(":")[1].replace(")", ""));
+
             String klas = ChecksumUtil.toClassOrJavaName(klasName, false);
             URL url = loader.getResource(klas);
             String filePath = url.getPath();
@@ -230,10 +253,9 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             } catch (ParserException exception) {
                 getLog().warn("File contains interface only, no methods found in " + filePath);
             }
-
             String method = MethodsHelper.getWrapMethod(filePath, specLineNumber);
             if (method == null) {
-                getLog().warn("Cannot find method for " + filePath + " at line " + specLineNumber);
+                getLog().warn("Spec at line " + specLineNumber + " in " + filePath + " is not within a method");
                 continue;
             }
             String key = klas.replace(".class", "") + "#" + method;
@@ -243,17 +265,6 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         }
     }
 
-    /**
-     * This method creates an array of arguments for the AspectJ compiler (AJC).
-     * It extracts aspects from the jar and writes them to a file, then prepares a
-     * list of source files to weave.
-     * The method also extracts an argument file from the jar and prepares the
-     * classpath for AJC.
-     * Finally, it returns an array of arguments that can be used to call AJC.
-     *
-     * @return An array of arguments for the AspectJ compiler
-     * @throws MojoExecutionException if an error occurs during execution
-     */
     private String[] createAJCArguments() throws MojoExecutionException {
         // extract the aspects for all available specs from the jar and make a list of
         // them in a file
@@ -292,12 +303,6 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         return String.join(File.pathSeparator, runtimeJars);
     }
 
-    /**
-     * Returns the classpath for Surefire as a String.
-     *
-     * @return The classpath for Surefire as a String
-     * @throws MojoExecutionException if an error occurs during execution
-     */
     protected String getClassPath() throws MojoExecutionException {
         return Writer.pathToString(getSureFireClassPath().getClassPath());
     }
@@ -341,7 +346,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             }
 
             // Source file not found in any standard directory
-            getLog().error("No source file found for class " + newClass);
+            getLog().warn("No source file for external class " + newClass);
         }
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
