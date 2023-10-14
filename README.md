@@ -87,15 +87,17 @@ To integrate eMOP as a plugin into your Maven project, add the following segment
 
 Invoke various eMOP goals with the following commands:
 
-1. `mvn emop:help`: list all goals
-2. `mvn emop:impacted`: list impacted classes
-3. `mvn emop:affected-specs`: list affected speciﬁcations
-4. `mvn emop:rps`: run RPS
-5. `mvn emop:vms`: run VMS
-6. `mvn emop:rpp`: run RPP
-7. `mvn emop:rps−vms`: run RPS+VMS
-8. `mvn emop:rps−rpp`: run RPS+RPP
-9. `mvn emop:clean`: delete all metadata
+1. `mvn emop:help # list all goals`
+2. `mvn emop:impacted # list impacted classes`
+3. `mvn emop:affected-specs # list affected speciﬁcations`
+4. `mvn emop:rps # run RPS`
+5. `mvn emop:vms # run VMS`
+6. `mvn emop:rpp # run RPP`
+7. `mvn emop:rps−vms # run RPS+VMS`
+8. `mvn emop:rpp−vms # run RPS+VMS`
+9. `mvn emop:rps−rpp # run RPS+RPP`
+10. `mvn emop:rps−rpp-vms # run RPS+RPP+VMS`
+11. `mvn emop:clean # delete all metadata`
 
 ## Options
 

@@ -88,6 +88,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             }
             System.setProperty("rpsRpp", "true");
         }
+        getLog().info("AffectedSpecs: " + affectedSpecs.size());
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"
