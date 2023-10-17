@@ -1,14 +1,20 @@
 package edu.cornell.util;
-import org.junit.Before;
-import org.junit.Test;
- 
-import java.util.ArrayList;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import edu.cornell.emop.util.MethodsHelper;;
+
+import java.util.ArrayList;
+
+import edu.cornell.emop.util.MethodsHelper;
+
+import org.junit.Before;
+import org.junit.Test;
+
+
+
 public class MethodsHelperTest {
     @Before
-    public void setUp() throws Exception{
+    public void setUp() throws Exception {
 
         String sampleFilePath = "samplePath.java";
         ArrayList<String> methods = new ArrayList<>();
@@ -46,7 +52,7 @@ public class MethodsHelperTest {
     }
 
 
-    @Test 
+    @Test
     public void testGetWrapMethod() {
         // Test within the range of method1
         assertEquals("method1(int)", MethodsHelper.getWrapMethod("samplePath.java", 15));
@@ -65,6 +71,6 @@ public class MethodsHelperTest {
 
 
 
-    
+
 
 }

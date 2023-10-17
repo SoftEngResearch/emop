@@ -143,10 +143,7 @@ public class Util {
             Set<String> includesPackageNames,
             Set<String> nonAffectedClasses) {
 
-        System.out.println("Generating new monitor file at " + monitorFilePath);
-        System.out.println("Specs to monitor: " + specsToMonitor);
-        System.out.println("Packages to include: " + includesPackageNames);
-        System.out.println("Classes to exclude: " + nonAffectedClasses);
+
 
         try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
             // Write header
@@ -180,7 +177,7 @@ public class Util {
 
     /**
      * Relocates the generated violation-counts file.
-     * 
+     *
      * @param originalDir directory that should contain the original
      *                    violation-counts
      * @param newDir      directory where violation-counts should be moved to
@@ -210,7 +207,7 @@ public class Util {
     /**
      * Writes the provided set of specifications to the specified file, delimited by
      * newline.
-     * 
+     *
      * @param specs set of specs to write to the file
      * @param file  the file to write to
      * @throws FileNotFoundException when file cannot be found

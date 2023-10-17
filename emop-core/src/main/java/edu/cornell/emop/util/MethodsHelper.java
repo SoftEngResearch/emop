@@ -95,7 +95,7 @@ public class MethodsHelper {
     public static String convertAsmSignatureToJava(String asmSignature) {
         StringBuilder javaSignature = new StringBuilder();
         Type[] argumentTypes = Type.getArgumentTypes(asmSignature);
-        javaSignature.append("("); 
+        javaSignature.append("(");
         for (int i = 0; i < argumentTypes.length; i++) {
             String temp = argumentTypes[i].getClassName();
             String[] temps = temp.split("\\.");
