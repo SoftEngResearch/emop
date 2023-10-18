@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,10 +24,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 
 public class Util {
+
+    public static SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+
+    /**
+     * Find files under a path that matches the extension.
+     *
+     * @param path The path in which to search for files
+     * @param extension The file extension being searched for
+     * @return A list of file names under the specified path that matches the extension
+     */
     public static List<String> findFilesOfType(File path, String extension) {
         List<String> returnedFileNames = new ArrayList<>();
         String[] files = path.list();
@@ -47,6 +57,13 @@ public class Util {
         return returnedFileNames;
     }
 
+    /**
+     * Replace a file inside a jar.
+     *
+     * @param jarPath Path to the jar file
+     * @param oldPath Path to the file being replaced in the jar
+     * @param newPath Path to the new file on the user's filesystem
+     */
     public static void replaceFileInJar(String jarPath, String oldPath, String newPath) {
         Map<String, String> env = new HashMap<>();
         env.put("create", "true");
@@ -134,11 +151,19 @@ public class Util {
         return fullSet;
     }
 
-    public static void generateNewMonitorFile(String monitorFilePath,
-                                              Set<String> specsToMonitor,
-                                              Set<String> includesPackageNames,
-                                              Set<String> nonAffectedClasses) {
-        try (PrintWriter writer = new PrintWriter(monitorFilePath)) {
+    /**
+     * Generates a new agent configuration file, usually, aop-ajc.xml.
+     *
+     * @param agentConfigurationPath The path to store the new agent configuration file in
+     * @param specsToMonitor The set of specs to instrument
+     * @param includedPackageNames The set of the client program's package names to instrument
+     * @param excludedClasses The set of client program's classes to NOT instrument
+     */
+    public static void generateNewAgentConfigurationFile(String agentConfigurationPath,
+                                                         Set<String> specsToMonitor,
+                                                         Set<String> includedPackageNames,
+                                                         Set<String> excludedClasses) {
+        try (PrintWriter writer = new PrintWriter(agentConfigurationPath)) {
             // Write header
             writer.println("<aspectj>");
             writer.println("<aspects>");
@@ -150,13 +175,13 @@ public class Util {
             writer.println("</aspects>");
             // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
             writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
-            if (includesPackageNames != null) {
-                for (String packageName : includesPackageNames) {
+            if (includedPackageNames != null) {
+                for (String packageName : includedPackageNames) {
                     writer.println("<include within=\"" + packageName + "..*\"/>");
                 }
             }
-            if (nonAffectedClasses != null) {
-                for (String nonAffectedClass : nonAffectedClasses) {
+            if (excludedClasses != null) {
+                for (String nonAffectedClass : excludedClasses) {
                     writer.println("<exclude within=\"" + nonAffectedClass + "\"/>");
                 }
             }
@@ -183,9 +208,9 @@ public class Util {
             if (!violationCounts.exists()) {
                 newViolationCounts.delete();
                 newViolationCounts.createNewFile();
-                return "";
+            } else {
+                Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
-            Files.move(violationCounts.toPath(), newViolationCounts.toPath(), StandardCopyOption.REPLACE_EXISTING);
             return newViolationCounts.getAbsolutePath();
         } catch (IOException ex) {
             throw new RuntimeException(ex);

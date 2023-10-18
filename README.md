@@ -65,12 +65,12 @@ To integrate eMOP as a plugin into your Maven project, add the following segment
       ...
       <plugin>
       	<groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven−sureﬁre−plugin</artifactId>
+        <artifactId>maven-surefire-plugin</artifactId>
         <version>2.20</version> <!-- 2.20 or greater -->
         <configuration>
           <!-- Use $HOME/.m2/repository/javamop-agent/javamop-agent/1.0/javamop-agent-1.0.jar -->
           <!-- if you do not have a specific javamop agent jar that you want to use. -->
-        	<argLine>−javaagent:${JavaMOP jar}</argLine>
+        	<argLine>-javaagent:${JavaMOP jar}</argLine>
         </configuration>
       </plugin>
       <plugin>
@@ -103,8 +103,8 @@ Invoke various eMOP goals with the following commands:
 
 ### RPS Options
 
-- `closureOption` (default: `TRANSITIVE`) determines which option to use for computing impacted classes.
-   - `PS3` will only instrument properties impacted by the set of changed and new classes (Δ), and the dependents of Δ (classes that depend on those in Δ).
+- `closureOption` (default: `PS3`) determines which option to use for computing impacted classes.
+   - `PS3` will only instrument properties related to the set of changed and new classes (Δ), and the dependents of Δ (classes that depend on those in Δ).
    - `PS2` will instrument all properties that `PS3` instruments, along with properties impacted by the dependees of Δ (classes that those in Δ depend on).
    - `PS1` will instrument all properties that `PS2` instruments, along with properties impacted by the dependees of dependents of Δ. This is the safest option out of the three.
 - `includeLibraries` (default: `true`) indicates whether third-party library classes should be monitored. Setting this option to `false` excludes all third-party library classes from monitoring, resulting in a weak RPS variant with an *l* in its superscript.
