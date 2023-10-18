@@ -14,7 +14,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
 
-    public static final String MONITOR_FILE = "new-aop-ajc.xml";
+    public static final String AGENT_CONFIGURATION_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
 
@@ -85,7 +85,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         if (debug) {
             getLog().info("AffectedSpecs: " + affectedSpecs);
         }
-        Util.generateNewMonitorFile(getArtifactsDir() + File.separator + MONITOR_FILE, affectedSpecs,
+        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
@@ -93,7 +93,8 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
         }
-        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml", getArtifactsDir() + File.separator + MONITOR_FILE);
+        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
+                getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
     }

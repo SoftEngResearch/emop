@@ -15,7 +15,6 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "monitor", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class MonitorMojo extends AffectedSpecsMojo {
 
-
     public static final String AGENT_CONFIGURATION_FILE = "new-aop-ajc.xml";
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
