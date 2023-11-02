@@ -402,14 +402,12 @@ public class VmsMojo extends DiffMojo {
                                               Map<String, Map<Integer, Integer>> offsets,
                                               Map<String, Set<Integer>> modifiedLines) {
         Set<Violation> violationsToRemove = new HashSet<>();
-
-        Set<Violation> likelyNewViolations = new HashSet<>();
-        likelyNewViolations.addAll(newViolations);
-        likelyNewViolations.removeAll(oldViolations);
-        for (Violation likelyNewViolation : likelyNewViolations) {
+        for (Violation newViolation : newViolations) {
             for (Violation oldViolation : oldViolations) {
-                if (isSameViolationAfterDifferences(oldViolation, likelyNewViolation, renames, offsets, modifiedLines)) {
-                    violationsToRemove.add(likelyNewViolation);
+                if (oldViolation.equals(newViolation)
+                        || isSameViolationAfterDifferences(oldViolation, newViolation, renames, offsets, modifiedLines)
+                ) {
+                    violationsToRemove.add(newViolation);
                     break;
                 }
             }
