@@ -19,25 +19,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
     protected static Set<String> monitorIncludes;
     protected static Set<String> monitorExcludes;
 
-    /**
-     * The path that specify the Javamop Agent JAR file.
-     */
-    @Parameter(property = "javamopAgent")
-    private String javamopAgent;
-
-    /**
-     * The path that specify the Javamop Agent JAR file.
-     */
-    @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
-    private boolean includeNonAffected;
-
-    /**
-     * Whether to instrument third-party libraries.
-     * Setting this option to false triggers the ^l weak RPS variants.
-     */
-    @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
-    private boolean includeLibraries;
-
     @Parameter(property = "rpsRpp", defaultValue = "false")
     private boolean rpsRpp;
 
@@ -68,12 +49,6 @@ public class MonitorMojo extends AffectedSpecsMojo {
             System.setProperty("rpsRpp", "true");
         }
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
-        if (javamopAgent == null) {
-            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
-                    + File.separator + "javamop-agent"
-                    + File.separator + "1.0"
-                    + File.separator + "javamop-agent-1.0.jar";
-        }
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
                 getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
         long end = System.currentTimeMillis();

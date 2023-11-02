@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -44,6 +45,26 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     private static final int CLASS_INDEX_IN_MSG = 3;
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
+
+    /**
+     * The path that specify the Javamop Agent JAR file.
+     */
+    @Parameter(property = "javamopAgent")
+    protected String javamopAgent;
+
+    /**
+     * Whether to instrument classes that are not affected by code changes.
+     * Setting this option to false triggers the ^c weak RPS variants.
+     */
+    @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
+    protected boolean includeNonAffected;
+
+    /**
+     * Whether to instrument third-party libraries.
+     * Setting this option to false triggers the ^l weak RPS variants.
+     */
+    @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
+    protected boolean includeLibraries;
 
     /**
      * A map from affected classes to affected specs, for debugging purposes.
@@ -84,6 +105,13 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
         }
         getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
 
+        if (javamopAgent == null) {
+            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
+                    + File.separator + "javamop-agent"
+                    + File.separator + "1.0"
+                    + File.separator + "javamop-agent-1.0.jar";
+        }
+
         long start = System.currentTimeMillis();
         // If only computing changed classes, then these lines can stay the same
         String[] arguments = createAJCArguments();
@@ -117,18 +145,18 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     }
 
     private void computeAffectedSpecs(boolean dependencyChangeDetected) throws MojoExecutionException {
-        Set<String> impactedClasses = new HashSet<>();
+        Set<String> impactedClasses = new HashSet<>(getImpacted());
         if (dependencyChangeDetected) {
-            // Revert to base RV, everything is affected.
-            impactedClasses.addAll(getOldClasses());
-            impactedClasses.addAll(getNewClasses());
+            // Revert to base RV, use all specs, include libraries and non-affected classes.
+            affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
+            includeLibraries = true;
+            includeNonAffected = true;
         } else {
-            impactedClasses.addAll(getImpacted());
-        }
-        for (String impactedClass : impactedClasses) {
-            Set<String> associatedSpecs = classToSpecs.get(impactedClass);
-            if (associatedSpecs != null) {
-                affectedSpecs.addAll(associatedSpecs);
+            for (String impactedClass : impactedClasses) {
+                Set<String> associatedSpecs = classToSpecs.get(impactedClass);
+                if (associatedSpecs != null) {
+                    affectedSpecs.addAll(associatedSpecs);
+                }
             }
         }
     }
