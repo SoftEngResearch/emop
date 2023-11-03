@@ -47,7 +47,7 @@ public class AffectedSpecsMojo extends ImpactedClassMojo {
     private static final int SPEC_INDEX_IN_MSG = 5;
 
     /**
-     * The path that specify the Javamop Agent JAR file.
+     * The path to the Javamop Agent JAR file.
      */
     @Parameter(property = "javamopAgent")
     protected String javamopAgent;

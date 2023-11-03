@@ -105,7 +105,7 @@ public class Util {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-        return null;
+        return new HashSet<>();
     }
 
     public static Set<String> retrieveSpecListFromJar(String jarPath, Log log) {
