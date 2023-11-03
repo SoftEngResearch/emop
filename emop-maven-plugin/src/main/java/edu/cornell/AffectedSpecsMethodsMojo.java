@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -50,6 +51,26 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
     private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
+
+    /**
+     * The path to the Javamop Agent JAR file.
+     */
+    @Parameter(property = "javamopAgent")
+    protected String javamopAgent;
+
+    /**
+     * Whether to instrument classes that are not affected by code changes.
+     * Setting this option to false triggers the ^c weak RPS variants.
+     */
+    @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
+    protected boolean includeNonAffected;
+
+    /**
+     * Whether to instrument third-party libraries.
+     * Setting this option to false triggers the ^l weak RPS variants.
+     */
+    @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
+    protected boolean includeLibraries;
 
     /**
      * A map from affected classes to affected specs, for debugging purposes.
@@ -96,12 +117,18 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (computeImpactedMethods && getImpactedMethods().isEmpty()) {
-
+        if (!dependencyChangeDetected && (
+                computeImpactedMethods && getImpactedMethods().isEmpty()
+                || getAffectedMethods().isEmpty()
+            )) {
             return;
+        }
 
-        } else if (getAffectedMethods().isEmpty()) {
-            return;
+        if (javamopAgent == null) {
+            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
+                    + File.separator + "javamop-agent"
+                    + File.separator + "1.0"
+                    + File.separator + "javamop-agent-1.0.jar";
         }
 
         getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
@@ -140,7 +167,12 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         } else {
             getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
         }
-
+        if (dependencyChangeDetected) {
+            // Revert to base RV, use all specs, include libraries and non-affected classes.
+            affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
+            includeLibraries = true;
+            includeNonAffected = true;
+        }
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
