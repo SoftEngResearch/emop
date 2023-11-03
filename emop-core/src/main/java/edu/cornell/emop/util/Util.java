@@ -23,6 +23,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.maven.plugin.logging.Log;
 
@@ -75,6 +77,35 @@ public class Util {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    /**
+     * Obtains a set of all the specifications in a JavaMOP agent jar.
+     *
+     * @param jarPath Path to the .jar file
+     * @param pathInJar Path in the .jar file that contains all the specifications
+     * @return A set that contains all specs used in the JavaMOP agent.
+     */
+    public static Set<String> getFullSpecSet(String jarPath, String pathInJar) {
+        URI jarFile = URI.create("jar:file:" + jarPath);
+        try (FileSystem jarfs = FileSystems.newFileSystem(jarFile, new HashMap<String, String>())) {
+            Path pathInJarFile = jarfs.getPath(pathInJar);
+            try (Stream<Path> stream = Files.list(pathInJarFile)) {
+                Set<String> specs = stream
+                        .filter(file -> !Files.isDirectory(file))
+                        .map(Path::getFileName)
+                        .map(Path::toString)
+                        .map(spec -> spec.split("[.]")[0])
+                        .filter(spec -> !spec.contains("$"))
+                        .filter(spec -> spec.contains("Aspect"))
+                        .collect(Collectors.toSet());
+                specs.remove("BaseAspect");
+                return specs;
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        return new HashSet<>();
     }
 
     public static Set<String> retrieveSpecListFromJar(String jarPath, Log log) {
