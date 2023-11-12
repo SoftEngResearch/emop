@@ -59,11 +59,18 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     @Parameter(property = "debug", defaultValue = "flase")
     private boolean debugTemp;
 
+    /**
+     * Set this to "true" to compute affected test classes as well.
+     */
+    @Parameter(property = "computeAffectedTests", defaultValue = FALSE)
+    private boolean computeAffectedTestsTemp;
+
     public void execute() throws MojoExecutionException {
         includeVariables = includeVariablesTemp;
         updateChecksums = updateChecksumsTemp;
         computeImpactedMethods = computeImpactedMethodsTemp;
         debug = debugTemp;
+        computeAffectedTests = computeAffectedTestsTemp;
         super.execute();
 
         if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
@@ -84,7 +91,8 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
         if (debug) {
             getLog().info("AffectedSpecs: " + affectedSpecs);
         }
-        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
+        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE,
+                affectedSpecs,
                 monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"

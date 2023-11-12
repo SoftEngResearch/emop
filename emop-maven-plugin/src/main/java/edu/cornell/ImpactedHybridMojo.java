@@ -30,9 +30,12 @@ public class ImpactedHybridMojo extends HybridMojo {
      */
     protected boolean debug;
 
+    protected boolean computeAffectedTests;
+
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(true);
         setComputeImpactedMethods(true);
+        setComputeAffectedTests(computeAffectedTests);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();
