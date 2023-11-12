@@ -29,7 +29,7 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
      * The path that specify whether to include non affected classes.
      */
     @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
-    private boolean includeNonAffected;
+    private boolean includeNonAffectedTemp;
 
     /**
      * Whether to instrument third-party libraries.
@@ -64,6 +64,7 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
         updateChecksums = updateChecksumsTemp;
         computeImpactedMethods = computeImpactedMethodsTemp;
         debug = debugTemp;
+        includeNonAffectedClasses = includeNonAffectedTemp;
         super.execute();
 
         if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
@@ -79,7 +80,7 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
         getLog().info("[eMOP] Invoking the Hybrid Monitor Mojo...");
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
-        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffectedClasses();
+        monitorExcludes = includeNonAffectedTemp ? new HashSet<>() : getNonAffectedClasses();
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
         if (debug) {
             getLog().info("AffectedSpecs: " + affectedSpecs);

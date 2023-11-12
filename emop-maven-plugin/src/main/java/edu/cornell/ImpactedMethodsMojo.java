@@ -35,16 +35,12 @@ public class ImpactedMethodsMojo extends MethodsMojo {
      */
     protected boolean includeNonAffectedClasses;
 
-    public void setIncludeNonAffected(boolean includeNonAffected) {
-        this.includeNonAffectedClasses = includeNonAffected;
-    }
-
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(updateChecksums);
         setComputeImpactedMethods(computeImpactedMethods);
         setIncludeVariables(includeVariables);
         setDebug(debug);
-        super.setIncludeNonAffectedClasses(includeNonAffectedClasses);
+        setIncludeNonAffectedClasses(includeNonAffectedClasses);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();

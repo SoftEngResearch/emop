@@ -28,7 +28,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
      * The path that specify whether to include non affected classes.
      */
     @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
-    private boolean includeNonAffected;
+    private boolean includeNonAffectedTemp;
 
     /**
      * Whether to instrument third-party libraries.
@@ -63,7 +63,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         updateChecksums = updateChecksumsTemp;
         computeImpactedMethods = computeImpactedMethodsTemp;
         debug = debugTemp;
-        setIncludeNonAffected(includeNonAffected);
+        includeNonAffectedClasses = includeNonAffectedTemp;
         super.execute();
 
         // If there is no affected methods, then we should not instrument anything.
@@ -81,7 +81,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         long start = System.currentTimeMillis();
 
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
-        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffectedClasses();
+        monitorExcludes = includeNonAffectedTemp ? new HashSet<>() : getNonAffectedClasses();
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
         if (debug) {
             getLog().info("AffectedSpecs: " + affectedSpecs);
