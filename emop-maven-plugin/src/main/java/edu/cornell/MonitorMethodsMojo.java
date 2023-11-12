@@ -25,7 +25,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
     private String javamopAgent;
 
     /**
-     * The path that specify the Javamop Agent JAR file.
+     * The path that specify whether to include non affected classes.
      */
     @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
     private boolean includeNonAffected;
@@ -63,6 +63,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         updateChecksums = updateChecksumsTemp;
         computeImpactedMethods = computeImpactedMethodsTemp;
         debug = debugTemp;
+        setIncludeNonAffected(includeNonAffected);
         super.execute();
 
         // If there is no affected methods, then we should not instrument anything.
@@ -80,13 +81,13 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         long start = System.currentTimeMillis();
 
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
-        monitorExcludes = new HashSet<>();
+        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffectedClasses();
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
         if (debug) {
             getLog().info("AffectedSpecs: " + affectedSpecs);
         }
-        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
-                monitorIncludes, monitorExcludes);
+        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE,
+                affectedSpecs, monitorIncludes, monitorExcludes);
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"
