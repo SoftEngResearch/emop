@@ -30,9 +30,15 @@ public class ImpactedHybridMojo extends HybridMojo {
      */
     protected boolean debug;
 
+    /**
+     * Parameter to determine whether to include non affectedClasses.
+     */
+    protected boolean includeNonAffectedClasses;
+
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(true);
         setComputeImpactedMethods(true);
+        setIncludeNonAffectedClasses(includeNonAffectedClasses);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();
