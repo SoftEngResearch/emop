@@ -1,6 +1,7 @@
 package edu.cornell;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -176,7 +177,11 @@ public class VmsMojo extends DiffMojo {
         getLog().info("Number of total violations found: " + newViolations.size());
 
         if (!firstRun) {
-            filterOutOldViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
+            List<Set<Violation>> newAndOld =
+                    filterOutOldViolations(oldViolations, newViolations, renames, offsets, modifiedLines);
+            getLog().info("[VMS DEBUG] New Violation" + newAndOld.get(0).toString());
+            getLog().info("[VMS DEBUG] Old Violation" + newAndOld.get(1).toString());
+
         }
         getLog().info("Number of \"new\" violations found: " + newViolations.size());
 
@@ -396,15 +401,16 @@ public class VmsMojo extends DiffMojo {
     /**
      * Removes newViolations of violations believed to be duplicates from violation-counts-old.
      */
-    public static void filterOutOldViolations(Set<Violation> oldViolations,
+    public static List<Set<Violation>> filterOutOldViolations(Set<Violation> oldViolations,
                                               Set<Violation> newViolations,
                                               Map<String, String> renames,
                                               Map<String, Map<Integer, Integer>> offsets,
                                               Map<String, Set<Integer>> modifiedLines) {
         Set<Violation> violationsToRemove = new HashSet<>();
         // DEBUG:
-        System.err.println("New violations: " + newViolations.toString());
-        System.err.println("Old violations: " + oldViolations.toString());
+        List<Set<Violation>> toReturn = new ArrayList<>();
+        toReturn.add(newViolations);
+        toReturn.add(oldViolations);
         for (Violation newViolation : newViolations) {
             for (Violation oldViolation : oldViolations) {
                 if (oldViolation.equals(newViolation)
@@ -416,6 +422,7 @@ public class VmsMojo extends DiffMojo {
             }
         }
         newViolations.removeAll(violationsToRemove);
+        return toReturn;
     }
 
     /**
