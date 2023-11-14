@@ -402,6 +402,9 @@ public class VmsMojo extends DiffMojo {
                                               Map<String, Map<Integer, Integer>> offsets,
                                               Map<String, Set<Integer>> modifiedLines) {
         Set<Violation> violationsToRemove = new HashSet<>();
+        // DEBUG:
+        System.err.println("New violations: " + newViolations.toString());
+        System.err.println("Old violations: " + oldViolations.toString());
         for (Violation newViolation : newViolations) {
             for (Violation oldViolation : oldViolations) {
                 if (oldViolation.equals(newViolation)
