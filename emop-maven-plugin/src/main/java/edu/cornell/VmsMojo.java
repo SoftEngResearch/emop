@@ -502,6 +502,8 @@ public class VmsMojo extends DiffMojo {
             if (changedClass.contains(className)) {
                 // modified lines are never mapped
                 if (modifiedLines.containsKey(changedClass) && modifiedLines.get(changedClass).contains(oldLine)) {
+                    System.err.println("[VMS DEBUG] " + changedClass
+                            + "," + modifiedLines.get(changedClass) +" is changed.");
                     return false;
                 }
                 int netOffset = 0;
