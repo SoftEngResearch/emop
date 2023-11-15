@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -51,6 +52,27 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
     private static final int SPEC_INDEX_IN_MSG = 5;
     private static final String CLASSES_TO_SPECS_FILE_NAME = "classesToSpecs.bin";
     private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
+
+    /**
+     * The path to the Javamop Agent JAR file.
+     */
+    @Parameter(property = "javamopAgent")
+    protected String javamopAgent;
+
+    /**
+     * Whether to instrument classes that are not affected by code changes.
+     * Setting this option to false triggers the ^c weak RPS variants.
+     */
+    @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
+    protected boolean includeNonAffected;
+
+    /**
+     * Whether to instrument third-party libraries.
+     * Setting this option to false triggers the ^l weak RPS variants.
+     */
+    @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
+    protected boolean includeLibraries;
+
     /**
      * A map from affected classes to affected specs, for debugging purposes.
      */
@@ -98,13 +120,19 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (computeImpactedMethods && getImpactedMethods().isEmpty() && getImpactedClasses().isEmpty()) {
-
+        if (!dependencyChangeDetected && (
+                computeImpactedMethods && getImpactedMethods().isEmpty() && getImpactedClasses().isEmpty()
+                // Affected classes are new classes, changed classes with changed headers only
+                || getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()
+            )) {
             return;
+        }
 
-            // Affected classes are new classes, changed classes with changed headers only
-        } else if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
-            return;
+        if (javamopAgent == null) {
+            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
+                    + File.separator + "javamop-agent"
+                    + File.separator + "1.0"
+                    + File.separator + "javamop-agent-1.0.jar";
         }
 
         getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
@@ -153,7 +181,12 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
             getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
             getLog().info("[eMOP] Number of affected classes: " + getAffectedClasses().size());
         }
-
+        if (dependencyChangeDetected) {
+            // Revert to base RV, use all specs, include libraries and non-affected classes.
+            affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
+            includeLibraries = true;
+            includeNonAffected = true;
+        }
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 

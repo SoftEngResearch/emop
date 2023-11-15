@@ -20,25 +20,6 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     protected static Set<String> monitorExcludes;
 
     /**
-     * The path that specify the Javamop Agent JAR file.
-     */
-    @Parameter(property = "javamopAgent")
-    private String javamopAgent;
-
-    /**
-     * The path that specify the Javamop Agent JAR file.
-     */
-    @Parameter(property = "includeNonAffected", required = false, defaultValue = "true")
-    private boolean includeNonAffected;
-
-    /**
-     * Whether to instrument third-party libraries.
-     * Setting this option to false triggers the ^l weak RPS variants.
-     */
-    @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
-    private boolean includeLibraries;
-
-    /**
      * Parameter to determine whether file checksums are updated.
      */
     @Parameter(property = "updateChecksums", defaultValue = "true")
@@ -86,12 +67,6 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
         }
         Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
                 monitorIncludes, monitorExcludes);
-        if (javamopAgent == null) {
-            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
-                    + File.separator + "javamop-agent"
-                    + File.separator + "1.0"
-                    + File.separator + "javamop-agent-1.0.jar";
-        }
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
                 getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
         long end = System.currentTimeMillis();
