@@ -47,11 +47,17 @@ public class ImpactedMethodsMojo extends MethodsMojo {
      */
     protected boolean debug;
 
+    /**
+     * Set this to "true" to compute affected test classes as well.
+     */
+    protected boolean computeAffectedTests;
+
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(updateChecksums);
         setComputeImpactedMethods(computeImpactedMethods);
         setIncludeVariables(includeVariables);
         setDebug(debug);
+        setComputeAffectedTests(computeAffectedTests);
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the ImpactedMethods Mojo...");
         super.execute();

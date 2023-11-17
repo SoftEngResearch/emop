@@ -39,11 +39,18 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
     @Parameter(property = "debug", defaultValue = "flase")
     private boolean debugTemp;
 
+    /**
+     * Set this to "true" to compute affected test classes as well.
+     */
+    @Parameter(property = "computeAffectedTests", defaultValue = FALSE)
+    private boolean computeAffectedTestsTemp;
+
     public void execute() throws MojoExecutionException {
         includeVariables = includeVariablesTemp;
         updateChecksums = updateChecksumsTemp;
         computeImpactedMethods = computeImpactedMethodsTemp;
         debug = debugTemp;
+        computeAffectedTests = computeAffectedTestsTemp;
         super.execute();
 
         // If there is no affected methods, then we should not instrument anything.
@@ -66,7 +73,8 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
         if (debug) {
             getLog().info("AffectedSpecs: " + affectedSpecs);
         }
-        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
+        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE,
+                affectedSpecs,
                 monitorIncludes, monitorExcludes);
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
                 getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
