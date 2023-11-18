@@ -17,8 +17,8 @@ if (!(startsDir.exists() && startsDir.isDirectory())) {
     // Function to replace a specific line in a file
 
     // Example usage: Replace the 5th line of a file with "New Content"
-    File someFile = new File(basedir, "src/main/java/com/example/B.java");
-    replaceLineInFile(someFile, 6, "    i = Amethod1(Collections.synchronizedList(l), \" \");");
+    File someFile = new File(basedir, "src/main/java/com/example/D.java");
+    replaceLineInFile(someFile, 8, "       if (true) {");
 }
 
 

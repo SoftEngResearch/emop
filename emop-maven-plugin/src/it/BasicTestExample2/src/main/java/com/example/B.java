@@ -3,10 +3,7 @@ import java.util.*;
 public class B extends A {
     public String Bmethod1(List l) {
         String i;
-        // -
         i = Amethod1(l, " ");
-        // +
-//         i = Amethod1(Collections.synchronizedList(l), " ");
         return i.trim();
     }
 
