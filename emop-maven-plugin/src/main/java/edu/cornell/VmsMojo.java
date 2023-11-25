@@ -432,11 +432,13 @@ public class VmsMojo extends DiffMojo {
                                                            Map<String, String> renames,
                                                            Map<String, Map<Integer, Integer>> offsets,
                                                            Map<String, Set<Integer>> modifiedLines) {
-        if (!oldViolation.hasKnownLocation() || !newViolation.hasKnownLocation()) {
+        if (!oldViolation.hasKnownLocation() ^ !newViolation.hasKnownLocation()) {
             return false;
         }
         return oldViolation.getSpecification().equals(newViolation.getSpecification())
-                && (oldViolation.getClassName().equals(newViolation.getClassName())
+                // Has to have the same class, for unknown location, this would be null
+                && ((oldViolation.getClassName() == null && newViolation.getClassName() == null)
+                || oldViolation.getClassName().equals(newViolation.getClassName())
                     || isRenamed(oldViolation.getClassName(), newViolation.getClassName(), renames))
                 && hasSameLineNumber(oldViolation.getClassName(), oldViolation.getLineNum(), newViolation.getLineNum(),
                     offsets, modifiedLines);
@@ -488,6 +490,10 @@ public class VmsMojo extends DiffMojo {
                                              Map<String, Map<Integer, Integer>> offsets,
                                              Map<String, Set<Integer>> modifiedLines
                                              ) {
+        // Unknown can only map to unknown
+        if (oldLine == -1 && newLine == -1) {
+            return true;
+        }
         for (String changedClass : offsets.keySet()) {
             if (changedClass.contains(className)) {
                 // modified lines are never mapped
