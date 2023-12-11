@@ -57,6 +57,16 @@ public class ImpactedMethodsMojo extends MethodsMojo {
         super.execute();
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Execute ImpactedMethods Mojo takes " + (end - start) + " ms");
+
+        String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
+        // TODO: Change STARTS so that it exposes the three methods needed here
+        List<String> sfPathElements = getCleanClassPath(cpString);
+        if (!isSameClassPath(sfPathElements) || !hasSameJarChecksum(sfPathElements)) {
+            Writer.writeClassPath(cpString, artifactsDir);
+            Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
+            dependencyChangeDetected = true;
+            getLog().info("Dependencies changed! Reverting to Base RV.");
+        }
     }
 
     // Copied from STARTS
