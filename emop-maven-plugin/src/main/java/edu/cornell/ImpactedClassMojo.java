@@ -33,6 +33,10 @@ public class ImpactedClassMojo extends ImpactedMojo {
     @Parameter(property = "updateChecksums", defaultValue = "true")
     private boolean updateChecksums;
 
+    /** Parameter to determine whether fine RTS should be used. */
+    @Parameter(property = "enableFineRTS", defaultValue = "false")
+    private boolean enableFineRTS;
+
     /**
      * Parameter to determine which closure to use for impacted classes.
      * Options are PS1, PS2, PS3.
@@ -41,6 +45,8 @@ public class ImpactedClassMojo extends ImpactedMojo {
     private TransitiveClosureOptions closureOption;
 
     public void execute() throws MojoExecutionException {
+        this.fineRTSOn = enableFineRTS;
+        this.saveMRTSOn = enableFineRTS;
         setUpdateImpactedChecksums(updateChecksums);
         setTrackNewClasses(true);
         setTransitiveClosureOption(closureOption);
