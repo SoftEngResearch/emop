@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -192,8 +193,8 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
 
         start = System.currentTimeMillis();
 
-        writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME);
-        writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME);
+        writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+        writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
 
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
@@ -235,15 +236,41 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
      * Write map from class to specs in either text or binary format.
      * @param format Output format of the map, text or binary
      */
-    private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
+    private void writeMapToFile(Map<String, Set<String>> map, String fileName, OutputFormat format)
+            throws MojoExecutionException {
+        switch (format) {
+            case BIN:
+                try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
+                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                    oos.writeObject(map);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                break;
+            case TXT:
+            default:
+                writeToText(methodsToSpecsContent, fileName);
+        }
+    }
 
-        try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
-                ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-            oos.writeObject(map);
+    private void writeToText(OutputContent content, String fileName) throws MojoExecutionException {
+        try (PrintWriter writer
+                     = new PrintWriter(getArtifactsDir() + File.separator + fileName)) {
+            switch (methodsToSpecsContent) {
+                case MAP:
+                    for (Map.Entry<String, Set<String>> entry : methodsToSpecs.entrySet()) {
+                        writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
+                    }
+                    break;
+                case SET:
+                default:
+                    for (String affectedSpec : affectedSpecs) {
+                        writer.println(affectedSpec);
+                    }
+            }
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-
     }
 
     private void computeClassesToSpecsMapFromMessage(IMessage[] ms) throws Exception {

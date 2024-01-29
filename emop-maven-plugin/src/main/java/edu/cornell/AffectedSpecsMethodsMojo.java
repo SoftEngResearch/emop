@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -94,7 +95,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     /**
      * Defines whether the output content is a set or a map.
      */
-    @Parameter(property = "methodsToSpecsContent", defaultValue = "SET")
+    @Parameter(property = "methodsToSpecsContent", defaultValue = "MAP")
     private OutputContent methodsToSpecsContent;
 
     /**
@@ -176,7 +177,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
         start = System.currentTimeMillis();
-        writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME);
+        writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
 
@@ -189,15 +190,45 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      * Write map from class to specs in either text or binary format.
      * @param format Output format of the map, text or binary
      */
-    private void writeMapToFile(Map<String, Set<String>> map, String fileName) throws MojoExecutionException {
+    private void writeMapToFile(Map<String, Set<String>> map, String fileName, OutputFormat format)
+            throws MojoExecutionException {
+        switch (format) {
+            case BIN:
+                try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
+                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                    oos.writeObject(map);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                break;
+            case TXT:
+            default:
+                writeToText(methodsToSpecsContent, fileName);
+        }
+    }
 
-        try (FileOutputStream fos = new FileOutputStream(getArtifactsDir() + File.separator + fileName);
-                ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-            oos.writeObject(map);
+    /**
+     * Write class and specification information to text file.
+     * @param content What to output
+     */
+    private void writeToText(OutputContent content, String fileName) throws MojoExecutionException {
+        try (PrintWriter writer
+                     = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
+            switch (methodsToSpecsContent) {
+                case MAP:
+                    for (Map.Entry<String, Set<String>> entry : methodsToSpecs.entrySet()) {
+                        writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
+                    }
+                    break;
+                case SET:
+                default:
+                    for (String affectedSpec : affectedSpecs) {
+                        writer.println(affectedSpec);
+                    }
+            }
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-
     }
 
     private Map<String, Set<String>> readMapFromFile(String fileName) throws MojoExecutionException {
