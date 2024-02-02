@@ -138,7 +138,14 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         String[] arguments = createAJCArguments();
         Main compiler = new Main();
         MessageHandler mh = new MessageHandler();
-        compiler.run(arguments, mh);
+        try {
+            compiler.run(arguments, mh);
+        } catch (IllegalArgumentException ex) {
+            ex.printStackTrace();
+            getLog().error("Arguments: " + Arrays.asList(arguments));
+            IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
+            getLog().error("IMessages: " + Arrays.asList(ms));
+        }
         IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
         long end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
