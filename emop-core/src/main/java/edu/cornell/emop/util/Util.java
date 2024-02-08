@@ -189,11 +189,13 @@ public class Util {
      * @param specsToMonitor The set of specs to instrument
      * @param includedPackageNames The set of the client program's package names to instrument
      * @param excludedClasses The set of client program's classes to NOT instrument
+     * @param enableStats Decides whether to enable statistics or not
      */
     public static void generateNewAgentConfigurationFile(String agentConfigurationPath,
                                                          Set<String> specsToMonitor,
                                                          Set<String> includedPackageNames,
-                                                         Set<String> excludedClasses) {
+                                                         Set<String> excludedClasses,
+                                                         boolean enableStats) {
         try (PrintWriter writer = new PrintWriter(agentConfigurationPath)) {
             // Write header
             writer.println("<aspectj>");
@@ -209,6 +211,9 @@ public class Util {
             if (includedPackageNames != null) {
                 for (String packageName : includedPackageNames) {
                     writer.println("<include within=\"" + packageName + "..*\"/>");
+                }
+                if (enableStats) {
+                    writer.println("<include within=\"org.apache.maven.surefire..*\"/>");
                 }
             }
             if (excludedClasses != null) {

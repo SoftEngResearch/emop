@@ -67,7 +67,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
             getLog().info("AffectedSpecs: " + affectedSpecs);
         }
         Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
-                monitorIncludes, monitorExcludes);
+                monitorIncludes, monitorExcludes, false);
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
                 getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
         long end = System.currentTimeMillis();

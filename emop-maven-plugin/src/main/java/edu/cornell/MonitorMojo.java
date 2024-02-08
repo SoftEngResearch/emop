@@ -22,6 +22,9 @@ public class MonitorMojo extends AffectedSpecsMojo {
     @Parameter(property = "rpsRpp", defaultValue = "false")
     private boolean rpsRpp;
 
+    @Parameter(property = "enableStats", defaultValue = "false")
+    private boolean enableStats;
+
     public void execute() throws MojoExecutionException {
         super.execute();
         if (getImpacted().isEmpty()) {
@@ -38,7 +41,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
         monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
         Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
-                monitorIncludes, monitorExcludes);
+                monitorIncludes, monitorExcludes, enableStats);
         if (rpsRpp) {
             getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
             try {
