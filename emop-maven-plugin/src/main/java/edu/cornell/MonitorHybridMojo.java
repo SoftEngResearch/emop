@@ -40,6 +40,9 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     @Parameter(property = "debug", defaultValue = "flase")
     private boolean debugTemp;
 
+    @Parameter(property = "enableStats", defaultValue = "false")
+    private boolean enableStats;
+
     public void execute() throws MojoExecutionException {
         includeVariables = includeVariablesTemp;
         updateChecksums = updateChecksumsTemp;
@@ -66,7 +69,7 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
             getLog().info("AffectedSpecs: " + affectedSpecs);
         }
         Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
-                monitorIncludes, monitorExcludes, false);
+                monitorIncludes, monitorExcludes, enableStats);
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
                 getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
         long end = System.currentTimeMillis();
