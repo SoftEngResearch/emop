@@ -60,7 +60,7 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
         getLog().info("[eMOP] Invoking the Hybrid Monitor Mojo...");
         long start = System.currentTimeMillis();
         monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
-        monitorExcludes = new HashSet<>();
+        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffectedClasses();
         getLog().info("AffectedSpecs: " + affectedSpecs.size());
         if (debug) {
             getLog().info("AffectedSpecs: " + affectedSpecs);
