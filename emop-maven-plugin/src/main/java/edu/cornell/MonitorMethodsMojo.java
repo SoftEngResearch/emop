@@ -42,6 +42,9 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
     @Parameter(property = "enableStats", defaultValue = "false")
     private boolean enableStats;
 
+    @Parameter(property = "verboseAgent", defaultValue = "false")
+    private boolean verboseAgent;
+
     public void execute() throws MojoExecutionException {
         includeVariables = includeVariablesTemp;
         updateChecksums = updateChecksumsTemp;
@@ -70,7 +73,7 @@ public class MonitorMethodsMojo extends AffectedSpecsMethodsMojo {
             getLog().info("AffectedSpecs: " + affectedSpecs);
         }
         Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
-                monitorIncludes, monitorExcludes, enableStats);
+                monitorIncludes, monitorExcludes, enableStats, verboseAgent);
         Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
                 getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
         long end = System.currentTimeMillis();

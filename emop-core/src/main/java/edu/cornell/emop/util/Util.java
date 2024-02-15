@@ -190,12 +190,14 @@ public class Util {
      * @param includedPackageNames The set of the client program's package names to instrument
      * @param excludedClasses The set of client program's classes to NOT instrument
      * @param enableStats Decides whether to enable statistics or not
+     * @param verboseAgent Decides whether to show weave info or not
      */
     public static void generateNewAgentConfigurationFile(String agentConfigurationPath,
                                                          Set<String> specsToMonitor,
                                                          Set<String> includedPackageNames,
                                                          Set<String> excludedClasses,
-                                                         boolean enableStats) {
+                                                         boolean enableStats,
+                                                         boolean verboseAgent) {
         try (PrintWriter writer = new PrintWriter(agentConfigurationPath)) {
             // Write header
             writer.println("<aspectj>");
@@ -206,13 +208,16 @@ public class Util {
             }
             // Write footer
             writer.println("</aspects>");
-            // TODO: Hard-coded for now, make optional later (-verbose -showWeaveInfo)
-            writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
+            if (verboseAgent) {
+                writer.println("<weaver options=\"-nowarn -Xlint:ignore -verbose -showWeaveInfo\">");
+            } else {
+                writer.println("<weaver options=\"-nowarn -Xlint:ignore\">");
+            }
             if (includedPackageNames != null) {
                 for (String packageName : includedPackageNames) {
                     writer.println("<include within=\"" + packageName + "..*\"/>");
                 }
-                if (enableStats) {
+                if (enableStats && !includedPackageNames.isEmpty()) {
                     writer.println("<include within=\"org.apache.maven.surefire..*\"/>");
                 }
             }
