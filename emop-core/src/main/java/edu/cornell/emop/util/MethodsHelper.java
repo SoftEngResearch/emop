@@ -4,12 +4,13 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.jboss.forge.roaster.ParserException;
 import org.jboss.forge.roaster.Roaster;
 import org.jboss.forge.roaster.model.JavaType;
 import org.jboss.forge.roaster.model.source.JavaClassSource;
@@ -18,12 +19,35 @@ import org.objectweb.asm.Type;
 
 public class MethodsHelper {
 
-    /* Mapping to keep methods to their beginning and ending line number */
+    /** Map from method name to their line range in the format of (begin, end). */
     private static Map<String, ArrayList<Integer>> methodsToLineNumbers = new HashMap<>();
-    /* Mapping to keep classes to all the their methods */
+    /** Map from a class to the methods it contains. */
     private static Map<String, ArrayList<String>> classToMethods = new HashMap<>();
-    /* Set to keep track of files that have been parsed */
+    /** Set to keep track of files that have been parsed. */
     private static Set<String> cachedFile = new HashSet<>();
+
+    public static Map<String, ArrayList<Integer>> getMethodsToLineNumbers() {
+        return Collections.unmodifiableMap(methodsToLineNumbers);
+    }
+
+    /**
+     * Returns a modified version of methodsToLineNumbers mapping.
+     * In the original format, keys are of the format:
+     *   /$full_path_to_project/src/test/java/org/example/project/SomeTest.java#method(String,String)
+     * This method will return a modified version of the mapping with key in the format of:
+     *   org/example/project/SomeTest#method(String,String)
+     * in order to match the format of impactedMethods.
+     * @return a modified methodsToLineNumbers mapping.
+     */
+    public static Map<String, ArrayList<Integer>> getModifiedMethodsToLineNumbers() {
+        Map<String, ArrayList<Integer>> modifiedMethodsToLineNumbers = methodsToLineNumbers.entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey()
+                        .split("/src/main/java/|/src/test/java/")[1]
+                        .replace(".java", ""),
+                    e -> new ArrayList<>(e.getValue()))
+                );
+        return Collections.unmodifiableMap(modifiedMethodsToLineNumbers);
+    }
 
     /**
      * Returns a map of method names to their beginning and ending line
@@ -33,12 +57,11 @@ public class MethodsHelper {
      * The method also caches the results for faster access in future calls.
      *
      * @param filePath The path of the Java source file to be parsed.
-     * @return A map of method names to their line numbers in the given file.
      * @throws Exception If an error occurs while reading or parsing the file.
      */
-    public static Map<String, ArrayList<Integer>> getMethodLineNumbers(String filePath) throws Exception {
+    public static void computeMethodToLineNumbers(String filePath) throws Exception {
         if (cachedFile.contains(filePath)) {
-            return methodsToLineNumbers;
+            return;
         }
 
         String tempPath = filePath.replace(".java", "");
@@ -47,13 +70,13 @@ public class MethodsHelper {
 
         JavaClassSource javaClass = Roaster.parse(JavaClassSource.class, Files.newInputStream(file.toPath()));
         String sourceCode = new String(Files.readAllBytes(Paths.get(file.toURI())));
-        ArrayList<String> methods = new ArrayList<>();
 
+        ArrayList<String> methods = new ArrayList<>();
         for (int i = 1; i < classesNames.length; i++) {
-            for (JavaType<?> innerclass : javaClass.getNestedTypes()) {
-                if (innerclass instanceof JavaClassSource) {
-                    JavaClassSource innerClassSource = (JavaClassSource) innerclass;
-                    if (innerclass.getName().equals(classesNames[i])) {
+            for (JavaType<?> innerClass : javaClass.getNestedTypes()) {
+                if (innerClass instanceof JavaClassSource) {
+                    JavaClassSource innerClassSource = (JavaClassSource) innerClass;
+                    if (innerClass.getName().equals(classesNames[i])) {
                         javaClass = innerClassSource;
                         break;
                     }
@@ -68,18 +91,17 @@ public class MethodsHelper {
             nums.add(beginLine);
             nums.add(endLine);
 
-            String temp = method.toSignature().split(" :")[0];
-            String[] temps = temp.split(" ");
-            temp = "";
+            StringBuilder temp = new StringBuilder(method.toSignature().split(" :")[0]);
+            String[] temps = temp.toString().split(" ");
+            temp = new StringBuilder();
             for (int i = 1; i < temps.length; i++) {
-                temp = temp + temps[i];
+                temp.append(temps[i]);
             }
-            methods.add(temp);
+            methods.add(temp.toString());
             methodsToLineNumbers.put(filePath + "#" + temp, nums);
         }
         classToMethods.put(filePath, methods);
         cachedFile.add(filePath);
-        return methodsToLineNumbers;
     }
 
     /**
@@ -122,8 +144,7 @@ public class MethodsHelper {
     public static String convertAsmToJava(String methodAsmSignature) {
         String methodArgs = "(" + methodAsmSignature.split("\\(")[1];
         String javaArgs = convertAsmSignatureToJava(methodArgs);
-        String temp = methodAsmSignature.split("\\(")[0] + javaArgs;
-        return temp;
+        return methodAsmSignature.split("\\(")[0] + javaArgs;
     }
 
     /**

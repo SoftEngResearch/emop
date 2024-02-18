@@ -30,6 +30,7 @@ import org.apache.maven.plugin.logging.Log;
 
 public class Util {
 
+    /** Defines a SimpleDateFormat. */
     public static SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 
     /**
@@ -108,8 +109,15 @@ public class Util {
         return new HashSet<>();
     }
 
+    /**
+     * Retrieve a set of all specifications that are built into the specified jar.
+     *
+     * @param jarPath Path to the jar file.
+     * @param log The log object.
+     * @return a set of all specifications that are built into the specified jar.
+     */
     public static Set<String> retrieveSpecListFromJar(String jarPath, Log log) {
-        // we assume that the jar contains a specs.txt
+        // Assume that the jar contains a specs.txt.
         Set<String> specs = new HashSet<>();
         URL specsFileInJar = null;
         try {
@@ -178,8 +186,7 @@ public class Util {
      * @return set of strings containing package names (without subpackages).
      */
     public static Set<String> retrieveProjectPackageNames(File classesDir) {
-        Set<String> fullSet = classFilesWalk(classesDir, classesDir.getAbsolutePath());
-        return fullSet;
+        return classFilesWalk(classesDir, classesDir.getAbsolutePath());
     }
 
     /**
@@ -236,6 +243,7 @@ public class Util {
 
     /**
      * Relocates the generated violation-counts file.
+     *
      * @param originalDir directory that should contain the original violation-counts
      * @param newDir directory where violation-counts should be moved to
      * @param mode the phase for the relocated violation-counts file (either "critical" or "background")
@@ -260,6 +268,7 @@ public class Util {
 
     /**
      * Writes the provided set of specifications to the specified file, delimited by newline.
+     *
      * @param specs set of specs to write to the file
      * @param file the file to write to
      * @throws FileNotFoundException when file cannot be found

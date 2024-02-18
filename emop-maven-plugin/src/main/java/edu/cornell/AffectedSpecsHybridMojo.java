@@ -316,7 +316,7 @@ public class AffectedSpecsHybridMojo extends ImpactedHybridMojo {
                     .replace("classes", "main/java");
 
             try {
-                MethodsHelper.getMethodLineNumbers(filePath);
+                MethodsHelper.computeMethodToLineNumbers(filePath);
             } catch (ParserException exception) {
                 getLog().warn("File contains interface only, no methods found in " + filePath);
             }

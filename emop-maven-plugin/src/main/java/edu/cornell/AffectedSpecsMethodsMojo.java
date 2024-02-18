@@ -118,10 +118,9 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (!dependencyChangeDetected && (
-                computeImpactedMethods && getImpactedMethods().isEmpty()
-                || getAffectedMethods().isEmpty()
-            )) {
+        if (!dependencyChangeDetected
+                && (computeImpactedMethods && getImpactedMethods().isEmpty() || getAffectedMethods().isEmpty())
+        ) {
             return;
         }
 
@@ -155,8 +154,24 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
         try {
             computeMapFromMessage(ms);
-        } catch (Exception exception) {
-            exception.printStackTrace();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        // TODO: Have an option to toggle this behavior
+        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "impactedMethods.txt")) {
+            for (String impactedMethod : getImpactedMethods()) {
+                // Each entry in this metadata file contains a method signature to its line range in source file.
+                String javaFormat = MethodsHelper.convertAsmToJava(impactedMethod);
+                // Removes anonymous inner classes:
+                String anonymousInnerClassesRemoved = javaFormat.replaceAll("\\$[0-9]*#", "#");
+                // Get line range from mapping.
+                ArrayList<Integer> range = MethodsHelper
+                        .getModifiedMethodsToLineNumbers()
+                        .get(anonymousInnerClassesRemoved);
+                writer.println(javaFormat + "," + (range != null ? range.get(0) + "," + range.get(1) : "0,0"));
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
         changedMethodsToSpecs
                 .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
@@ -273,8 +288,16 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      * messages from AJC.
      * It utilizes relevant methods from the MethodsHelper class. The idea is
      * that we can use the line numbers of the methods to find the corresponding
-     * specs inside that method. This is becayse the messages from AJC contain only
+     * specs inside that method. This is because the messages from AJC contain only
      * the class and line number of the spec not the method.
+     * Example message entry lexed with "'":
+     *   0: [AppClassLoader@18b4aac2] weaveinfo Join point
+     *   1: method-call(java.lang.StringBuilder java.lang.StringBuilder.append(java.lang.String))
+     *   2: in Type
+     *   3: org.mitre.dsmiley.httpproxy.ProxyServletTest
+     *   4: (ProxyServletTest.java:53) advised by before advice from
+     *   5: mop.Appendable_ThreadSafeMonitorAspect
+     *   6: (Appendable_ThreadSafeMonitorAspect.aj:34)
      *
      * @param ms An array of IMessage objects
      */
@@ -292,11 +315,14 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             URL url = loader.getResource(klas);
             String filePath = url.getPath();
 
-            filePath = filePath.replace(".class", ".java").replace("target", "src").replace("test-classes", "test/java")
+            filePath = filePath.replace(".class", ".java")
+                    .replace("target", "src")
+                    .replace("test-classes", "test/java")
                     .replace("classes", "main/java");
 
             try {
-                MethodsHelper.getMethodLineNumbers(filePath);
+                // This method has a return value, but it also updated a global variable inside its class.
+                MethodsHelper.computeMethodToLineNumbers(filePath);
             } catch (ParserException exception) {
                 getLog().warn("File contains interface only, no methods found in " + filePath);
             }
