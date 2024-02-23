@@ -464,7 +464,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 Path classesDir = null;
 
                 if (!classFile.toFile().exists()) {
-                    getLog().warn("Class file does not exist: " + classFile.toString());
+                    getLog().warn("Class file does not exist: " + classFile);
                     continue;
                 }
 
@@ -473,7 +473,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 } else if (classFile.startsWith(testClassesDir)) {
                     classesDir = testClassesDir;
                 } else {
-                    getLog().error("Class file not found in standard directories: " + classFile.toString());
+                    getLog().error("Class file not found in standard directories: " + classFile);
                     continue;
                 }
 
@@ -486,7 +486,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 }
 
                 // Source file not found in any standard directory
-                getLog().error("No source file found for class file " + classFile.toString());
+                getLog().error("No source file found for class file " + classFile);
             } catch (URISyntaxException ex) {
                 throw new MojoExecutionException("Couldn't parse URI for changed class", ex);
             }
