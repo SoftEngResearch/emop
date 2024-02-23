@@ -37,9 +37,6 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
     @Parameter(property = "includeVariables", defaultValue = "false")
     private boolean includeVariablesTemp;
 
-    @Parameter(property = "debug", defaultValue = "flase")
-    private boolean debugTemp;
-
     @Parameter(property = "enableStats", defaultValue = "false")
     private boolean enableStats;
 
@@ -50,7 +47,6 @@ public class MonitorHybridMojo extends AffectedSpecsHybridMojo {
         includeVariables = includeVariablesTemp;
         updateChecksums = updateChecksumsTemp;
         computeImpactedMethods = computeImpactedMethodsTemp;
-        debug = debugTemp;
         super.execute();
 
         if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {

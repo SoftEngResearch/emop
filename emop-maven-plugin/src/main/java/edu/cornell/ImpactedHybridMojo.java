@@ -15,6 +15,7 @@ import edu.illinois.starts.jdeps.HybridMojo;
 import edu.illinois.starts.util.Pair;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "hybrid", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
@@ -36,14 +37,10 @@ public class ImpactedHybridMojo extends HybridMojo {
      */
     protected boolean computeImpactedMethods;
 
-    /*
-     * Parameter to determine whether to include variables in the impacted methods.
-     */
+    /** Parameter to determine whether to include variables in the impacted methods. */
     protected boolean includeVariables;
 
-    /**
-     * Parameter to determine whether to include variables in the impacted methods.
-     */
+    @Parameter(property = "debug", defaultValue = "false")
     protected boolean debug;
 
     public void execute() throws MojoExecutionException {

@@ -157,22 +157,34 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        // TODO: Have an option to toggle this behavior
-        try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "impactedMethods.txt")) {
-            for (String impactedMethod : getImpactedMethods()) {
-                // Each entry in this metadata file contains a method signature to its line range in source file.
-                String javaFormat = MethodsHelper.convertAsmToJava(impactedMethod);
-                // Removes anonymous inner classes:
-                String anonymousInnerClassesRemoved = javaFormat.replaceAll("\\$[0-9]*#", "#");
-                // Get line range from mapping.
-                ArrayList<Integer> range = MethodsHelper
-                        .getModifiedMethodsToLineNumbers()
-                        .get(anonymousInnerClassesRemoved);
-                writer.println(javaFormat + "," + (range != null ? range.get(0) + "," + range.get(1) : "0,0"));
+        if (debug) {
+            try (PrintWriter writer
+                         = new PrintWriter(getArtifactsDir() + File.separator + "compileWeaveMessage.txt")) {
+                for (IMessage message : ms) {
+                    writer.println(message.getMessage());
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
             }
-        } catch (IOException ex) {
-            ex.printStackTrace();
+
+            try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "impactedMethods.txt")) {
+//                writer.println(MethodsHelper.getModifiedMethodsToLineNumbers());
+                for (String impactedMethod : getImpactedMethods()) {
+                    // Each entry in this metadata file contains a method signature to its line range in source file.
+                    String javaFormat = MethodsHelper.convertAsmToJava(impactedMethod);
+                    // Removes anonymous inner classes:
+                    String anonymousInnerClassesRemoved = javaFormat.replaceAll("\\$[0-9]*#", "#");
+                    // Get line range from mapping.
+                    ArrayList<Integer> range = MethodsHelper
+                            .getModifiedMethodsToLineNumbers()
+                            .get(anonymousInnerClassesRemoved);
+                    writer.println(javaFormat + "," + (range != null ? range.get(0) + "," + range.get(1) : "0,0"));
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         }
+
         changedMethodsToSpecs
                 .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
