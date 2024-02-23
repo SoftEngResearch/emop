@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import edu.cornell.emop.util.Util;
 import edu.illinois.starts.helpers.Writer;
 import edu.illinois.starts.jdeps.MethodsMojo;
 
@@ -55,9 +56,9 @@ public class ImpactedMethodsMojo extends MethodsMojo {
         getLog().info("[eMOP Timer] Execute ImpactedMethods Mojo takes " + (end - start) + " ms");
 
         String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
-        // TODO: Change STARTS so that it exposes the three methods needed here
-        List<String> sfPathElements = getCleanClassPath(cpString);
-        if (!isSameClassPath(sfPathElements) || !hasSameJarChecksum(sfPathElements)) {
+        List<String> sfPathElements = Util.getCleanClassPath(cpString);
+        if (!Util.isSameClassPath(sfPathElements, getArtifactsDir())
+                || !Util.hasSameJarChecksum(sfPathElements, jarCheckSums, getArtifactsDir())) {
             Writer.writeClassPath(cpString, artifactsDir);
             Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
             dependencyChangeDetected = true;

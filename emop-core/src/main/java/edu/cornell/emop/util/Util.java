@@ -26,6 +26,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import edu.illinois.starts.constants.StartsConstants;
+import edu.illinois.starts.helpers.Writer;
+import edu.illinois.starts.util.Pair;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 
 public class Util {
@@ -279,5 +283,84 @@ public class Util {
                 writer.println(spec);
             }
         }
+    }
+
+    // Copied from STARTS
+    // Determines whether classpath for the project has been modified.
+    // For instance, version changes in jars may be reflected by renames to jar files.
+    public static boolean isSameClassPath(List<String> sfPathString, String artifactsDir) throws MojoExecutionException {
+        if (sfPathString.isEmpty()) {
+            return true;
+        }
+        String oldSfPathFileName = Paths.get(artifactsDir, StartsConstants.SF_CLASSPATH).toString();
+        if (!new File(oldSfPathFileName).exists()) {
+            return false;
+        }
+        try {
+            List<String> oldClassPathLines = Files.readAllLines(Paths.get(oldSfPathFileName));
+            if (oldClassPathLines.size() != 1) {
+                throw new MojoExecutionException(StartsConstants.SF_CLASSPATH + " is corrupt! Expected only 1 line.");
+            }
+            List<String> oldClassPathElements = getCleanClassPath(oldClassPathLines.get(0));
+            // comparing lists and not sets in case order changes
+            if (sfPathString.equals(oldClassPathElements)) {
+                return true;
+            }
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+        }
+        return false;
+    }
+
+    // Copied from STARTS
+    // Determines whether jar dependencies still have the same checksum.
+    public static boolean hasSameJarChecksum(List<String> cleanSfClassPath, List<Pair> jarCheckSums, String artifactsDir)
+            throws MojoExecutionException {
+        if (cleanSfClassPath.isEmpty()) {
+            return true;
+        }
+        String oldChecksumPathFileName = Paths.get(artifactsDir, StartsConstants.JAR_CHECKSUMS).toString();
+        if (!new File(oldChecksumPathFileName).exists()) {
+            return false;
+        }
+        boolean noException = true;
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(oldChecksumPathFileName));
+            Map<String, String> checksumMap = new HashMap<>();
+            for (String line : lines) {
+                String[] elems = line.split(StartsConstants.COMMA);
+                checksumMap.put(elems[0], elems[1]);
+            }
+            jarCheckSums = new ArrayList<>();
+            for (String path : cleanSfClassPath) {
+                Pair<String, String> pair = Writer.getJarToChecksumMapping(path);
+                jarCheckSums.add(pair);
+                String oldCS = checksumMap.get(pair.getKey());
+                noException &= pair.getValue().equals(oldCS);
+            }
+        } catch (IOException ioe) {
+            noException = false;
+            // reset to null because we don't know what/when exception happened
+            jarCheckSums = null;
+            ioe.printStackTrace();
+        }
+        return noException;
+    }
+
+    // Copied from STARTS
+    // Return a list of classpath.
+    public static List<String> getCleanClassPath(String cp) {
+        List<String> cpPaths = new ArrayList<>();
+        String[] paths = cp.split(File.pathSeparator);
+        String classes = File.separator + StartsConstants.TARGET +  File.separator + StartsConstants.CLASSES;
+        String testClasses = File.separator + StartsConstants.TARGET + File.separator + StartsConstants.TEST_CLASSES;
+        for (String path : paths) {
+            // TODO: should we also exclude SNAPSHOTS from same project?
+            if (path.contains(classes) || path.contains(testClasses)) {
+                continue;
+            }
+            cpPaths.add(path);
+        }
+        return cpPaths;
     }
 }
