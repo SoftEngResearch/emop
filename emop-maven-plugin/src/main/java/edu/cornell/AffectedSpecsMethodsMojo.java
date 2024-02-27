@@ -167,6 +167,16 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 ex.printStackTrace();
             }
 
+            try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "lineMapping.txt")) {
+                for (Map.Entry<String, ArrayList<Integer>> entry
+                        : MethodsHelper.getModifiedMethodsToLineNumbers().entrySet()) {
+                    ArrayList<Integer> range = entry.getValue();
+                    writer.println(entry.getKey() + "," + (range != null ? range.get(0) + "," + range.get(1) : null));
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+
             try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "impactedMethods.txt")) {
 //                writer.println(MethodsHelper.getModifiedMethodsToLineNumbers());
                 for (String impactedMethod : getImpactedMethods()) {
