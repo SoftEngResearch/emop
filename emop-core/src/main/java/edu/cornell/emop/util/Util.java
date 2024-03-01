@@ -288,13 +288,14 @@ public class Util {
     // Copied from STARTS
     // Determines whether classpath for the project has been modified.
     // For instance, version changes in jars may be reflected by renames to jar files.
-    public static boolean isSameClassPath(List<String> sfPathString, String artifactsDir) throws MojoExecutionException {
+    public static boolean hasDifferentClassPath(List<String> sfPathString, String artifactsDir)
+            throws MojoExecutionException {
         if (sfPathString.isEmpty()) {
-            return true;
+            return false;
         }
         String oldSfPathFileName = Paths.get(artifactsDir, StartsConstants.SF_CLASSPATH).toString();
         if (!new File(oldSfPathFileName).exists()) {
-            return false;
+            return true;
         }
         try {
             List<String> oldClassPathLines = Files.readAllLines(Paths.get(oldSfPathFileName));
@@ -304,24 +305,25 @@ public class Util {
             List<String> oldClassPathElements = getCleanClassPath(oldClassPathLines.get(0));
             // comparing lists and not sets in case order changes
             if (sfPathString.equals(oldClassPathElements)) {
-                return true;
+                return false;
             }
         } catch (IOException ioe) {
             ioe.printStackTrace();
         }
-        return false;
+        return true;
     }
 
     // Copied from STARTS
     // Determines whether jar dependencies still have the same checksum.
-    public static boolean hasSameJarChecksum(List<String> cleanSfClassPath, List<Pair> jarCheckSums, String artifactsDir)
-            throws MojoExecutionException {
+    public static boolean hasDifferentJarChecksum(List<String> cleanSfClassPath,
+                                                  List<Pair> jarCheckSums,
+                                                  String artifactsDir) throws MojoExecutionException {
         if (cleanSfClassPath.isEmpty()) {
-            return true;
+            return false;
         }
         String oldChecksumPathFileName = Paths.get(artifactsDir, StartsConstants.JAR_CHECKSUMS).toString();
         if (!new File(oldChecksumPathFileName).exists()) {
-            return false;
+            return true;
         }
         boolean noException = true;
         try {
@@ -344,7 +346,7 @@ public class Util {
             jarCheckSums = null;
             ioe.printStackTrace();
         }
-        return noException;
+        return !noException;
     }
 
     // Copied from STARTS

@@ -50,8 +50,8 @@ public class ImpactedMethodsMojo extends MethodsMojo {
 
         String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
         List<String> sfPathElements = Util.getCleanClassPath(cpString);
-        if (!Util.isSameClassPath(sfPathElements, getArtifactsDir())
-                || !Util.hasSameJarChecksum(sfPathElements, jarCheckSums, getArtifactsDir())) {
+        if (Util.hasDifferentClassPath(sfPathElements, getArtifactsDir())
+                || Util.hasDifferentJarChecksum(sfPathElements, jarCheckSums, getArtifactsDir())) {
             Writer.writeClassPath(cpString, artifactsDir);
             Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
             dependencyChangeDetected = true;
