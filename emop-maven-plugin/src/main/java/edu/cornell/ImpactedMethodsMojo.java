@@ -1,5 +1,6 @@
 package edu.cornell;
 
+import java.io.File;
 import java.util.List;
 
 import edu.cornell.emop.util.Util;
@@ -11,6 +12,9 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.aspectj.bridge.IMessage;
+import org.aspectj.bridge.MessageHandler;
+import org.aspectj.tools.ajc.Main;
 
 @Mojo(name = "impacted-methods", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class ImpactedMethodsMojo extends MethodsMojo {
@@ -36,6 +40,12 @@ public class ImpactedMethodsMojo extends MethodsMojo {
 
     @Parameter(property = "debug", defaultValue = "false")
     protected boolean debug;
+
+    /**
+     * The path to the Javamop Agent JAR file.
+     */
+    @Parameter(property = "javamopAgent")
+    protected String javamopAgent;
 
     public void execute() throws MojoExecutionException {
         setUpdateMethodsChecksums(updateChecksums);

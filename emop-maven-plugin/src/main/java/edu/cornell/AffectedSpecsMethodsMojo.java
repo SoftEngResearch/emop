@@ -54,12 +54,6 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
     private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
 
     /**
-     * The path to the Javamop Agent JAR file.
-     */
-    @Parameter(property = "javamopAgent")
-    protected String javamopAgent;
-
-    /**
      * Whether to instrument classes that are not affected by code changes.
      * Setting this option to false triggers the ^c weak RPS variants.
      */
@@ -72,6 +66,9 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      */
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     protected boolean includeLibraries;
+
+    @Parameter(property = "finerInstrumentation", required = false, defaultValue = "false")
+    protected boolean finerInstrumentation;
 
     /**
      * A map from affected classes to affected specs, for debugging purposes.
@@ -129,6 +126,30 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                     + File.separator + "javamop-agent"
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
+        }
+
+        if (finerInstrumentation) {
+            // TODO: Extend this so that impacted classes from hybrid is also considered.
+            Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
+                    dependencyChangeDetected ? new HashSet<>() : getImpactedMethods());
+            String[] arguments
+                    = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
+                        "-d", getArtifactsDir(),
+                        "-classpath", getClassPath() + File.pathSeparator + getRuntimeJars()};
+            Main compiler = new Main();
+            MessageHandler mh = new MessageHandler();
+            try {
+                compiler.run(arguments, mh);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            if (debug) {
+                for (IMessage errMsg : mh.getErrors()) {
+                    getLog().error(errMsg.toString());
+                }
+            }
+            Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
+                    getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
         }
 
         getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");

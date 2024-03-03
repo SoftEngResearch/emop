@@ -245,6 +245,70 @@ public class Util {
         }
     }
 
+    // TODO: Currently this approach does not consider library.
+    // It should be addressed at some point.
+    public static void generateNewBaseAspect(String outputPath, Set<String> impactedMethods) {
+        try (PrintWriter writer = new PrintWriter(outputPath)) {
+            writer.println("package mop;");
+            writer.println("");
+            writer.println("public aspect BaseAspect {");
+            writer.println("  pointcut notwithin() :");
+            writer.println("  !within(sun..*) &&");
+            writer.println("  !within(java..*) &&");
+            writer.println("  !within(javax..*) &&");
+            writer.println("  !within(javafx..*) &&");
+            writer.println("  !within(com.sun..*) &&");
+            writer.println("  !within(org.dacapo.harness..*) &&");
+            writer.println("  !within(net.sf.cglib..*) &&");
+            writer.println("  !within(mop..*) &&");
+            writer.println("  !within(org.h2..*) &&");
+            writer.println("  !within(org.sqlite..*) &&");
+            writer.println("  !within(javamoprt..*) &&");
+            writer.println("  !within(rvmonitorrt..*) &&");
+            writer.println("  !within(org.junit..*) &&");
+            writer.println("  !within(junit..*) &&");
+            writer.println("  !within(java.lang.Object) &&");
+            writer.println("  !within(com.runtimeverification..*) &&");
+            writer.println("  !within(org.apache.maven.surefire..*) &&");
+            writer.println("  !within(org.mockito..*) &&");
+            writer.println("  !within(org.powermock..*) &&");
+            writer.println("  !within(org.easymock..*) &&");
+            writer.println("  !within(com.mockrunner..*) &&");
+            if (impactedMethods.isEmpty()) {
+                writer.println("  !within(org.jmock..*);");
+            } else {
+                writer.println("  !within(org.jmock..*) &&");
+                writer.print("(");
+                boolean firstImpactedMethod = true;
+                for (String impactedMethod : impactedMethods) {
+                    String reformatted = MethodsHelper.convertAsmToJava(impactedMethod);
+                    reformatted = reformatted.replaceAll("\\$[0-9]*#", "#");
+                    // Cannot have "<" or ">":
+                    if (reformatted.contains("<clinit>")) {
+                        // Nothing we can do about <clinit>
+                        continue;
+                    }
+                    boolean isConstructor = reformatted.contains("<init>");
+                    reformatted = reformatted.replace("<init>", "new");
+                    if (firstImpactedMethod) {
+                        firstImpactedMethod = false;
+                    } else {
+                        writer.print(" || ");
+                    }
+                    // TODO: Currently doesn't consider signature, maybe do something about it in the future.
+                    writer.print("withincode("
+                            + (isConstructor ? "" : "* ")
+                            + reformatted.replace('/', '.').replace('#', '.')
+                            .split("\\(")[0] + "(..))");
+                }
+                writer.print(");");
+            }
+            writer.println("}");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
     /**
      * Relocates the generated violation-counts file.
      *
