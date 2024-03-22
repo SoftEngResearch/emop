@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -247,6 +248,7 @@ public class Util {
 
     // TODO: Currently this approach does not consider library.
     // It should be addressed at some point.
+    @Deprecated
     public static void generateNewBaseAspect(String outputPath, Set<String> impactedMethods) {
         try (PrintWriter writer = new PrintWriter(outputPath)) {
             writer.println("package mop;");
@@ -428,5 +430,23 @@ public class Util {
             cpPaths.add(path);
         }
         return cpPaths;
+    }
+
+    /**
+     * A utility method to modify environment variable.
+     * @param key key of the environment variable.
+     * @param value value of the environment variable.
+     */
+    public static void setEnv(String key, String value) {
+        try {
+            Map<String, String> env = System.getenv();
+            Class<?> classes = env.getClass();
+            Field field = classes.getDeclaredField("m");
+            field.setAccessible(true);
+            Map<String, String> writableEnv = (Map<String, String>) field.get(env);
+            writableEnv.put(key, value);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Failed to set environment variable", ex);
+        }
     }
 }

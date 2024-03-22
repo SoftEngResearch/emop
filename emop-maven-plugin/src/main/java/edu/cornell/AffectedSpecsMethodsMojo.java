@@ -115,41 +115,34 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (!dependencyChangeDetected
-                && (computeImpactedMethods && getImpactedMethods().isEmpty() || getAffectedMethods().isEmpty())
-        ) {
-            return;
-        }
-
+        // This segment has to execute before return, otherwise it will pollute the next run
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
                     + File.separator + "javamop-agent"
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
         }
-
         if (finerInstrumentation) {
-            // TODO: Extend this so that impacted classes from hybrid is also considered.
-            Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
-                    dependencyChangeDetected ? new HashSet<>() : getImpactedMethods());
-            String[] arguments
-                    = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
-                        "-d", getArtifactsDir(),
-                        "-classpath", getClassPath() + File.pathSeparator + getRuntimeJars()};
-            Main compiler = new Main();
-            MessageHandler mh = new MessageHandler();
-            try {
-                compiler.run(arguments, mh);
-            } catch (Exception ex) {
+            Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
+            getLog().info("IMPACTED_METHODS_FILE is set to " + System.getProperty("IMPACTED_METHODS_FILE"));
+            try (FileOutputStream fos
+                         = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
+                 ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                oos.writeObject(getImpactedMethods().stream()
+                        .map(str -> MethodsHelper.convertAsmToJava(str)
+                                .replace('/', '.')
+                                .split("\\(")[0]
+                        )
+                        .collect(Collectors.toSet())
+                );
+            } catch (IOException ex) {
                 ex.printStackTrace();
             }
-            if (debug) {
-                for (IMessage errMsg : mh.getErrors()) {
-                    getLog().error(errMsg.toString());
-                }
-            }
-            Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
-                    getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
+        }
+        if (!dependencyChangeDetected
+                && (computeImpactedMethods && getImpactedMethods().isEmpty() || getAffectedMethods().isEmpty())
+        ) {
+            return;
         }
 
         getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
@@ -204,6 +197,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                     // Each entry in this metadata file contains a method signature to its line range in source file.
                     String javaFormat = MethodsHelper.convertAsmToJava(impactedMethod);
                     // Removes anonymous inner classes:
+                    // Looks like: org/mitre/dsmiley/httpproxy/ProxyServletTest#tearDown(),67,71
                     String anonymousInnerClassesRemoved = javaFormat.replaceAll("\\$[0-9]*#", "#");
                     // Get line range from mapping.
                     ArrayList<Integer> range = MethodsHelper
