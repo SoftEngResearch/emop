@@ -123,20 +123,22 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                     + File.separator + "javamop-agent-1.0.jar";
         }
         if (finerInstrumentation) {
-            Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
-            getLog().info("IMPACTED_METHODS_FILE is set to " + System.getenv("IMPACTED_METHODS_FILE"));
-            try (FileOutputStream fos
-                         = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
-                 ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-                oos.writeObject(getImpactedMethods().stream()
-                        .map(str -> MethodsHelper.convertAsmToJava(str)
-                                .replace('/', '.')
-                                .split("\\(")[0]
-                        )
-                        .collect(Collectors.toSet())
-                );
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            if (!dependencyChangeDetected) {
+                Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
+                getLog().info("IMPACTED_METHODS_FILE is set to " + System.getenv("IMPACTED_METHODS_FILE"));
+                try (FileOutputStream fos
+                             = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
+                     ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                    oos.writeObject(getImpactedMethods().stream()
+                            .map(str -> MethodsHelper.convertAsmToJava(str)
+                                    .replace('/', '.')
+                                    .split("\\(")[0]
+                            )
+                            .collect(Collectors.toSet())
+                    );
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
             }
         }
         if (!dependencyChangeDetected
