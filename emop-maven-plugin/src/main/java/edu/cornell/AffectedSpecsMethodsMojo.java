@@ -124,7 +124,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         }
         if (finerInstrumentation) {
             Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
-            getLog().info("IMPACTED_METHODS_FILE is set to " + System.getProperty("IMPACTED_METHODS_FILE"));
+            getLog().info("IMPACTED_METHODS_FILE is set to " + System.getenv("IMPACTED_METHODS_FILE"));
             try (FileOutputStream fos
                          = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
                  ObjectOutputStream oos = new ObjectOutputStream(fos)) {
