@@ -122,6 +122,33 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                     + File.separator + "1.0"
                     + File.separator + "javamop-agent-1.0.jar";
         }
+        Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
+                dependencyChangeDetected || !finerInstrumentation);
+        String[] arguments
+                = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
+                "-d", getArtifactsDir(),
+                "-classpath", getClassPath() + File.pathSeparator + getRuntimeJars()};
+        Main compiler = new Main();
+        MessageHandler mh = new MessageHandler();
+        try {
+            compiler.run(arguments, mh);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        if (debug) {
+            for (IMessage errMsg : mh.getErrors()) {
+                getLog().error(errMsg.toString());
+            }
+        }
+        // Why do it here? Because the program might exit early to revert to BaseRV
+        // and use a modified version of BaseAspect instead, which we do not want.
+        Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
+                getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
+        if (!dependencyChangeDetected
+                && (computeImpactedMethods && getImpactedMethods().isEmpty() || getAffectedMethods().isEmpty())
+        ) {
+            return;
+        }
         if (finerInstrumentation) {
             if (!dependencyChangeDetected) {
                 Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
@@ -141,18 +168,12 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 }
             }
         }
-        if (!dependencyChangeDetected
-                && (computeImpactedMethods && getImpactedMethods().isEmpty() || getAffectedMethods().isEmpty())
-        ) {
-            return;
-        }
-
         getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
         long start = System.currentTimeMillis();
         // If only computing changed classes, then these lines can stay the same
-        String[] arguments = createAJCArguments();
-        Main compiler = new Main();
-        MessageHandler mh = new MessageHandler();
+        arguments = createAJCArguments();
+        compiler = new Main();
+        mh = new MessageHandler();
         try {
             compiler.run(arguments, mh);
         } catch (IllegalArgumentException ex) {

@@ -3,9 +3,11 @@ package edu.cornell.emop.util;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
@@ -246,14 +248,60 @@ public class Util {
         }
     }
 
+    /**
+     * Generate a new BaseAspect.aj file
+     * @param outputPath Output path of the new BaseAspect.aj file.
+     * @param baseRV Set true to revert to base RV, false to use finer instrumentation.
+     */
     // TODO: Currently this approach does not consider library.
     // It should be addressed at some point.
-    @Deprecated
-    public static void generateNewBaseAspect(String outputPath, Set<String> impactedMethods) {
+    public static void generateNewBaseAspect(String outputPath, boolean baseRV) {
         try (PrintWriter writer = new PrintWriter(outputPath)) {
             writer.println("package mop;");
-            writer.println("");
+            if (!baseRV) {
+                writer.println("import java.io.File;");
+                writer.println("import java.io.FileInputStream;");
+                writer.println("import java.io.ObjectInputStream;");
+                writer.println("import java.io.PrintWriter;");
+                writer.println("import java.io.IOException;");
+                writer.println("import java.util.HashSet;");
+                writer.println("import org.aspectj.lang.JoinPoint;");
+            }
             writer.println("public aspect BaseAspect {");
+            if (!baseRV) {
+                writer.println("private static HashSet<String> affectedMethods;");
+                writer.println("private static boolean baseRV = false;");
+                writer.println("public static boolean inSet(JoinPoint.StaticPart contextJoinPoint) {");
+                writer.println("    if (baseRV) {");
+                writer.println("        return baseRV;");
+                writer.println("    }");
+                writer.println("    if (affectedMethods == null) {");
+                writer.println("        String impactedMethodsFilePath = System.getenv(\"IMPACTED_METHODS_FILE\");");
+                writer.println("        System.out.println(\"impactedMethodsFilePath: \" + impactedMethodsFilePath);");
+                writer.println("        if (impactedMethodsFilePath == null) {");
+                writer.println("            baseRV = true;");
+                writer.println("            return baseRV;");
+                writer.println("        }");
+                writer.println("        File impactedMethodsFile = new File(impactedMethodsFilePath);");
+                writer.println("        if (impactedMethodsFile.exists()) {");
+                writer.println("            try {");
+                writer.println("            FileInputStream fileInput = new FileInputStream(impactedMethodsFilePath);");
+                writer.println("                ObjectInputStream objectInput = new ObjectInputStream(fileInput);");
+                writer.println("                affectedMethods = (HashSet) objectInput.readObject();");
+                writer.println("            } catch (Exception ex) {");
+                writer.println("                ex.printStackTrace();");
+                writer.println("            }");
+                writer.println("  System.out.println(\"Affected methods (no signature): \" + affectedMethods.size());");
+                writer.println("        } else {");
+                writer.println("            System.err.println(\"Impacted methods file does not exist!\");");
+                writer.println("            affectedMethods = new HashSet<String>();");
+                writer.println("        }");
+                writer.println("    }");
+                writer.println("    return affectedMethods.contains(contextJoinPoint.getSignature()");
+                writer.println("            .getDeclaringTypeName()");
+                writer.println("            + \"#\" + contextJoinPoint.getSignature().getName());");
+                writer.println("}");
+            }
             writer.println("  pointcut notwithin() :");
             writer.println("  !within(sun..*) &&");
             writer.println("  !within(java..*) &&");
@@ -276,34 +324,11 @@ public class Util {
             writer.println("  !within(org.powermock..*) &&");
             writer.println("  !within(org.easymock..*) &&");
             writer.println("  !within(com.mockrunner..*) &&");
-            if (impactedMethods.isEmpty()) {
+            if (baseRV) {
                 writer.println("  !within(org.jmock..*);");
             } else {
                 writer.println("  !within(org.jmock..*) &&");
-                writer.print("(");
-                boolean firstImpactedMethod = true;
-                for (String impactedMethod : impactedMethods) {
-                    String reformatted = MethodsHelper.convertAsmToJava(impactedMethod);
-                    reformatted = reformatted.replaceAll("\\$[0-9]*#", "#");
-                    // Cannot have "<" or ">":
-                    if (reformatted.contains("<clinit>")) {
-                        // Nothing we can do about <clinit>
-                        continue;
-                    }
-                    boolean isConstructor = reformatted.contains("<init>");
-                    reformatted = reformatted.replace("<init>", "new");
-                    if (firstImpactedMethod) {
-                        firstImpactedMethod = false;
-                    } else {
-                        writer.print(" || ");
-                    }
-                    // TODO: Currently doesn't consider signature, maybe do something about it in the future.
-                    writer.print("withincode("
-                            + (isConstructor ? "" : "* ")
-                            + reformatted.replace('/', '.').replace('#', '.')
-                            .split("\\(")[0] + "(..))");
-                }
-                writer.print(");");
+                writer.println("if(inSet(thisEnclosingJoinPointStaticPart));");
             }
             writer.println("}");
         } catch (IOException ex) {
