@@ -126,6 +126,8 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                 dependencyChangeDetected || !finerInstrumentation);
         String[] arguments
                 = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
+                "-source", "1.8",
+                "-target", "1.8",
                 "-d", getArtifactsDir(),
                 "-classpath", getClassPath() + File.pathSeparator + getRuntimeJars()};
         Main compiler = new Main();
@@ -195,6 +197,9 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             ex.printStackTrace();
         }
         if (debug) {
+            for (IMessage errMsg : mh.getErrors()) {
+                getLog().error(errMsg.toString());
+            }
             try (PrintWriter writer
                          = new PrintWriter(getArtifactsDir() + File.separator + "compileWeaveMessage.txt")) {
                 for (IMessage message : ms) {
