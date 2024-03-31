@@ -115,6 +115,12 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
+        if (dependencyChangeDetected) {
+            // Revert to base RV, use all specs, include libraries and non-affected classes.
+            affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
+            includeLibraries = true;
+            includeNonAffected = true;
+        }
         // This segment has to execute before return, otherwise it will pollute the next run
         if (javamopAgent == null) {
             javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
@@ -123,7 +129,10 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
                     + File.separator + "javamop-agent-1.0.jar";
         }
         Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
-                dependencyChangeDetected || !finerInstrumentation);
+                dependencyChangeDetected || !finerInstrumentation,
+                includeLibraries,
+                includeNonAffected,
+                Util.retrieveProjectPackageNames(getClassesDirectory()));
         String[] arguments
                 = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
                 "-source", "1.8",
@@ -138,6 +147,11 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             ex.printStackTrace();
         }
         if (debug) {
+            StringBuilder ajcCommand = new StringBuilder();
+            for (String arg : arguments) {
+                ajcCommand.append(arg).append(" ");
+            }
+            getLog().info("AJC command: ajc " + ajcCommand);
             for (IMessage errMsg : mh.getErrors()) {
                 getLog().error(errMsg.toString());
             }
@@ -197,6 +211,11 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
             ex.printStackTrace();
         }
         if (debug) {
+            StringBuilder ajcCommand = new StringBuilder();
+            for (String arg : arguments) {
+                ajcCommand.append(arg).append(" ");
+            }
+            getLog().info("AJC command: ajc " + ajcCommand);
             for (IMessage errMsg : mh.getErrors()) {
                 getLog().error(errMsg.toString());
             }
@@ -254,12 +273,6 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
 
         } else {
             getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
-        }
-        if (dependencyChangeDetected) {
-            // Revert to base RV, use all specs, include libraries and non-affected classes.
-            affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
-            includeLibraries = true;
-            includeNonAffected = true;
         }
         end = System.currentTimeMillis();
         getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");

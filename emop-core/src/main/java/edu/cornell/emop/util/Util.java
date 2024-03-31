@@ -3,11 +3,9 @@ package edu.cornell.emop.util;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
@@ -252,13 +250,19 @@ public class Util {
      * Generate a new BaseAspect.aj file
      * @param outputPath Output path of the new BaseAspect.aj file.
      * @param baseRV Set true to revert to base RV, false to use finer instrumentation.
+     * @param includeLibraries Whether to include joinpoints in library or not.
+     * @param includeNonAffected Whether to include nonAffected or not.
+     * @param packageNames Package names of files in the project.
      */
-    // TODO: Currently this approach does not consider library.
     // It should be addressed at some point.
-    public static void generateNewBaseAspect(String outputPath, boolean baseRV) {
+    public static void generateNewBaseAspect(String outputPath,
+                                             boolean baseRV,
+                                             boolean includeLibraries,
+                                             boolean includeNonAffected,
+                                             Set<String> packageNames) {
         try (PrintWriter writer = new PrintWriter(outputPath)) {
             writer.println("package mop;");
-            if (!baseRV) {
+            if (!baseRV && !includeNonAffected) {
                 writer.println("import java.io.File;");
                 writer.println("import java.io.FileInputStream;");
                 writer.println("import java.io.ObjectInputStream;");
@@ -268,7 +272,7 @@ public class Util {
                 writer.println("import org.aspectj.lang.JoinPoint;");
             }
             writer.println("public aspect BaseAspect {");
-            if (!baseRV) {
+            if (!baseRV && !includeNonAffected) {
                 writer.println("private static HashSet<String> affectedMethods;");
                 writer.println("private static boolean baseRV = false;");
                 writer.println("public static boolean inSet(JoinPoint.StaticPart contextJoinPoint) {");
@@ -324,11 +328,19 @@ public class Util {
             writer.println("  !within(org.powermock..*) &&");
             writer.println("  !within(org.easymock..*) &&");
             writer.println("  !within(com.mockrunner..*) &&");
-            if (baseRV) {
+            if (baseRV || includeNonAffected) {
                 writer.println("  !within(org.jmock..*);");
             } else {
                 writer.println("  !within(org.jmock..*) &&");
-                writer.println("if(inSet(thisEnclosingJoinPointStaticPart));");
+                if (includeLibraries) {
+                    writer.println("(if(inSet(thisEnclosingJoinPointStaticPart))");
+                    for (String packageName : packageNames) {
+                        writer.print(" || !within(" + packageName + "..*)");
+                    }
+                    writer.println(");");
+                } else {
+                    writer.println("if(inSet(thisEnclosingJoinPointStaticPart));");
+                }
             }
             writer.println("}");
         } catch (IOException ex) {
