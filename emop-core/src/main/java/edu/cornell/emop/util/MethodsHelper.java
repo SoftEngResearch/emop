@@ -1,6 +1,7 @@
 package edu.cornell.emop.util;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -59,7 +60,7 @@ public class MethodsHelper {
      * @param filePath The path of the Java source file to be parsed.
      * @throws Exception If an error occurs while reading or parsing the file.
      */
-    public static void computeMethodToLineNumbers(String filePath) throws Exception {
+    public static void computeMethodToLineNumbers(String filePath) throws IOException {
         if (cachedFile.contains(filePath)) {
             return;
         }
