@@ -44,13 +44,6 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
     @Parameter(property = "enableFineRTS", defaultValue = "false")
     private boolean enableFineRTS;
 
-    /**
-     * Parameter to determine which closure to use for impacted classes.
-     * Options are PS1, PS2, PS3.
-     */
-    @Parameter(property = "closureOption", defaultValue = "PS3")
-    private TransitiveClosureOptions closureOption;
-
     /** Choose which level of granularity to perform impact-change analysis. */
     @Parameter(property = "granularity", defaultValue = "CLASS")
     private Granularity granularity;
@@ -63,7 +56,6 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
             this.saveMRTSOn = enableFineRTS;
             setUpdateImpactedChecksums(updateChecksums);
             setTrackNewClasses(true);
-            setTransitiveClosureOption(closureOption);
         } else if (getGranularity() == Granularity.METHOD) {
             setUpdateMethodsChecksums(updateChecksums);
             setComputeImpactedMethods(computeImpactedMethods);
