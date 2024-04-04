@@ -286,6 +286,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
+            // TODO: This debug segment looks really ugly, change it.
             if (debug) {
                 StringBuilder ajcCommand = new StringBuilder();
                 for (String arg : arguments) {
@@ -337,17 +338,13 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
             // Compute affected specs from changed methods or impacted methods
+            // TODO: "impacted" and "affected" should mean the same thing.
+            //  Rename this to something better to avoid confusion.
             if (computeImpactedMethods) {
                 computeAffectedSpecs(getImpactedMethods());
-
+                getLog().info("[eMOP] Number of Impacted methods: " + getImpacted().size());
             } else {
                 computeAffectedSpecs(getAffectedMethods());
-            }
-
-            if (computeImpactedMethods) {
-                getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
-
-            } else {
                 getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
             }
             end = System.currentTimeMillis();
@@ -412,20 +409,17 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             changedClassesToSpecs
                     .forEach((key, value) -> classesToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
+            // TODO: "impacted" and "affected" should mean the same thing.
+            //  Rename this to something better to avoid confusion.
             // Compute affected specs from changed methods or impacted methods
             if (computeImpactedMethods) {
                 computeMethodsAffectedSpecs(getImpactedMethods());
                 computeClassesAffectedSpecs(getImpactedClasses());
-
+                getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
+                getLog().info("[eMOP] Number of Impacted classes: " + getImpactedClasses().size());
             } else {
                 computeMethodsAffectedSpecs(getAffectedMethods());
                 computeClassesAffectedSpecs(getAffectedClasses());
-            }
-            if (computeImpactedMethods) {
-                getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
-                getLog().info("[eMOP] Number of Impacted classes: " + getImpactedClasses().size());
-
-            } else {
                 getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
                 getLog().info("[eMOP] Number of affected classes: " + getAffectedClasses().size());
             }
@@ -439,15 +433,12 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
             start = System.currentTimeMillis();
-
             writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.TXT);
             writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
-
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
             getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
         }
-
     }
 
     // Hybrid-only:

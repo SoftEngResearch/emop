@@ -4,7 +4,6 @@ import java.util.List;
 
 import edu.cornell.emop.util.Util;
 import edu.illinois.starts.enums.Granularity;
-import edu.illinois.starts.enums.TransitiveClosureOptions;
 import edu.illinois.starts.helpers.Writer;
 import edu.illinois.starts.jdeps.ImpactedMojo;
 import edu.illinois.starts.util.Pair;
@@ -16,14 +15,12 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 @Mojo(name = "impacted", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class ImpactedComponentsMojo extends ImpactedMojo {
 
-    protected boolean computeImpactedMethods;
+    protected boolean computeImpactedMethods = true;
 
     /** Parameter to determine whether to include variables in the impacted methods. */
     protected boolean includeVariables;
 
-    /**
-     * The path to the Javamop Agent JAR file.
-     */
+    /** Path to a JavaMOP Agent JAR file. */
     @Parameter(property = "javamopAgent")
     protected String javamopAgent;
 
@@ -40,7 +37,7 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
     @Parameter(property = "updateChecksums", defaultValue = "true")
     private boolean updateChecksums;
 
-    /** Parameter to determine whether fine RTS should be used. */
+    /** Determines whether fine RTS should be used. */
     @Parameter(property = "enableFineRTS", defaultValue = "false")
     private boolean enableFineRTS;
 
