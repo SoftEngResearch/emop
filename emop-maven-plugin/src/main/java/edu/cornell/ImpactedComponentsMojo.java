@@ -30,9 +30,6 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
     /** A list that stores the checksums of jar files. */
     protected List<Pair> jarCheckSums = null;
 
-    @Parameter(property = "debug", defaultValue = "false")
-    protected boolean debug;
-
     /** Parameter to determine whether file checksums are updated. */
     @Parameter(property = "updateChecksums", defaultValue = "true")
     private boolean updateChecksums;

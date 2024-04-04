@@ -342,7 +342,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             //  Rename this to something better to avoid confusion.
             if (computeImpactedMethods) {
                 computeAffectedSpecs(getImpactedMethods());
-                getLog().info("[eMOP] Number of Impacted methods: " + getImpacted().size());
+                getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
             } else {
                 computeAffectedSpecs(getAffectedMethods());
                 getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
