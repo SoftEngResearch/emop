@@ -45,7 +45,6 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
     public void execute() throws MojoExecutionException {
         // TODO: Refactor this section:
         if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
-            System.out.println("Granularity:" + getGranularity());
             this.fineRTSOn = enableFineRTS;
             this.saveMRTSOn = enableFineRTS;
             setUpdateImpactedChecksums(updateChecksums);
@@ -54,7 +53,6 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
             setUpdateMethodsChecksums(updateChecksums);
             setComputeImpactedMethods(computeImpactedMethods);
             setIncludeVariables(includeVariables);
-            setDebug(debug);
         } else if (getGranularity() == Granularity.HYBRID) {
             setUpdateMethodsChecksums(true);
             setComputeImpactedMethods(true);
@@ -67,6 +65,7 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
         if (getGranularity() == Granularity.CLASS) {
             getLog().info("[eMOP] Total number of classes: " + (getOldClasses().size() + getNewClasses().size()));
         }
+
         String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
         List<String> sfPathElements = Util.getCleanClassPath(cpString);
         if (Util.hasDifferentClassPath(sfPathElements, getArtifactsDir())

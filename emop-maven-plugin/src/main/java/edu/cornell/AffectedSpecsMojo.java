@@ -139,19 +139,18 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
      */
     public void execute() throws MojoExecutionException {
         super.execute();
+        if (javamopAgent == null) {
+            javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
+                    + File.separator + "javamop-agent"
+                    + File.separator + "1.0"
+                    + File.separator + "javamop-agent-1.0.jar";
+        }
         if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
             if (!dependencyChangeDetected && getImpacted().isEmpty()) {
                 getLog().info("[eMOP] No impacted classes, returning...");
                 return;
             }
             getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
-
-            if (javamopAgent == null) {
-                javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
-                        + File.separator + "javamop-agent"
-                        + File.separator + "1.0"
-                        + File.separator + "javamop-agent-1.0.jar";
-            }
 
             long start = System.currentTimeMillis();
             // If only computing changed classes, then these lines can stay the same
@@ -191,12 +190,6 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
             getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
         } else if (getGranularity() == Granularity.METHOD) {
-            if (javamopAgent == null) {
-                javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
-                        + File.separator + "javamop-agent"
-                        + File.separator + "1.0"
-                        + File.separator + "javamop-agent-1.0.jar";
-            }
             if (dependencyChangeDetected) {
                 // Revert to base RV, use all specs, include libraries and non-affected classes.
                 affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
@@ -249,6 +242,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                                  = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
                          ObjectOutputStream oos = new ObjectOutputStream(fos)) {
                         oos.writeObject(getImpactedMethods().stream()
+                                // Filter is needed to filter out variables.
+                                .filter(str -> !str.matches(".*\\(.*\\)"))
                                 .map(str -> MethodsHelper.convertAsmToJava(str)
                                         .replace('/', '.')
                                         .split("\\(")[0]
@@ -318,6 +313,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "impactedMethods.txt")) {
 //                writer.println(MethodsHelper.getModifiedMethodsToLineNumbers());
                     for (String impactedMethod : getImpactedMethods()) {
+                        if (!impactedMethod.matches(".*\\(.*\\)")) {
+                            continue;
+                        }
                         // Each entry in this metadata file contains a method signature to its line range in source file.
                         String javaFormat = MethodsHelper.convertAsmToJava(impactedMethod);
                         // Removes anonymous inner classes:
@@ -340,6 +338,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             // Compute affected specs from changed methods or impacted methods
             // TODO: "impacted" and "affected" should mean the same thing.
             //  Rename this to something better to avoid confusion.
+            // TODO: Currently this counts the number of impacted methods and variables,
+            //  think about how to handle this detail.
             if (computeImpactedMethods) {
                 computeAffectedSpecs(getImpactedMethods());
                 getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
@@ -364,13 +364,6 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                             || getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()
             )) {
                 return;
-            }
-
-            if (javamopAgent == null) {
-                javamopAgent = getLocalRepository().getBasedir() + File.separator + "javamop-agent"
-                        + File.separator + "javamop-agent"
-                        + File.separator + "1.0"
-                        + File.separator + "javamop-agent-1.0.jar";
             }
 
             getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
@@ -451,6 +444,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
     private void computeMethodsAffectedSpecs(Set<String> methods) throws MojoExecutionException {
         for (String affectedMethod : methods) {
+            if (!affectedMethod.matches(".*\\(.*\\)")) {
+                continue;
+            }
             // Convert method name from asm to java
             String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
             Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
@@ -531,12 +527,10 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     private void computeAffectedSpecs(Set<String> methods) throws MojoExecutionException {
         for (String affectedMethod : methods) {
             // Convert method name from asm to java
-
             // Skip variables that are not in the format of a method
             if (!affectedMethod.matches(".*\\(.*\\)")) {
                 continue;
             }
-
             String javaMethodName = MethodsHelper.convertAsmToJava(affectedMethod);
             Set<String> specs = methodsToSpecs.getOrDefault(javaMethodName, new HashSet<>());
             affectedSpecs.addAll(specs);
