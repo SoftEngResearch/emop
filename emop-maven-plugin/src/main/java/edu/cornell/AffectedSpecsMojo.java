@@ -243,7 +243,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                          ObjectOutputStream oos = new ObjectOutputStream(fos)) {
                         oos.writeObject(getImpactedMethods().stream()
                                 // Filter is needed to filter out variables.
-                                .filter(str -> !str.matches(".*\\(.*\\)"))
+                                .filter(str -> str.matches(".*\\(.*\\)"))
                                 .map(str -> MethodsHelper.convertAsmToJava(str)
                                         .replace('/', '.')
                                         .split("\\(")[0]
