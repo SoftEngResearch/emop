@@ -269,8 +269,7 @@ public class AffectedSpecsMethodsMojo extends ImpactedMethodsMojo {
         }
 
         if (computeImpactedMethods) {
-            getLog().info("[eMOP] Number of Impacted methods: " + getAffectedMethods().size());
-
+            getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
         } else {
             getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
         }

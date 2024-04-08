@@ -3,7 +3,7 @@ package edu.cornell;
 import java.util.List;
 
 import edu.cornell.emop.util.Util;
-import edu.illinois.starts.enums.TransitiveClosureOptions;
+import edu.illinois.starts.enums.Granularity;
 import edu.illinois.starts.helpers.Writer;
 import edu.illinois.starts.jdeps.ImpactedMojo;
 import edu.illinois.starts.util.Pair;
@@ -13,7 +13,16 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "impacted", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
-public class ImpactedClassMojo extends ImpactedMojo {
+public class ImpactedComponentsMojo extends ImpactedMojo {
+
+    protected boolean computeImpactedMethods = true;
+
+    /** Parameter to determine whether to include variables in the impacted methods. */
+    protected boolean includeVariables;
+
+    /** Path to a JavaMOP Agent JAR file. */
+    @Parameter(property = "javamopAgent")
+    protected String javamopAgent;
 
     /** Denotes whether a project dependency (jar or Maven dependency) has changed. */
     protected boolean dependencyChangeDetected = false;
@@ -21,37 +30,41 @@ public class ImpactedClassMojo extends ImpactedMojo {
     /** A list that stores the checksums of jar files. */
     protected List<Pair> jarCheckSums = null;
 
-    @Parameter(property = "debug", defaultValue = "false")
-    protected boolean debug;
-
     /** Parameter to determine whether file checksums are updated. */
     @Parameter(property = "updateChecksums", defaultValue = "true")
     private boolean updateChecksums;
 
-    /** Parameter to determine whether fine RTS should be used. */
+    /** Determines whether fine RTS should be used. */
     @Parameter(property = "enableFineRTS", defaultValue = "false")
     private boolean enableFineRTS;
 
-    /**
-     * Parameter to determine which closure to use for impacted classes.
-     * Options are PS1, PS2, PS3.
-     */
-    @Parameter(property = "closureOption", defaultValue = "PS3")
-    private TransitiveClosureOptions closureOption;
+    /** Choose which level of granularity to perform impact-change analysis. */
+    @Parameter(property = "granularity", defaultValue = "CLASS")
+    private Granularity granularity;
 
     public void execute() throws MojoExecutionException {
-        this.fineRTSOn = enableFineRTS;
-        this.saveMRTSOn = enableFineRTS;
-        setUpdateImpactedChecksums(updateChecksums);
-        setTrackNewClasses(true);
-        setTransitiveClosureOption(closureOption);
-
+        // TODO: Refactor this section:
+        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
+            this.fineRTSOn = enableFineRTS;
+            this.saveMRTSOn = enableFineRTS;
+            setUpdateImpactedChecksums(updateChecksums);
+            setTrackNewClasses(true);
+        } else if (getGranularity() == Granularity.METHOD) {
+            setUpdateMethodsChecksums(updateChecksums);
+            setComputeImpactedMethods(computeImpactedMethods);
+            setIncludeVariables(includeVariables);
+        } else if (getGranularity() == Granularity.HYBRID) {
+            setUpdateMethodsChecksums(true);
+            setComputeImpactedMethods(true);
+        }
         long start = System.currentTimeMillis();
-        getLog().info("[eMOP] Invoking the ImpactedClasses Mojo...");
+        getLog().info("[eMOP] Invoking ImpactedComponentsMojo.");
         super.execute();
         long end = System.currentTimeMillis();
-        getLog().info("[eMOP Timer] Execute ImpactedClasses Mojo takes " + (end - start) + " ms");
-        getLog().info("[eMOP] Total number of classes: " + (getOldClasses().size() + getNewClasses().size()));
+        getLog().info("[eMOP Timer] Execute ImpactedComponentsMojo takes " + (end - start) + " ms.");
+        if (getGranularity() == Granularity.CLASS) {
+            getLog().info("[eMOP] Total number of classes: " + (getOldClasses().size() + getNewClasses().size()));
+        }
 
         String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
         List<String> sfPathElements = Util.getCleanClassPath(cpString);
@@ -63,6 +76,4 @@ public class ImpactedClassMojo extends ImpactedMojo {
             getLog().info("Dependencies changed! Reverting to Base RV.");
         }
     }
-
-
 }

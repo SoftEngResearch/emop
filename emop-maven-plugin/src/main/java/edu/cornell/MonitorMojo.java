@@ -7,6 +7,7 @@ import java.util.Set;
 
 import edu.cornell.emop.maven.AgentLoader;
 import edu.cornell.emop.util.Util;
+import edu.illinois.starts.enums.Granularity;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -30,35 +31,89 @@ public class MonitorMojo extends AffectedSpecsMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
-        if (getImpacted().isEmpty()) {
-            System.setProperty("exiting-rps", "true");
-            System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
-            if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
-                throw new MojoExecutionException("Could not attach agent");
+        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
+            if (getImpacted().isEmpty()) {
+                System.setProperty("exiting-rps", "true");
+                System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
+                if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
+                    throw new MojoExecutionException("Could not attach agent");
+                }
+                getLog().info("No impacted classes mode detected MonitorMojo");
+                return;
             }
-            getLog().info("No impacted classes mode detected MonitorMojo");
-            return;
-        }
-        getLog().info("[eMOP] Invoking the Monitor Mojo...");
-        long start = System.currentTimeMillis();
-        monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
-        monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
-        Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
-                monitorIncludes, monitorExcludes, enableStats, verboseAgent);
-        if (rpsRpp) {
-            getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
-            try {
-                Util.writeSpecsToFile(affectedSpecs, new File(getArtifactsDir(), "affected-specs.txt"));
-            } catch (FileNotFoundException ex) {
-                throw new RuntimeException(ex);
+            getLog().info("[eMOP] Invoking the Monitor Mojo...");
+            long start = System.currentTimeMillis();
+            monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
+            monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffected();
+            Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
+                    monitorIncludes, monitorExcludes, enableStats, verboseAgent);
+            if (rpsRpp) {
+                getLog().info("In mode RPS-RPP, writing the list of affected specs to affected-specs.txt...");
+                try {
+                    Util.writeSpecsToFile(affectedSpecs, new File(getArtifactsDir(), "affected-specs.txt"));
+                } catch (FileNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                }
+                System.setProperty("rpsRpp", "true");
             }
-            System.setProperty("rpsRpp", "true");
+            getLog().info("AffectedSpecs: " + affectedSpecs.size());
+            Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
+                    getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
+            long end = System.currentTimeMillis();
+            getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
+        } else if (getGranularity() == Granularity.METHOD) {
+            // If there is no affected methods, then we should not instrument anything.
+            if (getAffectedMethods().isEmpty()) {
+                System.setProperty("exiting-rps", "true");
+                System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
+                if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
+                    throw new MojoExecutionException("Could not attach agent");
+                }
+                getLog().info("No impacted classes mode detected MonitorMojo");
+                return;
+            }
+
+            getLog().info("[eMOP] Invoking the Monitor Mojo...");
+            long start = System.currentTimeMillis();
+
+            monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
+            monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffectedClasses();
+            getLog().info("AffectedSpecs: " + affectedSpecs.size());
+            if (debug) {
+                getLog().info("AffectedSpecs: " + affectedSpecs);
+            }
+            Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
+                    monitorIncludes, monitorExcludes, enableStats, verboseAgent);
+            Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
+                    getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
+            long end = System.currentTimeMillis();
+            getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
+        } else if (getGranularity() == Granularity.HYBRID) {
+            if (getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()) {
+                System.setProperty("exiting-rps", "true");
+                System.setProperty("rps-test-excludes", "**/Test*,**/*Test,**/*Tests,**/*TestCase");
+                if (!AgentLoader.loadDynamicAgent("JavaAgent.class")) {
+                    throw new MojoExecutionException("Could not attach agent");
+                }
+                getLog().info("No impacted classes mode detected Hybrid MonitorMojo");
+                return;
+            }
+
+            getLog().info("[eMOP] Invoking the Hybrid Monitor Mojo...");
+            long start = System.currentTimeMillis();
+            monitorIncludes = includeLibraries ? new HashSet<>() : retrieveIncludePackages();
+            monitorExcludes = includeNonAffected ? new HashSet<>() : getNonAffectedClasses();
+            getLog().info("AffectedSpecs: " + affectedSpecs.size());
+            if (debug) {
+                getLog().info("AffectedSpecs: " + affectedSpecs);
+            }
+            Util.generateNewAgentConfigurationFile(getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE, affectedSpecs,
+                    monitorIncludes, monitorExcludes, enableStats, verboseAgent);
+            Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
+                    getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
+            long end = System.currentTimeMillis();
+            getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
         }
-        getLog().info("AffectedSpecs: " + affectedSpecs.size());
-        Util.replaceFileInJar(javamopAgent, "/META-INF/aop-ajc.xml",
-                getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
-        long end = System.currentTimeMillis();
-        getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
     }
 
     /**
