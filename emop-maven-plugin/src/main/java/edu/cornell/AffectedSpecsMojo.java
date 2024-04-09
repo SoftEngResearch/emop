@@ -146,7 +146,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     + File.separator + "javamop-agent-1.0.jar";
         }
         if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
-            if (!dependencyChangeDetected && getImpacted().isEmpty()) {
+            if (!dependencyChanged && getImpacted().isEmpty()) {
                 getLog().info("[eMOP] No impacted classes, returning...");
                 return;
             }
@@ -174,7 +174,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             computeMapFromMessage(ms);
             // Update map
             changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-            computeAffectedSpecs(dependencyChangeDetected);
+            computeAffectedSpecs(dependencyChanged);
             end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
@@ -190,7 +190,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
             getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
         } else if (getGranularity() == Granularity.METHOD) {
-            if (dependencyChangeDetected) {
+            if (dependencyChanged) {
                 // Revert to base RV, use all specs, include libraries and non-affected classes.
                 affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
                 includeLibraries = true;
@@ -198,7 +198,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             }
             // This segment has to execute before return, otherwise it will pollute the next run
             Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
-                    dependencyChangeDetected || !finerInstrumentation,
+                    dependencyChanged || !finerInstrumentation,
                     includeLibraries,
                     includeNonAffected,
                     Util.retrieveProjectPackageNames(getClassesDirectory()));
@@ -229,13 +229,13 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             // and use a modified version of BaseAspect instead, which we do not want.
             Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
                     getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
-            if (!dependencyChangeDetected
-                    && (computeImpactedMethods && getImpactedMethods().isEmpty() || getAffectedMethods().isEmpty())
+            if (!dependencyChanged
+                    && (getComputeImpactedMethods() && getImpactedMethods().isEmpty() || getAffectedMethods().isEmpty())
             ) {
                 return;
             }
             if (finerInstrumentation) {
-                if (!dependencyChangeDetected) {
+                if (!dependencyChanged) {
                     Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
                     getLog().info("IMPACTED_METHODS_FILE is set to " + System.getenv("IMPACTED_METHODS_FILE"));
                     try (FileOutputStream fos
@@ -340,7 +340,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             //  Rename this to something better to avoid confusion.
             // TODO: Currently this counts the number of impacted methods and variables,
             //  think about how to handle this detail.
-            if (computeImpactedMethods) {
+            if (getComputeImpactedMethods()) {
                 computeAffectedSpecs(getImpactedMethods());
                 getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
             } else {
@@ -358,8 +358,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
             getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
         } else if (getGranularity() == Granularity.HYBRID) {
-            if (!dependencyChangeDetected && (
-                    computeImpactedMethods && getImpactedMethods().isEmpty() && getImpactedClasses().isEmpty()
+            if (!dependencyChanged && (
+                    getComputeImpactedMethods() && getImpactedMethods().isEmpty() && getImpactedClasses().isEmpty()
                             // Affected classes are new classes, changed classes with changed headers only
                             || getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()
             )) {
@@ -405,7 +405,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             // TODO: "impacted" and "affected" should mean the same thing.
             //  Rename this to something better to avoid confusion.
             // Compute affected specs from changed methods or impacted methods
-            if (computeImpactedMethods) {
+            if (getComputeImpactedMethods()) {
                 computeMethodsAffectedSpecs(getImpactedMethods());
                 computeClassesAffectedSpecs(getImpactedClasses());
                 getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
@@ -416,7 +416,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
                 getLog().info("[eMOP] Number of affected classes: " + getAffectedClasses().size());
             }
-            if (dependencyChangeDetected) {
+            if (dependencyChanged) {
                 // Revert to base RV, use all specs, include libraries and non-affected classes.
                 affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
                 includeLibraries = true;

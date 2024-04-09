@@ -14,18 +14,12 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 
 @Mojo(name = "impacted", requiresDirectInvocation = true, requiresDependencyResolution = ResolutionScope.TEST)
 public class ImpactedComponentsMojo extends ImpactedMojo {
-
-    protected boolean computeImpactedMethods = true;
-
-    /** Parameter to determine whether to include variables in the impacted methods. */
-    protected boolean includeVariables;
-
     /** Path to a JavaMOP Agent JAR file. */
     @Parameter(property = "javamopAgent")
     protected String javamopAgent;
 
     /** Denotes whether a project dependency (jar or Maven dependency) has changed. */
-    protected boolean dependencyChangeDetected = false;
+    protected boolean dependencyChanged = false;
 
     /** A list that stores the checksums of jar files. */
     protected List<Pair> jarCheckSums = null;
@@ -34,29 +28,9 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
     @Parameter(property = "updateChecksums", defaultValue = "true")
     private boolean updateChecksums;
 
-    /** Determines whether fine RTS should be used. */
-    @Parameter(property = "enableFineRTS", defaultValue = "false")
-    private boolean enableFineRTS;
-
-    /** Choose which level of granularity to perform impact-change analysis. */
-    @Parameter(property = "granularity", defaultValue = "CLASS")
-    private Granularity granularity;
-
     public void execute() throws MojoExecutionException {
-        // TODO: Refactor this section:
-        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
-            this.fineRTSOn = enableFineRTS;
-            this.saveMRTSOn = enableFineRTS;
-            setUpdateImpactedChecksums(updateChecksums);
-            setTrackNewClasses(true);
-        } else if (getGranularity() == Granularity.METHOD) {
-            setUpdateMethodsChecksums(updateChecksums);
-            setComputeImpactedMethods(computeImpactedMethods);
-            setIncludeVariables(includeVariables);
-        } else if (getGranularity() == Granularity.HYBRID) {
-            setUpdateMethodsChecksums(true);
-            setComputeImpactedMethods(true);
-        }
+        configure();
+
         long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking ImpactedComponentsMojo.");
         super.execute();
@@ -66,13 +40,27 @@ public class ImpactedComponentsMojo extends ImpactedMojo {
             getLog().info("[eMOP] Total number of classes: " + (getOldClasses().size() + getNewClasses().size()));
         }
 
+        checkDependencies();
+    }
+
+    private void configure() {
+        if (getGranularity() == Granularity.FINE) {
+            this.fineRTSOn = true;
+            this.saveMRTSOn = true;
+        }
+        setTrackNewClasses(true);
+        setUpdateImpactedChecksums(updateChecksums);
+        setUpdateMethodsChecksums(updateChecksums);
+    }
+
+    private void checkDependencies() throws MojoExecutionException {
         String cpString = Writer.pathToString(getSureFireClassPath().getClassPath());
         List<String> sfPathElements = Util.getCleanClassPath(cpString);
         if (Util.hasDifferentClassPath(sfPathElements, getArtifactsDir())
                 || Util.hasDifferentJarChecksum(sfPathElements, jarCheckSums, getArtifactsDir())) {
             Writer.writeClassPath(cpString, artifactsDir);
             Writer.writeJarChecksums(sfPathElements, artifactsDir, jarCheckSums);
-            dependencyChangeDetected = true;
+            dependencyChanged = true;
             getLog().info("Dependencies changed! Reverting to Base RV.");
         }
     }
