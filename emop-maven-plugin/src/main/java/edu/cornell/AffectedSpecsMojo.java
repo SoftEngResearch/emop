@@ -152,30 +152,15 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             }
             getLog().info("[eMOP] Invoking the AffectedSpecs Mojo...");
 
-            long start = System.currentTimeMillis();
-            // If only computing changed classes, then these lines can stay the same
-            String[] arguments = createAJCArguments();
-            Main compiler = new Main();
-            MessageHandler mh = new MessageHandler();
-            try {
-                compiler.run(arguments, mh);
-            } catch (IllegalArgumentException ex) {
-                ex.printStackTrace();
-                getLog().error("Arguments: " + Arrays.asList(arguments));
-                IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
-                getLog().error("IMessages: " + Arrays.asList(ms));
-            }
-            IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
-            long end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
+            IMessage[] ms = doCompileTimeInstrumentation();
 
-            start = System.currentTimeMillis();
+            long start = System.currentTimeMillis();
             classToSpecs = readMapFromFile("classToSpecs.bin");
             computeMapFromMessage(ms);
             // Update map
             changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
             computeAffectedSpecs(dependencyChanged);
-            end = System.currentTimeMillis();
+            long end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
             start = System.currentTimeMillis();
@@ -190,6 +175,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
             getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
         } else if (getGranularity() == Granularity.METHOD) {
+            // TODO: Shouldn't this part be done by the Monitor Mojo?
             if (dependencyChanged) {
                 // Revert to base RV, use all specs, include libraries and non-affected classes.
                 affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
@@ -197,34 +183,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 includeNonAffected = true;
             }
             // This segment has to execute before return, otherwise it will pollute the next run
-            Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
-                    dependencyChanged || !finerInstrumentation,
-                    includeLibraries,
-                    includeNonAffected,
-                    Util.retrieveProjectPackageNames(getClassesDirectory()));
-            String[] arguments
-                    = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
-                    "-source", "1.8",
-                    "-target", "1.8",
-                    "-d", getArtifactsDir(),
-                    "-classpath", getClassPath() + File.pathSeparator + getRuntimeJars()};
-            Main compiler = new Main();
-            MessageHandler mh = new MessageHandler();
-            try {
-                compiler.run(arguments, mh);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-            if (debug) {
-                StringBuilder ajcCommand = new StringBuilder();
-                for (String arg : arguments) {
-                    ajcCommand.append(arg).append(" ");
-                }
-                getLog().info("AJC command: ajc " + ajcCommand);
-                for (IMessage errMsg : mh.getErrors()) {
-                    getLog().error(errMsg.toString());
-                }
-            }
+            recompileBaseAspect();
             // Why do it here? Because the program might exit early to revert to BaseRV
             // and use a modified version of BaseAspect instead, which we do not want.
             Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
@@ -256,24 +215,10 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 }
             }
             getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
-            long start = System.currentTimeMillis();
-            // If only computing changed classes, then these lines can stay the same
-            arguments = createAJCArguments();
-            compiler = new Main();
-            mh = new MessageHandler();
-            try {
-                compiler.run(arguments, mh);
-            } catch (IllegalArgumentException ex) {
-                ex.printStackTrace();
-                getLog().error("Arguments: " + Arrays.asList(arguments));
-                IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
-                getLog().error("IMessages: " + Arrays.asList(ms));
-            }
-            IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
-            long end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
 
-            start = System.currentTimeMillis();
+            IMessage[] ms = doCompileTimeInstrumentation();
+
+            long start = System.currentTimeMillis();
             methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
 
             try {
@@ -283,23 +228,6 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             }
             // TODO: This debug segment looks really ugly, change it.
             if (debug) {
-                StringBuilder ajcCommand = new StringBuilder();
-                for (String arg : arguments) {
-                    ajcCommand.append(arg).append(" ");
-                }
-                getLog().info("AJC command: ajc " + ajcCommand);
-                for (IMessage errMsg : mh.getErrors()) {
-                    getLog().error(errMsg.toString());
-                }
-                try (PrintWriter writer
-                             = new PrintWriter(getArtifactsDir() + File.separator + "compileWeaveMessage.txt")) {
-                    for (IMessage message : ms) {
-                        writer.println(message.getMessage());
-                    }
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-
                 try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "lineMapping.txt")) {
                     for (Map.Entry<String, ArrayList<Integer>> entry
                             : MethodsHelper.getModifiedMethodsToLineNumbers().entrySet()) {
@@ -347,8 +275,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 computeAffectedSpecs(getAffectedMethods());
                 getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
             }
-            end = System.currentTimeMillis();
+            long end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+
             start = System.currentTimeMillis();
             writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
             end = System.currentTimeMillis();
@@ -365,38 +294,18 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             )) {
                 return;
             }
-
             getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
+            IMessage[] ms = doCompileTimeInstrumentation();
+
             long start = System.currentTimeMillis();
-
-            // If only computing changed classes, then these lines can stay the same
-            String[] arguments = createAJCArguments();
-            Main compiler = new Main();
-            MessageHandler mh = new MessageHandler();
-            try {
-                compiler.run(arguments, mh);
-            } catch (IllegalArgumentException ex) {
-                ex.printStackTrace();
-                getLog().error("Arguments: " + Arrays.asList(arguments));
-                IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
-                getLog().error("IMessages: " + Arrays.asList(ms));
-            }
-            IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
-
-            long end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms");
-
-            start = System.currentTimeMillis();
             classesToSpecs = readMapFromFile(CLASSES_TO_SPECS_FILE_NAME);
             methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
-
             try {
                 computeMethodsToSpecsMapFromMessage(ms);
                 computeClassesToSpecsMapFromMessage(ms);
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
-
             changedMethodsToSpecs
                     .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
             changedClassesToSpecs
@@ -422,7 +331,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 includeLibraries = true;
                 includeNonAffected = true;
             }
-            end = System.currentTimeMillis();
+            long end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
             start = System.currentTimeMillis();
@@ -434,15 +343,87 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         }
     }
 
+    private IMessage[] doCompileTimeInstrumentation() throws MojoExecutionException {
+        long start = System.currentTimeMillis();
+        String[] arguments = createAJCArguments();
+        Main compiler = new Main();
+        MessageHandler mh = new MessageHandler();
+        try {
+            compiler.run(arguments, mh);
+        } catch (IllegalArgumentException ex) {
+            ex.printStackTrace();
+            getLog().error("Arguments: " + Arrays.asList(arguments));
+            IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
+            getLog().error("IMessages: " + Arrays.asList(ms));
+        }
+        IMessage[] ms = mh.getMessages(IMessage.WEAVEINFO, false);
+        long end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Compile-time weaving takes " + (end - start) + " ms.");
+
+        if (debug) {
+            StringBuilder ajcCommand = new StringBuilder();
+            for (String arg : arguments) {
+                ajcCommand.append(arg).append(" ");
+            }
+            getLog().info("AJC command: ajc " + ajcCommand);
+            for (IMessage errMsg : mh.getErrors()) {
+                getLog().error(errMsg.toString());
+            }
+            try (PrintWriter writer
+                         = new PrintWriter(getArtifactsDir() + File.separator + "compileWeaveMessage.txt")) {
+                for (IMessage message : ms) {
+                    writer.println(message.getMessage());
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        return ms;
+    }
+
+    private void recompileBaseAspect() throws MojoExecutionException {
+        Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
+                dependencyChanged || !finerInstrumentation,
+                includeLibraries,
+                includeNonAffected,
+                Util.retrieveProjectPackageNames(getClassesDirectory()));
+        String[] arguments
+                = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
+                "-source", "1.8",
+                "-target", "1.8",
+                "-d", getArtifactsDir(),
+                "-classpath", getClassPath() + File.pathSeparator + getRuntimeJars()};
+        Main compiler = new Main();
+        MessageHandler mh = new MessageHandler();
+        try {
+            compiler.run(arguments, mh);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        if (debug) {
+            StringBuilder ajcCommand = new StringBuilder();
+            for (String arg : arguments) {
+                ajcCommand.append(" ").append(arg);
+            }
+            getLog().info("AJC command: ajc" + ajcCommand);
+            getLog().info("AJC error messages:");
+            for (IMessage errMsg : mh.getErrors()) {
+                getLog().error(errMsg.toString());
+            }
+            getLog().info("AJC error messages end.");
+        }
+    }
+
     // Hybrid-only:
-    private void computeClassesAffectedSpecs(Set<String> classes) throws MojoExecutionException {
+    private void computeClassesAffectedSpecs(Set<String> classes) {
         for (String affectedClass : classes) {
             Set<String> specs = classesToSpecs.getOrDefault(affectedClass.replace("/", "."), new HashSet<>());
             affectedSpecs.addAll(specs);
         }
     }
 
-    private void computeMethodsAffectedSpecs(Set<String> methods) throws MojoExecutionException {
+    private void computeMethodsAffectedSpecs(Set<String> methods) {
         for (String affectedMethod : methods) {
             if (!affectedMethod.matches(".*\\(.*\\)")) {
                 continue;
@@ -454,7 +435,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         }
     }
 
-    private void computeClassesToSpecsMapFromMessage(IMessage[] ms) throws Exception {
+    private void computeClassesToSpecsMapFromMessage(IMessage[] ms) {
         for (IMessage message : ms) {
             String[] lexedMessage = message.getMessage().split("'");
             String key = lexedMessage[CLASS_INDEX_IN_MSG];
@@ -507,7 +488,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     }
 
     // TODO: Currently implemented as an overload, need to merge together eventually, and add documentation
-    private void computeAffectedSpecs(boolean dependencyChangeDetected) throws MojoExecutionException {
+    private void computeAffectedSpecs(boolean dependencyChangeDetected) {
         Set<String> impactedClasses = new HashSet<>(getImpacted());
         if (dependencyChangeDetected) {
             // Revert to base RV, use all specs, include libraries and non-affected classes.
@@ -524,7 +505,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         }
     }
 
-    private void computeAffectedSpecs(Set<String> methods) throws MojoExecutionException {
+    private void computeAffectedSpecs(Set<String> methods) {
         for (String affectedMethod : methods) {
             // Convert method name from asm to java
             // Skip variables that are not in the format of a method
