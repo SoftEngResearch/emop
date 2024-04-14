@@ -785,10 +785,15 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();
         Path testClassesDir = getTestClassesDirectory().toPath().toAbsolutePath();
-        // TODO: The top one comes from CLASSES, the bottom one from Methods, think about how to resolve them
+        // TODO: Think about combining them:
+        Set<String> changedClasses = null;
+        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
+            changedClasses = getChanged();
+        } else if (getGranularity() == Granularity.METHOD || getGranularity() == Granularity.HYBRID) {
+            changedClasses = getChangedClasses();
+        }
         classes:
-//        for (String changedClass : getChanged()) {
-        for (String changedClass : getChangedClasses()) {
+        for (String changedClass : changedClasses) {
             if (changedClass.contains("$")) {
                 changedClass = changedClass.substring(0, changedClass.indexOf('$')) + ".class";
             }
