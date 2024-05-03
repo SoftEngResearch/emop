@@ -303,7 +303,8 @@ public class Util {
                 writer.println("    }");
                 writer.println("    return affectedMethods.contains(contextJoinPoint.getSignature()");
                 writer.println("            .getDeclaringTypeName()");
-                writer.println("            + \"#\" + contextJoinPoint.getSignature().getName());");
+                writer.println("            + \"#\" + contextJoinPoint.getSignature().getName()) ||");
+                writer.println("            affectedMethods.contains(contextJoinPoint.getSignature().getDeclaringTypeName());");
                 writer.println("}");
             }
             writer.println("  pointcut notwithin() :");

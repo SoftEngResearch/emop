@@ -287,12 +287,52 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
             getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
         } else if (getGranularity() == Granularity.HYBRID) {
+            if (dependencyChanged) {
+                // Revert to base RV, use all specs, include libraries and non-affected classes.
+                affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
+                includeLibraries = true;
+                includeNonAffected = true;
+            }
+            // This segment has to execute before return, otherwise it will pollute the next run
+            recompileBaseAspect();
+            // Why do it here? Because the program might exit early to revert to BaseRV
+            // and use a modified version of BaseAspect instead, which we do not want.
+            Util.replaceFileInJar(javamopAgent, "/mop/BaseAspect.class",
+                    getArtifactsDir() + File.separator + "mop" + File.separator + "BaseAspect.class");
             if (!dependencyChanged && (
                     getComputeImpactedMethods() && getImpactedMethods().isEmpty() && getImpactedClasses().isEmpty()
                             // Affected classes are new classes, changed classes with changed headers only
                             || getAffectedMethods().isEmpty() && getAffectedClasses().isEmpty()
             )) {
                 return;
+            }
+            if (debug) {
+                getLog().info("Impacted Classes: " + getImpactedClasses());
+            }
+            if (finerInstrumentation) {
+                if (!dependencyChanged) {
+                    Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
+                    getLog().info("IMPACTED_METHODS_FILE is set to " + System.getenv("IMPACTED_METHODS_FILE"));
+                    try (FileOutputStream fos
+                                 = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
+                        ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                        Set<String> toWrite = getImpactedMethods().stream()
+                                // Filter is needed to filter out variables.
+                                .filter(str -> str.matches(".*\\(.*\\)"))
+                                .map(str -> MethodsHelper.convertAsmToJava(str)
+                                        .replace('/', '.')
+                                        .split("\\(")[0]
+                                )
+                                .collect(Collectors.toSet());
+                        // Also add classes to this set.
+                        toWrite.addAll(getImpactedClasses().stream()
+                                .map(str -> str.replace('/', '.')).
+                                collect(Collectors.toSet()));
+                        oos.writeObject(toWrite);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
             }
             getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
             IMessage[] ms = doCompileTimeInstrumentation();
