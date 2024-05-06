@@ -746,6 +746,13 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         String destinationDir = getArtifactsDir() + File.separator + "weaved-specs";
         String aspectList = getArtifactsDir() + File.separator + "aspects.lst";
         List<String> aspects = extractOrFind(destinationDir, ".aj", "weaved-specs");
+        // Users have the freedom to delete specs. Simply using this list may lead to errors.
+        Set<String> existingSpecs = Util.getFullSpecSet(javamopAgent, "mop");
+        aspects = aspects.stream()
+                        .filter(spec -> existingSpecs.contains(
+                                spec.substring(spec.lastIndexOf(File.separator) + 1).split("\\.")[0]
+                        ))
+                        .collect(Collectors.toList());
         Writer.writeToFile(aspects, aspectList);
         // the source files that we want to weave are the impacted classes, write them to a file
         String sourceList = getArtifactsDir() + File.separator + "sources.lst";
