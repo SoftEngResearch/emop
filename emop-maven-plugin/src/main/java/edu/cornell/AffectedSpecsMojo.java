@@ -77,6 +77,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     @Parameter(property = "finerInstrumentation", required = false, defaultValue = "false")
     protected boolean finerInstrumentation;
 
+    @Parameter(property = "finerSpecMapping", required = false, defaultValue = "false")
+    protected boolean finerSpecMapping;
+
     /**
      * A map from affected classes to affected specs, for debugging purposes.
      */
@@ -260,28 +263,49 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 }
             }
 
-            changedMethodsToSpecs
-                    .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+            if (finerSpecMapping) {
+                changedMethodsToSpecs
+                        .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
-            // Compute affected specs from changed methods or impacted methods
-            // TODO: "impacted" and "affected" should mean the same thing.
-            //  Rename this to something better to avoid confusion.
-            // TODO: Currently this counts the number of impacted methods and variables,
-            //  think about how to handle this detail.
-            if (getComputeImpactedMethods()) {
-                computeAffectedSpecs(getImpactedMethods());
-                getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
+                // Compute affected specs from changed methods or impacted methods
+                // TODO: "impacted" and "affected" should mean the same thing.
+                //  Rename this to something better to avoid confusion.
+                // TODO: Currently this counts the number of impacted methods and variables,
+                //  think about how to handle this detail.
+                if (getComputeImpactedMethods()) {
+                    computeAffectedSpecs(getImpactedMethods());
+                    getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
+                } else {
+                    computeAffectedSpecs(getAffectedMethods());
+                    getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
+                }
+                long end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+
+                start = System.currentTimeMillis();
+                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+                end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
             } else {
-                computeAffectedSpecs(getAffectedMethods());
-                getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
-            }
-            long end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+                classToSpecs = readMapFromFile("classToSpecs.bin");
+                // Update map
+                changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+                computeAffectedSpecs(dependencyChanged);
+                long end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
-            start = System.currentTimeMillis();
-            writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
-            end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
+                start = System.currentTimeMillis();
+                // Write map
+                writeMapToFile(OutputFormat.BIN);
+                // Write affectedSpecs
+                // TODO: This is not really a map anymore, make sure the implementation matches the name
+                writeMapToFile(OutputFormat.TXT);
+                end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
+
+                getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
+                getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
+            }
 
             getLog().info("[eMOP] Number of changed classes: " + getChangedClasses().size());
             getLog().info("[eMOP] Number of new classes: " + getNewClasses().size());
@@ -340,46 +364,67 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             long start = System.currentTimeMillis();
             classesToSpecs = readMapFromFile(CLASSES_TO_SPECS_FILE_NAME);
             methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
-            try {
-                computeMethodsToSpecsMapFromMessage(ms);
-                computeClassesToSpecsMapFromMessage(ms);
-            } catch (Exception exception) {
-                exception.printStackTrace();
-            }
-            changedMethodsToSpecs
-                    .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-            changedClassesToSpecs
-                    .forEach((key, value) -> classesToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+            if (finerSpecMapping) {
+                try {
+                    computeMethodsToSpecsMapFromMessage(ms);
+                    computeClassesToSpecsMapFromMessage(ms);
+                } catch (Exception exception) {
+                    exception.printStackTrace();
+                }
+                changedMethodsToSpecs
+                        .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+                changedClassesToSpecs
+                        .forEach((key, value) -> classesToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
-            // TODO: "impacted" and "affected" should mean the same thing.
-            //  Rename this to something better to avoid confusion.
-            // Compute affected specs from changed methods or impacted methods
-            if (getComputeImpactedMethods()) {
-                computeMethodsAffectedSpecs(getImpactedMethods());
-                computeClassesAffectedSpecs(getImpactedClasses());
-                getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
-                getLog().info("[eMOP] Number of Impacted classes: " + getImpactedClasses().size());
+                // TODO: "impacted" and "affected" should mean the same thing.
+                //  Rename this to something better to avoid confusion.
+                // Compute affected specs from changed methods or impacted methods
+                if (getComputeImpactedMethods()) {
+                    computeMethodsAffectedSpecs(getImpactedMethods());
+                    computeClassesAffectedSpecs(getImpactedClasses());
+                    getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
+                    getLog().info("[eMOP] Number of Impacted classes: " + getImpactedClasses().size());
+                } else {
+                    computeMethodsAffectedSpecs(getAffectedMethods());
+                    computeClassesAffectedSpecs(getAffectedClasses());
+                    getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
+                    getLog().info("[eMOP] Number of affected classes: " + getAffectedClasses().size());
+                }
+                if (dependencyChanged) {
+                    // Revert to base RV, use all specs, include libraries and non-affected classes.
+                    affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
+                    includeLibraries = true;
+                    includeNonAffected = true;
+                }
+                long end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+
+                start = System.currentTimeMillis();
+                writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+                end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
+                getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
             } else {
-                computeMethodsAffectedSpecs(getAffectedMethods());
-                computeClassesAffectedSpecs(getAffectedClasses());
-                getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
-                getLog().info("[eMOP] Number of affected classes: " + getAffectedClasses().size());
-            }
-            if (dependencyChanged) {
-                // Revert to base RV, use all specs, include libraries and non-affected classes.
-                affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
-                includeLibraries = true;
-                includeNonAffected = true;
-            }
-            long end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
+                classToSpecs = readMapFromFile("classToSpecs.bin");
+                // Update map
+                changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+                computeAffectedSpecs(dependencyChanged);
+                long end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
-            start = System.currentTimeMillis();
-            writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.TXT);
-            writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
-            end = System.currentTimeMillis();
-            getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
-            getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
+                start = System.currentTimeMillis();
+                // Write map
+                writeMapToFile(OutputFormat.BIN);
+                // Write affectedSpecs
+                // TODO: This is not really a map anymore, make sure the implementation matches the name
+                writeMapToFile(OutputFormat.TXT);
+                end = System.currentTimeMillis();
+                getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
+
+                getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
+                getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
+            }
         }
     }
 
@@ -424,7 +469,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
     private void recompileBaseAspect() throws MojoExecutionException {
         Util.generateNewBaseAspect(getArtifactsDir() + File.separator + "BaseAspect.aj",
-                dependencyChanged || !finerInstrumentation,
+                dependencyChanged || !finerInstrumentation || !finerSpecMapping,
                 includeLibraries,
                 includeNonAffected,
                 Util.retrieveProjectPackageNames(getClassesDirectory()));
@@ -577,7 +622,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
      * @param ms An array of IMessage objects
      */
     private void computeMapFromMessage(IMessage[] ms) throws MojoExecutionException {
-        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
+        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE || !finerSpecMapping) {
             for (IMessage message : ms) {
                 String[] lexedMessage = message.getMessage().split("'");
                 String key = lexedMessage[CLASS_INDEX_IN_MSG];
