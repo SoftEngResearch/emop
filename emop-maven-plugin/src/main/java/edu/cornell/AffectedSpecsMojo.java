@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -303,7 +304,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 end = System.currentTimeMillis();
                 getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
 
-                getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
+//                getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
                 getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
             }
 
@@ -422,7 +423,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 end = System.currentTimeMillis();
                 getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
 
-                getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
+//                getLog().info("[eMOP] Number of impacted classes: " + getImpacted().size());
                 getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
             }
         }
@@ -574,7 +575,19 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
     // TODO: Currently implemented as an overload, need to merge together eventually, and add documentation
     private void computeAffectedSpecs(boolean dependencyChangeDetected) {
-        Set<String> impactedClasses = new HashSet<>(getImpacted());
+        Set<String> impactedClasses = null;
+        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
+            impactedClasses = new HashSet<>(getImpacted());
+        } else if (getGranularity() == Granularity.METHOD) {
+            impactedClasses = getImpactedMethods().stream()
+                    .map(str -> str.split("#")[0]).collect(Collectors.toSet());
+        } else if (getGranularity() == Granularity.HYBRID) {
+            Set<String> combined = new HashSet<>(getImpactedMethods());
+            combined.addAll(getImpactedClasses());
+            impactedClasses = combined.stream()
+                    .map(s -> s.split("#")[0])
+                    .collect(Collectors.toSet());
+        }
         if (dependencyChangeDetected) {
             // Revert to base RV, use all specs, include libraries and non-affected classes.
             affectedSpecs.addAll(Objects.requireNonNull(Util.getFullSpecSet(javamopAgent, "mop")));
