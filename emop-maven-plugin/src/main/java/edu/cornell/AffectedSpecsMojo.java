@@ -407,6 +407,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
                 getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
             } else {
+                computeMapFromMessage(ms);
                 classToSpecs = readMapFromFile("classToSpecs.bin");
                 // Update map
                 changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
@@ -580,12 +581,13 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             impactedClasses = new HashSet<>(getImpacted());
         } else if (getGranularity() == Granularity.METHOD) {
             impactedClasses = getImpactedMethods().stream()
-                    .map(str -> str.split("#")[0]).collect(Collectors.toSet());
+                    .map(str -> str.split("#")[0].replace('/', '.'))
+                    .collect(Collectors.toSet());
         } else if (getGranularity() == Granularity.HYBRID) {
             Set<String> combined = new HashSet<>(getImpactedMethods());
             combined.addAll(getImpactedClasses());
             impactedClasses = combined.stream()
-                    .map(s -> s.split("#")[0])
+                    .map(s -> s.split("#")[0].replace('/', '.'))
                     .collect(Collectors.toSet());
         }
         if (dependencyChangeDetected) {
