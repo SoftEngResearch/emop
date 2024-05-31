@@ -252,6 +252,8 @@ public class Util {
      * @param baseRV Set true to revert to base RV, false to use finer instrumentation.
      * @param includeLibraries Whether to include joinpoints in library or not.
      * @param includeNonAffected Whether to include nonAffected or not.
+     * @param finerInstrumentationAlt Whether to use the alternative implementation of finer instrumentation or not.
+     *                                Effective only when finerInstrumentation is also true.
      * @param packageNames Package names of files in the project.
      */
     // It should be addressed at some point.
@@ -259,6 +261,7 @@ public class Util {
                                              boolean baseRV,
                                              boolean includeLibraries,
                                              boolean includeNonAffected,
+                                             boolean finerInstrumentationAlt,
                                              Set<String> packageNames) {
         try (PrintWriter writer = new PrintWriter(outputPath)) {
             writer.println("package mop;");
@@ -268,44 +271,79 @@ public class Util {
                 writer.println("import java.io.ObjectInputStream;");
                 writer.println("import java.io.PrintWriter;");
                 writer.println("import java.io.IOException;");
+                writer.println("import java.util.HashMap;");
                 writer.println("import java.util.HashSet;");
                 writer.println("import org.aspectj.lang.JoinPoint;");
             }
             writer.println("public aspect BaseAspect {");
             if (!baseRV && !includeNonAffected) {
-                writer.println("private static HashSet<String> affectedMethods;");
-                writer.println("private static boolean baseRV = false;");
-                writer.println("public static boolean inSet(JoinPoint.StaticPart contextJoinPoint) {");
-                writer.println("    if (baseRV) {");
-                writer.println("        return baseRV;");
-                writer.println("    }");
-                writer.println("    if (affectedMethods == null) {");
-                writer.println("        String impactedMethodsFilePath = System.getenv(\"IMPACTED_METHODS_FILE\");");
-                writer.println("        System.out.println(\"impactedMethodsFilePath: \" + impactedMethodsFilePath);");
-                writer.println("        if (impactedMethodsFilePath == null) {");
-                writer.println("            baseRV = true;");
-                writer.println("            return baseRV;");
-                writer.println("        }");
-                writer.println("        File impactedMethodsFile = new File(impactedMethodsFilePath);");
-                writer.println("        if (impactedMethodsFile.exists()) {");
-                writer.println("            try {");
-                writer.println("            FileInputStream fileInput = new FileInputStream(impactedMethodsFilePath);");
-                writer.println("                ObjectInputStream objectInput = new ObjectInputStream(fileInput);");
-                writer.println("                affectedMethods = (HashSet) objectInput.readObject();");
-                writer.println("            } catch (Exception ex) {");
-                writer.println("                ex.printStackTrace();");
-                writer.println("            }");
-                writer.println("  System.out.println(\"Affected methods (no signature): \" + affectedMethods.size());");
-                writer.println("        } else {");
-                writer.println("            System.err.println(\"Impacted methods file does not exist!\");");
-                writer.println("            affectedMethods = new HashSet<String>();");
-                writer.println("        }");
-                writer.println("    }");
-                writer.println("    return affectedMethods.contains(contextJoinPoint.getSignature()");
-                writer.println("            .getDeclaringTypeName()");
-                writer.println("            + \"#\" + contextJoinPoint.getSignature().getName()) ||");
-                writer.println("            affectedMethods.contains(contextJoinPoint.getSignature().getDeclaringTypeName());");
-                writer.println("}");
+                if (finerInstrumentationAlt) {
+                    writer.println("private static HashMap<String, HashSet<Integer>> classToImpactedLineNumbers;");
+                    writer.println("private static boolean baseRV = false;");
+                    writer.println("public static boolean inSet(JoinPoint.StaticPart joinPoint) {");
+                    writer.println("    if (baseRV) {");
+                    writer.println("        return baseRV;");
+                    writer.println("    }");
+                    writer.println("    if (classToImpactedLineNumbers == null) {");
+                    // TODO: Need to rename this file eventually.
+                    writer.println("        String impactedMethodsFilePath = System.getenv(\"IMPACTED_METHODS_FILE\");");
+                    writer.println("        System.out.println(\"impactedMethodsFilePath: \" + impactedMethodsFilePath);");
+                    writer.println("        if (impactedMethodsFilePath == null) {");
+                    writer.println("            baseRV = true;");
+                    writer.println("            return baseRV;");
+                    writer.println("        }");
+                    writer.println("        File impactedMethodsFile = new File(impactedMethodsFilePath);");
+                    writer.println("        if (impactedMethodsFile.exists()) {");
+                    writer.println("            try {");
+                    writer.println("            FileInputStream fileInput = new FileInputStream(impactedMethodsFilePath);");
+                    writer.println("                ObjectInputStream objectInput = new ObjectInputStream(fileInput);");
+                    writer.println("                classToImpactedLineNumbers = (HashMap) objectInput.readObject();");
+                    writer.println("            } catch (Exception ex) {");
+                    writer.println("                ex.printStackTrace();");
+                    writer.println("            }");
+                    writer.println("        } else {");
+                    writer.println("            System.err.println(\"Impacted methods file does not exist!\");");
+                    writer.println("            classToImpactedLineNumbers = new HashMap<String, HashSet<Integer>>();");
+                    writer.println("        }");
+                    writer.println("    }");
+                    writer.println("    return classToImpactedLineNumbers.keySet().contains(joinPoint.getSignature().getDeclaringTypeName())");
+                    writer.println("                && (classToImpactedLineNumbers.get(joinPoint.getSignature().getDeclaringTypeName()).contains(joinPoint.getSourceLocation().getLine()) || classToImpactedLineNumbers.get(joinPoint.getSignature().getDeclaringTypeName()).isEmpty());");
+                    writer.println("}");
+                } else {
+                    writer.println("private static HashSet<String> affectedMethods;");
+                    writer.println("private static boolean baseRV = false;");
+                    writer.println("public static boolean inSet(JoinPoint.StaticPart contextJoinPoint) {");
+                    writer.println("    if (baseRV) {");
+                    writer.println("        return baseRV;");
+                    writer.println("    }");
+                    writer.println("    if (affectedMethods == null) {");
+                    writer.println("        String impactedMethodsFilePath = System.getenv(\"IMPACTED_METHODS_FILE\");");
+                    writer.println("        System.out.println(\"impactedMethodsFilePath: \" + impactedMethodsFilePath);");
+                    writer.println("        if (impactedMethodsFilePath == null) {");
+                    writer.println("            baseRV = true;");
+                    writer.println("            return baseRV;");
+                    writer.println("        }");
+                    writer.println("        File impactedMethodsFile = new File(impactedMethodsFilePath);");
+                    writer.println("        if (impactedMethodsFile.exists()) {");
+                    writer.println("            try {");
+                    writer.println("            FileInputStream fileInput = new FileInputStream(impactedMethodsFilePath);");
+                    writer.println("                ObjectInputStream objectInput = new ObjectInputStream(fileInput);");
+                    writer.println("                affectedMethods = (HashSet) objectInput.readObject();");
+                    writer.println("            } catch (Exception ex) {");
+                    writer.println("                ex.printStackTrace();");
+                    writer.println("            }");
+                    writer.println("  System.out.println(\"Affected methods (no signature): \" + affectedMethods.size());");
+                    writer.println("        } else {");
+                    writer.println("            System.err.println(\"Impacted methods file does not exist!\");");
+                    writer.println("            affectedMethods = new HashSet<String>();");
+                    writer.println("        }");
+                    writer.println("    }");
+                    writer.println("    return affectedMethods.contains(contextJoinPoint.getSignature()");
+                    writer.println("            .getDeclaringTypeName()");
+                    writer.println("            + \"#\" + contextJoinPoint.getSignature().getName()) ||");
+                    writer.println("            affectedMethods.contains(contextJoinPoint.getSignature().getDeclaringTypeName());");
+                    writer.println("}");
+                }
             }
             writer.println("  pointcut notwithin() :");
             writer.println("  !within(sun..*) &&");
@@ -334,13 +372,21 @@ public class Util {
             } else {
                 writer.println("  !within(org.jmock..*) &&");
                 if (includeLibraries) {
-                    writer.println("(if(inSet(thisEnclosingJoinPointStaticPart))");
+                    if (finerInstrumentationAlt) {
+                        writer.println("(if(inSet(thisJoinPointStaticPart))");
+                    } else {
+                        writer.println("(if(inSet(thisEnclosingJoinPointStaticPart))");
+                    }
                     for (String packageName : packageNames) {
                         writer.print(" || !within(" + packageName + "..*)");
                     }
                     writer.println(");");
                 } else {
-                    writer.println("if(inSet(thisEnclosingJoinPointStaticPart));");
+                    if (finerInstrumentationAlt) {
+                        writer.println("if(inSet(thisJoinPointStaticPart));");
+                    } else {
+                        writer.println("if(inSet(thisEnclosingJoinPointStaticPart));");
+                    }
                 }
             }
             writer.println("}");

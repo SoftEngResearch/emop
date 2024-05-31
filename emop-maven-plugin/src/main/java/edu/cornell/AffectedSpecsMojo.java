@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -55,9 +54,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     private static final String CLASSES_TO_SPECS_FILE_NAME = "classesToSpecs.bin";
     private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
 
-    /**
-     * The path to the Javamop Agent JAR file.
-     */
+    /** Path to the Javamop Agent JAR file. */
     @Parameter(property = "javamopAgent")
     protected String javamopAgent;
 
@@ -75,11 +72,36 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     @Parameter(property = "includeLibraries", required = false, defaultValue = "true")
     protected boolean includeLibraries;
 
+    /**
+     * Whether to perform instrumentation at a finer granularity than class level.
+     * Setting this option to true will also include finer granularity like method level.
+     * TODO: Although it is called finerInstrumentation, this approach actually can only reduce monitoring.
+     */
     @Parameter(property = "finerInstrumentation", required = false, defaultValue = "false")
     protected boolean finerInstrumentation;
 
+    /**
+     * Whether to use an alternative implementation of finer instrumentation.
+     * Note that this depends on the parameter of finerInstrumentation being set to true,
+     * otherwise it will not take effect.
+     */
+    @Parameter(property = "finerInstrumentationAlt", required = false, defaultValue = "false")
+    protected boolean finerInstrumentationAlt;
+
+    /**
+     * Whether to find affected specs by using a finer-grained mapping to specs.
+     * Setting this to true will enable the use of method -> specs mapping if there is one,
+     * instead of reducing to class -> specs mapping.
+     */
     @Parameter(property = "finerSpecMapping", required = false, defaultValue = "false")
     protected boolean finerSpecMapping;
+
+    /**
+     * A mapping from class to all the line numbers that are impacted.
+     * This data structure enables the use of thisJoinPointStaticPart over
+     * the more expensive thisEnclosingJoinPointStaticPart.
+     */
+    protected HashMap<String, HashSet<Integer>> classToImpactedLineNumbers = new HashMap<>();
 
     /**
      * A map from affected classes to affected specs, for debugging purposes.
@@ -204,15 +226,43 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     try (FileOutputStream fos
                                  = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
                          ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-                        oos.writeObject(getImpactedMethods().stream()
-                                // Filter is needed to filter out variables.
-                                .filter(str -> str.matches(".*\\(.*\\)"))
-                                .map(str -> MethodsHelper.convertAsmToJava(str)
-                                        .replace('/', '.')
-                                        .split("\\(")[0]
-                                )
-                                .collect(Collectors.toSet())
-                        );
+                        if (finerInstrumentationAlt) {
+                            // TODO: Repeated code with the process of output to impactedMethods.txt.
+                            for (String impactedMethod : getImpactedMethods()) {
+                                if (!impactedMethod.matches(".*\\(.*\\)")) {
+                                    continue;
+                                }
+                                String javaFormat = MethodsHelper.convertAsmToJava(impactedMethod);
+                                // Looks like: org/mitre/dsmiley/httpproxy/ProxyServletTest#tearDown(),67,71
+                                String classDotFormat = javaFormat.replaceAll("\\$.*#", "#").replaceAll("/", ".");
+                                // Get line range from mapping. At this stage inner class should not be removed.
+                                ArrayList<Integer> range = MethodsHelper
+                                        .getModifiedMethodsToLineNumbers()
+                                        .get(javaFormat);
+                                if (range != null) {
+                                    int start = range.get(0);
+                                    int end = range.get(1);
+                                    // First time
+                                    classToImpactedLineNumbers.putIfAbsent(classDotFormat.split("#")[0],
+                                            new HashSet<>());
+                                    // Add all relevant lines
+                                    for (int line = start; line <= end; line++) {
+                                        classToImpactedLineNumbers.get(classDotFormat).add(line);
+                                    }
+                                }
+                            }
+                            oos.writeObject(classToImpactedLineNumbers);
+                        } else {
+                            oos.writeObject(getImpactedMethods().stream()
+                                    // Filter is needed to filter out variables.
+                                    .filter(str -> str.matches(".*\\(.*\\)"))
+                                    .map(str -> MethodsHelper.convertAsmToJava(str)
+                                            .replace('/', '.')
+                                            .split("\\(")[0]
+                                    )
+                                    .collect(Collectors.toSet())
+                            );
+                        }
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
@@ -284,7 +334,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
                 start = System.currentTimeMillis();
-                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+//                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.BIN);
                 end = System.currentTimeMillis();
                 getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
             } else {
@@ -341,19 +392,51 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     try (FileOutputStream fos
                                  = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
                         ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-                        Set<String> toWrite = getImpactedMethods().stream()
-                                // Filter is needed to filter out variables.
-                                .filter(str -> str.matches(".*\\(.*\\)"))
-                                .map(str -> MethodsHelper.convertAsmToJava(str)
-                                        .replace('/', '.')
-                                        .split("\\(")[0]
-                                )
-                                .collect(Collectors.toSet());
-                        // Also add classes to this set.
-                        toWrite.addAll(getImpactedClasses().stream()
-                                .map(str -> str.replace('/', '.')).
-                                collect(Collectors.toSet()));
-                        oos.writeObject(toWrite);
+                        if (finerInstrumentationAlt) {
+                            for (String impactedClass : getImpactedClasses()) {
+                                classToImpactedLineNumbers.putIfAbsent(impactedClass.replace("/", "."),
+                                        new HashSet<>());
+                            }
+                            // TODO: Repeated code with the process of output to impactedMethods.txt.
+                            for (String impactedMethod : getImpactedMethods()) {
+                                if (!impactedMethod.matches(".*\\(.*\\)")) {
+                                    continue;
+                                }
+                                String javaFormat = MethodsHelper.convertAsmToJava(impactedMethod);
+                                // Looks like: org/mitre/dsmiley/httpproxy/ProxyServletTest#tearDown(),67,71
+                                String classDotFormat = javaFormat.replaceAll("\\$.*#", "#").replaceAll("/", ".");
+                                // Get line range from mapping. At this stage inner class should not be removed.
+                                ArrayList<Integer> range = MethodsHelper
+                                        .getModifiedMethodsToLineNumbers()
+                                        .get(javaFormat);
+                                if (range != null) {
+                                    int start = range.get(0);
+                                    int end = range.get(1);
+                                    // First time
+                                    classToImpactedLineNumbers.putIfAbsent(classDotFormat.split("#")[0],
+                                            new HashSet<>());
+                                    // Add all relevant lines
+                                    for (int line = start; line <= end; line++) {
+                                        classToImpactedLineNumbers.get(classDotFormat).add(line);
+                                    }
+                                }
+                            }
+                            oos.writeObject(classToImpactedLineNumbers);
+                        } else {
+                            Set<String> toWrite = getImpactedMethods().stream()
+                                    // Filter is needed to filter out variables.
+                                    .filter(str -> str.matches(".*\\(.*\\)"))
+                                    .map(str -> MethodsHelper.convertAsmToJava(str)
+                                            .replace('/', '.')
+                                            .split("\\(")[0]
+                                    )
+                                    .collect(Collectors.toSet());
+                            // Also add classes to this set.
+                            toWrite.addAll(getImpactedClasses().stream()
+                                    .map(str -> str.replace('/', '.')).
+                                    collect(Collectors.toSet()));
+                            oos.writeObject(toWrite);
+                        }
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
@@ -401,8 +484,10 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
                 start = System.currentTimeMillis();
-                writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.TXT);
-                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+//                writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+//                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+                writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.BIN);
+                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.BIN);
                 end = System.currentTimeMillis();
                 getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
                 getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
@@ -474,12 +559,10 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 dependencyChanged || !finerInstrumentation || !finerSpecMapping,
                 includeLibraries,
                 includeNonAffected,
+                finerInstrumentationAlt,
                 Util.retrieveProjectPackageNames(getClassesDirectory()));
-        String[] arguments
-                = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
-                "-source", "1.8",
-                "-target", "1.8",
-                "-d", getArtifactsDir(),
+        String[] arguments = new String[] {getArtifactsDir() + File.separator + "BaseAspect.aj",
+                "-source", "1.8", "-target", "1.8", "-d", getArtifactsDir(),
                 "-classpath", getClassPath() + File.pathSeparator + getRuntimeJars()};
         Main compiler = new Main();
         MessageHandler mh = new MessageHandler();
