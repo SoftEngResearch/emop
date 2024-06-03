@@ -1,7 +1,11 @@
 package edu.cornell.emop.util;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -29,6 +33,30 @@ public class MethodsHelper {
 
     public static Map<String, ArrayList<Integer>> getMethodsToLineNumbers() {
         return Collections.unmodifiableMap(methodsToLineNumbers);
+    }
+
+    public static void loadMethodsToLineNumbers(String artifactsDir) {
+        File objectFile = new File(artifactsDir + File.separator + "lineMapping.bin");
+        if (objectFile.exists()) {
+            // TODO: Put this into a constant
+            try (FileInputStream fileInput = new FileInputStream(artifactsDir + File.separator + "lineMapping.bin");
+                 ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+                methodsToLineNumbers = (Map) objectInput.readObject();
+            } catch (IOException | ClassNotFoundException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    public static void saveMethodsToLineNumbers(String artifactsDir) {
+        // This format differs from the one in plain text, that one is associated with getModifiedMethodsToLineNumbers()
+        try (FileOutputStream fos
+                     = new FileOutputStream(artifactsDir + File.separator + "lineMapping.bin");
+             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(methodsToLineNumbers);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
     /**

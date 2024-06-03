@@ -276,7 +276,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
 
             try {
+                MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
                 computeMapFromMessage(ms);
+                MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -605,7 +607,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         }
     }
 
-    private void computeClassesToSpecsMapFromMessage(IMessage[] ms) {
+    private void computeClassesToSpecsMapFromMessage(IMessage[] ms) throws MojoExecutionException {
+        MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
         for (IMessage message : ms) {
             String[] lexedMessage = message.getMessage().split("'");
             String key = lexedMessage[CLASS_INDEX_IN_MSG];
@@ -615,6 +618,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             }
             changedClassesToSpecs.get(key).add(value);
         }
+        MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
     }
 
     /**
@@ -626,6 +630,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     private void computeMethodsToSpecsMapFromMessage(IMessage[] ms) throws Exception {
         Classpath sfClassPath = getSureFireClassPath();
         ClassLoader loader = createClassLoader(sfClassPath);
+        MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
         for (IMessage message : ms) {
             String[] lexedMessage = message.getMessage().split("'");
             String klasName = lexedMessage[CLASS_INDEX_IN_MSG];
@@ -655,6 +660,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             changedMethodsToSpecs.put(key, methodSpecs);
             methodSpecs.add(spec);
         }
+        MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
     }
 
     // TODO: Currently implemented as an overload, need to merge together eventually, and add documentation
