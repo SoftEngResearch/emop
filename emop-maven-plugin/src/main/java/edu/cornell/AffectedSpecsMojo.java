@@ -52,7 +52,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
     private static final String CLASSES_TO_SPECS_FILE_NAME = "classesToSpecs.bin";
+    private static final String CLASSES_TO_SPECS_DEBUG_FILE_NAME = "classesToSpecs.txt";
     private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
+    private static final String METHODS_TO_SPECS_DEBUG_FILE_NAME = "methodsToSpecs.txt";
 
     /** Path to the Javamop Agent JAR file. */
     @Parameter(property = "javamopAgent")
@@ -110,8 +112,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     protected Map<String, Set<String>> classToSpecs = new HashMap<>();
     protected Map<String, Set<String>> classesToSpecs = new HashMap<>();
     protected Map<String, Set<String>> methodsToSpecs = new HashMap<>();
-    protected Map<String, Set<String>> changedMethodsToSpecs = new HashMap<>();
-    protected Map<String, Set<String>> changedClassesToSpecs = new HashMap<>();
+    protected Map<String, Set<String>> methodToSpecsUpdateMap = new HashMap<>();
+    protected Map<String, Set<String>> classToSpecsUpdateMap = new HashMap<>();
 
     /**
      * A set of affected specs to monitor for javamop agent.
@@ -317,7 +319,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             }
 
             if (finerSpecMapping) {
-                changedMethodsToSpecs
+                methodToSpecsUpdateMap
                         .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
                 // Compute affected specs from changed methods or impacted methods
@@ -336,7 +338,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
                 start = System.currentTimeMillis();
-//                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+                // TODO: Currently this is not taking effect, change related methods.
+                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_DEBUG_FILE_NAME, OutputFormat.TXT);
                 writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.BIN);
                 end = System.currentTimeMillis();
                 getLog().info("[eMOP Timer] Write affected specs to disk takes " + (end - start) + " ms");
@@ -457,9 +460,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 } catch (Exception exception) {
                     exception.printStackTrace();
                 }
-                changedMethodsToSpecs
+                methodToSpecsUpdateMap
                         .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-                changedClassesToSpecs
+                classToSpecsUpdateMap
                         .forEach((key, value) -> classesToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
                 // TODO: "impacted" and "affected" should mean the same thing.
@@ -486,8 +489,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
                 start = System.currentTimeMillis();
-//                writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.TXT);
-//                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.TXT);
+                writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_DEBUG_FILE_NAME, OutputFormat.TXT);
+                writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_DEBUG_FILE_NAME, OutputFormat.TXT);
                 writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.BIN);
                 writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.BIN);
                 end = System.currentTimeMillis();
@@ -613,12 +616,15 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             String[] lexedMessage = message.getMessage().split("'");
             String key = lexedMessage[CLASS_INDEX_IN_MSG];
             String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
-            if (!changedClassesToSpecs.containsKey(key)) {
-                changedClassesToSpecs.put(key, new HashSet<>());
+            if (!classToSpecsUpdateMap.containsKey(key)) {
+                classToSpecsUpdateMap.put(key, new HashSet<>());
             }
-            changedClassesToSpecs.get(key).add(value);
+            classToSpecsUpdateMap.get(key).add(value);
         }
-        MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
+        for (String clazz : getImpactedClasses()) {
+            classToSpecsUpdateMap.putIfAbsent(clazz.replace('/', '.'), new HashSet<>());
+        }
+        MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
     }
 
     /**
@@ -656,9 +662,12 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 continue;
             }
             String key = klas.replace(".class", "") + "#" + method;
-            Set<String> methodSpecs = changedMethodsToSpecs.getOrDefault(key, new HashSet<>());
-            changedMethodsToSpecs.put(key, methodSpecs);
+            Set<String> methodSpecs = methodToSpecsUpdateMap.getOrDefault(key, new HashSet<>());
+            methodToSpecsUpdateMap.put(key, methodSpecs);
             methodSpecs.add(spec);
+        }
+        for (String method : getImpactedMethods()) {
+            methodToSpecsUpdateMap.putIfAbsent(MethodsHelper.convertAsmToJava(method), new HashSet<>());
         }
         MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
     }
@@ -768,9 +777,12 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     continue;
                 }
                 String key = klas.replace(".class", "") + "#" + method;
-                Set<String> methodSpecs = changedMethodsToSpecs.getOrDefault(key, new HashSet<>());
-                changedMethodsToSpecs.put(key, methodSpecs);
+                Set<String> methodSpecs = methodToSpecsUpdateMap.getOrDefault(key, new HashSet<>());
+                methodToSpecsUpdateMap.put(key, methodSpecs);
                 methodSpecs.add(spec);
+            }
+            for (String method : getImpactedMethods()) {
+                methodToSpecsUpdateMap.putIfAbsent(MethodsHelper.convertAsmToJava(method), new HashSet<>());
             }
         }
     }
@@ -826,7 +838,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     private void writeToText(OutputContent content, String fileName) throws MojoExecutionException {
         // TODO: Change this fileName to not be hard-coded
         try (PrintWriter writer
-                     = new PrintWriter(getArtifactsDir() + File.separator + "classToSpecs.txt")) {
+                     = new PrintWriter(getArtifactsDir() + File.separator + fileName)) {
             if (getGranularity() == Granularity.METHOD) {
                 switch (methodsToSpecsContent) {
                     case MAP:
@@ -852,6 +864,17 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                         for (String affectedSpec : affectedSpecs) {
                             writer.println(affectedSpec);
                         }
+                }
+            } else if (getGranularity() == Granularity.HYBRID) {
+                // TODO: Defaulted to MAP
+                writer.println("=====CLASS=====");
+                // TODO: Address this inconsistent naming between classesToSpecs and classToSpecs
+                for (Map.Entry<String, Set<String>> entry: classesToSpecs.entrySet()) {
+                    writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
+                }
+                writer.println("=====METHOD=====");
+                for (Map.Entry<String, Set<String>> entry: methodsToSpecs.entrySet()) {
+                    writer.println(entry.getKey() + ":" + String.join(",", entry.getValue()));
                 }
             }
         } catch (IOException ex) {
