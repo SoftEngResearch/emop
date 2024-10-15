@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -69,12 +70,16 @@ public class MethodsHelper {
      * @return a modified methodsToLineNumbers mapping.
      */
     public static Map<String, ArrayList<Integer>> getModifiedMethodsToLineNumbers() {
-        Map<String, ArrayList<Integer>> modifiedMethodsToLineNumbers = methodsToLineNumbers.entrySet().stream()
-                .collect(Collectors.toMap(e -> e.getKey()
-                        .split("/src/main/java/|/src/test/java/")[1]
-                        .replace(".java", ""),
-                    e -> new ArrayList<>(e.getValue()))
-                );
+        Map<String, ArrayList<Integer>> modifiedMethodsToLineNumbers = new HashMap<>();
+        for (Map.Entry<String, ArrayList<Integer>> entry : methodsToLineNumbers.entrySet()) {
+            String shortenedKey = entry.getKey()
+                    .split("/src/main/java/|/src/test/java/")[1]
+                    .replace(".java", "");
+            if (modifiedMethodsToLineNumbers.containsKey(shortenedKey)) {
+                throw new RuntimeException("Duplicate fully-qualified method name: " + shortenedKey);
+            }
+            modifiedMethodsToLineNumbers.put(shortenedKey, entry.getValue());
+        }
         return Collections.unmodifiableMap(modifiedMethodsToLineNumbers);
     }
 
@@ -171,9 +176,16 @@ public class MethodsHelper {
      * @return The Java method signature corresponding to the given ASM signature.
      */
     public static String convertAsmToJava(String methodAsmSignature) {
-        String methodArgs = "(" + methodAsmSignature.split("\\(")[1];
-        String javaArgs = convertAsmSignatureToJava(methodArgs);
-        return methodAsmSignature.split("\\(")[0] + javaArgs;
+        try {
+            String methodArgs = "(" + methodAsmSignature.split("\\(")[1];
+            String javaArgs = convertAsmSignatureToJava(methodArgs);
+            return methodAsmSignature.split("\\(")[0] + javaArgs;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.err.println("Input methodAsmSignature:" + methodAsmSignature);
+            e.printStackTrace();
+        }
+        // TODO: This might be problematic:
+        return "";
     }
 
     /**
