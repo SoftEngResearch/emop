@@ -6,16 +6,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.jboss.forge.roaster.Roaster;
 import org.jboss.forge.roaster.model.JavaType;
@@ -102,7 +101,14 @@ public class MethodsHelper {
         String[] classesNames = tempPath.split("\\$");
         File file = new File(classesNames[0] + ".java");
 
-        JavaClassSource javaClass = Roaster.parse(JavaClassSource.class, Files.newInputStream(file.toPath()));
+        JavaClassSource javaClass = null;
+        try {
+            javaClass = Roaster.parse(JavaClassSource.class, Files.newInputStream(file.toPath()));
+        } catch (NoSuchFileException ex) {
+            System.err.println("File " + filePath + " not found.");
+            ex.printStackTrace();
+            return;
+        }
         String sourceCode = new String(Files.readAllBytes(Paths.get(file.toURI())));
 
         ArrayList<String> methods = new ArrayList<>();
