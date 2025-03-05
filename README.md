@@ -22,7 +22,7 @@ Use Java 8 (Oracle JDK, Open JDK)
 
 ### STARTS Maven Plugin
 
-Make sure you install the `impacted-both-ways` branch of [STARTS](https://github.com/TestingResearchIllinois/starts) by following its installation guide, or run the following:
+Make sure you install the `impacted-both-ways` branch of [STARTS](https://github.com/TestingResearchIllinois/starts) by following its installation guide, or run the following **inside** the `emop` repository:
 
 ```bash
 bash scripts/install-starts.sh
