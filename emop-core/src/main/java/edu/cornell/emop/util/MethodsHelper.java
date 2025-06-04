@@ -20,6 +20,11 @@ import org.jboss.forge.roaster.Roaster;
 import org.jboss.forge.roaster.model.JavaType;
 import org.jboss.forge.roaster.model.source.JavaClassSource;
 import org.jboss.forge.roaster.model.source.MethodSource;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 public class MethodsHelper {
@@ -97,6 +102,11 @@ public class MethodsHelper {
             return;
         }
 
+        if (filePath.contains(".starts")) {
+            computeMethodToLineNumbersLibrary(filePath);
+            return;
+        }
+
         String tempPath = filePath.replace(".java", "");
         String[] classesNames = tempPath.split("\\$");
         File file = new File(classesNames[0] + ".java");
@@ -139,6 +149,7 @@ public class MethodsHelper {
             }
             methods.add(temp.toString());
             methodsToLineNumbers.put(filePath + "#" + temp, nums);
+            System.out.println("methodsToLineNumbers: " + filePath + "#" + temp + " -> " + nums);
         }
         classToMethods.put(filePath, methods);
         cachedFile.add(filePath);
@@ -218,5 +229,57 @@ public class MethodsHelper {
             }
         }
         return null;
+    }
+
+    public static void computeMethodToLineNumbersLibrary(String filePath) throws IOException {
+        if (cachedFile.contains(filePath)) {
+            return;
+        }
+
+        ArrayList<String> methods = new ArrayList<>();
+
+        try (FileInputStream fis = new FileInputStream(filePath)) {
+            ClassReader classReader = new ClassReader(fis);
+            ClassVisitor classVisitor = new ClassVisitor(Opcodes.ASM9) {
+                @Override
+                public MethodVisitor visitMethod(int access, String name, String descriptor,
+                                                 String signature, String[] exceptions) {
+                    return new MethodVisitor(Opcodes.ASM9) {
+                        private int startLine = Integer.MAX_VALUE;
+                        private int endLine = Integer.MIN_VALUE;
+
+                        @Override
+                        public void visitLineNumber(int line, Label start) {
+                            if (line < startLine) {
+                                startLine = line;
+                            }
+                            if (line > endLine) {
+                                endLine = line;
+                            }
+                        }
+
+                        @Override
+                        public void visitEnd() {
+                            // Only add method if we found line number information
+                            if (startLine != Integer.MAX_VALUE && endLine != Integer.MIN_VALUE) {
+                                String methodKey = name + descriptor;
+
+                                ArrayList<Integer> nums = new ArrayList<>();
+                                nums.add(startLine);
+                                nums.add(endLine);
+
+//                                methods.add(methodKey);
+//                                methodsToLineNumbers.put(filePath + "#" + methodKey, nums);
+                            }
+                        }
+                    };
+                }
+            };
+
+            classReader.accept(classVisitor, 0);
+        }
+//        classToMethods.put(filePath, methods);
+//        cachedFile.add(filePath);
+//        return methodRanges;
     }
 }

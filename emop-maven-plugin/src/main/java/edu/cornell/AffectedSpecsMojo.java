@@ -781,6 +781,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 String klas = ChecksumUtil.toClassOrJavaName(klasName, false);
                 URL url = loader.getResource(klas);
                 String filePath = url.getPath();
+//                System.out.println("Granularity.METHOD " + filePath + " and klas is " + klas);
 
                 filePath = filePath.replace(".class", ".java")
                         .replace("target", "src")
