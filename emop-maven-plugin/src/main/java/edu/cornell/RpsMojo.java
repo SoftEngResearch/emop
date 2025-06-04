@@ -90,6 +90,6 @@ public class RpsMojo extends MonitorMojo {
                 i += 1;
             }
         }
-        getLog().info("Added " + i + " classes to the changedMap from AspectJ's log.");
+        getLog().info("Added " + i + " class/spec to the changedMap from AspectJ's log.");
     }
 }
