@@ -15,6 +15,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -191,6 +192,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             if (classesToInstrument != null) {
                 IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
                 computeMapFromMessage(ms2);
+                Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
             }
             changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
 
@@ -946,10 +948,24 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         String sourceList = getArtifactsDir() + File.separator + "sources.lst";
         // Get changed instead of impacted to reduce compile time
         // get both changed (existing) and new classes
+
+        Path inputRoot = Paths.get(getArtifactsDir(), "lib-jars");
+        Path outputRoot = Paths.get(getArtifactsDir(), "lib-jars-tmp");
         if (classesToInstrument == null) {
             makeSourcesFile(sourceList, getNewClasses());
         } else {
-            Writer.writeToFile(classesToInstrument, sourceList);
+            try {
+                for (String fileToInstrument : classesToInstrument) {
+                    String fileName = fileToInstrument.replace(".", File.separator) + ".class";
+                    Path source = inputRoot.resolve(fileName);
+                    Path destination = outputRoot.resolve(fileName);
+
+                    Files.createDirectories(destination.getParent());
+                    Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         // extract the argument file that we want to use from the jar to the .starts directory
@@ -958,8 +974,13 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         // prepare the classpath that we want to call AJC with
         String classpath = getClassPath() + File.pathSeparator + getRuntimeJars();
         // prepare an array of arguments that the aspectj compiler will be called with
-        return new String[]{ "-classpath", classpath, "-argfile", aspectList, "-argfile", sourceList, "-argfile",
-                args.get(0), "-d", "weaved-bytecode"};
+        if (classesToInstrument == null) {
+            return new String[]{"-classpath", classpath, "-argfile", aspectList, "-argfile", sourceList, "-argfile",
+                    args.get(0), "-d", "weaved-bytecode"};
+        } else {
+            return new String[]{"-classpath", classpath, "-argfile", aspectList, "-inpath", outputRoot.toString(), "-argfile",
+                    args.get(0), "-d", "weaved-bytecode"};
+        }
     }
 
     private List<String> getNewlyUsedLibraries() throws MojoExecutionException {
@@ -968,17 +989,18 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         }
 
         List<String> libraries = new ArrayList<>();
-        getLog().info("Checking for newly used libraries...");
+        getLog().info("[eMOP] Checking for newly used libraries...");
         for (String klass : getImpacted()) {
             // Search if classes is a library class
             if (!classToSpecs.containsKey(klass)) {
                 // First time see, we need to get its specs
                 if (Files.exists(Paths.get(getArtifactsDir(), "lib-jars", klass.replace(".", File.separator) + ".class"))) {
-                    libraries.add(Paths.get(getArtifactsDir(), "lib-jars", klass.replace(".", File.separator) + ".class").toString());
+                    libraries.add(klass);
                 }
             }
         }
 
+        getLog().info("[eMOP] Found " + libraries.size() + " newly used libraries.");
         return libraries;
     }
 
