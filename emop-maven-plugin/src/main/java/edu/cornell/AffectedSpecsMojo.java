@@ -883,6 +883,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     }
 
     /**
+     * TODO: use the one from Util.java instead
      * Reads a binary file that stores a map.
      * @param fileName Name of the file to read
      * @return The map read from file

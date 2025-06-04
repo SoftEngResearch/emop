@@ -3,9 +3,11 @@ package edu.cornell.emop.util;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
@@ -532,5 +534,25 @@ public class Util {
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to set environment variable", ex);
         }
+    }
+
+    /**
+     * Reads a binary file that stores a map.
+     * @param fileName Name of the file to read
+     * @return The map read from file
+     */
+    public static Map<String, Set<String>> readMapFromFile(String artifactDir, String fileName) throws MojoExecutionException {
+        Map<String, Set<String>> map = new HashMap<>();
+        File oldMap = new File(artifactDir + File.separator + fileName);
+        if (oldMap.exists()) {
+            try (FileInputStream fileInput = new FileInputStream(
+                    artifactDir + File.separator + fileName);
+                 ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
+                map = (Map) objectInput.readObject();
+            } catch (IOException | ClassNotFoundException ex) {
+                ex.printStackTrace();
+            }
+        }
+        return map;
     }
 }
