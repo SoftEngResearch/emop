@@ -70,6 +70,10 @@ public class RpsMojo extends MonitorMojo {
 
         if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE || !finerSpecMapping) {
             for (String message : ms) {
+                if (!message.contains("weaveinfo Join point")) {
+                    continue;
+                }
+
                 String[] lexedMessage = message.split("'");
                 String key = lexedMessage[CLASS_INDEX_IN_MSG];
                 String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
