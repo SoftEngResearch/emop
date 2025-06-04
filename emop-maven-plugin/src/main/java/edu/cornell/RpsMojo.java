@@ -53,11 +53,11 @@ public class RpsMojo extends MonitorMojo {
                 ex.printStackTrace();
             }
 
-            try {
-                Files.delete(ajcLog);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+//            try {
+//                Files.delete(ajcLog);
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
         }
 
         long end = System.currentTimeMillis();
