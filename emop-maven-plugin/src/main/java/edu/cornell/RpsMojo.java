@@ -34,6 +34,7 @@ public class RpsMojo extends MonitorMojo {
     private Map<String, Set<String>> changedMap = new HashMap<>();
 
     public void execute() throws MojoExecutionException {
+        long start = System.currentTimeMillis();
         getLog().info("[eMOP] Invoking the RPS Mojo...");
         System.setProperty("exiting-rps", "false");
 
@@ -58,6 +59,9 @@ public class RpsMojo extends MonitorMojo {
                 throw new RuntimeException(e);
             }
         }
+
+        long end = System.currentTimeMillis();
+        getLog().info("[eMOP Timer] Compute affected specs from log takes " + (end - start) + " ms");
     }
 
     private void computeMapFromMessage(Path ajcLog) throws MojoExecutionException {
@@ -68,6 +72,7 @@ public class RpsMojo extends MonitorMojo {
             throw new MojoExecutionException("Error reading ajcLog file", e);
         }
 
+        int i = 0;
         if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE || !finerSpecMapping) {
             for (String message : ms) {
                 if (!message.contains("weaveinfo Join point")) {
@@ -82,7 +87,9 @@ public class RpsMojo extends MonitorMojo {
                     changedMap.put(key, new HashSet<>());
                 }
                 changedMap.get(key).add(value);
+                i += 1;
             }
         }
+        getLog().info("Added " + i + " classes to the changedMap from AspectJ's log.");
     }
 }
