@@ -31,6 +31,13 @@ public class MonitorMojo extends AffectedSpecsMojo {
 
     public void execute() throws MojoExecutionException {
         super.execute();
+
+        if (dependencyChanged) {
+            // We need to save weaving messages to a file
+            Util.setEnv("AJC_LOG", getArtifactsDir() + File.separator + "aspectj-weaving-message.log");
+            verboseAgent = true;
+        }
+
         if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
             if (getImpacted().isEmpty()) {
                 System.setProperty("exiting-rps", "true");

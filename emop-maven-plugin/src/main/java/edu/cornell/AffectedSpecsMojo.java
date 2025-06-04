@@ -12,6 +12,7 @@ import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -185,9 +186,16 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             long start = System.currentTimeMillis();
             classToSpecs = readMapFromFile("classToSpecs.bin");
             computeMapFromMessage(ms);
-            // Update map
+
+            List<String> classesToInstrument = getNewlyUsedLibraries();
+            if (classesToInstrument != null) {
+                IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
+                computeMapFromMessage(ms2);
+            }
             changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+
             computeAffectedSpecs(dependencyChanged);
+
             long end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Compute affected specs takes " + (end - start) + " ms");
 
@@ -521,8 +529,12 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
     }
 
     private IMessage[] doCompileTimeInstrumentation() throws MojoExecutionException {
+        return doCompileTimeInstrumentation(null);
+    }
+
+    private IMessage[] doCompileTimeInstrumentation(List<String> classesToInstrument) throws MojoExecutionException {
         long start = System.currentTimeMillis();
-        String[] arguments = createAJCArguments();
+        String[] arguments = createAJCArguments(classesToInstrument);
         Main compiler = new Main();
         MessageHandler mh = new MessageHandler();
         try {
@@ -915,6 +927,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
      * @throws MojoExecutionException if an error occurs during execution
      */
     private String[] createAJCArguments() throws MojoExecutionException {
+        return createAJCArguments(null);
+    }
+    private String[] createAJCArguments(List<String> classesToInstrument) throws MojoExecutionException {
         // extract the aspects for all available specs from the jar and make a list of them in a file
         String destinationDir = getArtifactsDir() + File.separator + "weaved-specs";
         String aspectList = getArtifactsDir() + File.separator + "aspects.lst";
@@ -931,7 +946,12 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         String sourceList = getArtifactsDir() + File.separator + "sources.lst";
         // Get changed instead of impacted to reduce compile time
         // get both changed (existing) and new classes
-        makeSourcesFile(sourceList, getNewClasses());
+        if (classesToInstrument == null) {
+            makeSourcesFile(sourceList, getNewClasses());
+        } else {
+            Writer.writeToFile(classesToInstrument, sourceList);
+        }
+
         // extract the argument file that we want to use from the jar to the .starts directory
         String argsList = getArtifactsDir() + File.separator + "argz";
         List<String> args = extractOrFind(argsList, ".lst", "argz");
@@ -940,6 +960,26 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         // prepare an array of arguments that the aspectj compiler will be called with
         return new String[]{ "-classpath", classpath, "-argfile", aspectList, "-argfile", sourceList, "-argfile",
                 args.get(0), "-d", "weaved-bytecode"};
+    }
+
+    private List<String> getNewlyUsedLibraries() throws MojoExecutionException {
+        if (dependencyChanged) {
+            return null;
+        }
+
+        List<String> libraries = new ArrayList<>();
+        getLog().info("Checking for newly used libraries...");
+        for (String klass : getImpacted()) {
+            // Search if classes is a library class
+            if (!classToSpecs.containsKey(klass)) {
+                // First time see, we need to get its specs
+                if (Files.exists(Paths.get(getArtifactsDir(), "lib-jars", klass.replace(".", File.separator) + ".class"))) {
+                    libraries.add(Paths.get(getArtifactsDir(), "lib-jars", klass.replace(".", File.separator) + ".class").toString());
+                }
+            }
+        }
+
+        return libraries;
     }
 
     /**

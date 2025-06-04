@@ -78,7 +78,6 @@ public class RpsMojo extends MonitorMojo {
                 String key = lexedMessage[CLASS_INDEX_IN_MSG];
                 String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
 
-                System.out.println("Key: " + key + ", Value: " + value);
                 if (!changedMap.containsKey(key)) {
                     changedMap.put(key, new HashSet<>());
                 }
