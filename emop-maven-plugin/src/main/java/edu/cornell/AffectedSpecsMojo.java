@@ -197,7 +197,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
                 // Handle case where we instrumented but we did not find any specs from ajc
                 for (String klass : classesToInstrument) {
-                    if (classToSpecs.containsKey(klass)) {
+                    if (!classToSpecs.containsKey(klass)) {
                         classToSpecs.put(klass, new HashSet<>());
                     }
                 }
