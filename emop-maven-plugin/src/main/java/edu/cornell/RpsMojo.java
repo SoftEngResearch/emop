@@ -44,7 +44,7 @@ public class RpsMojo extends MonitorMojo {
             classToSpecs = Util.readMapFromFile(getArtifactsDir(), "classToSpecs.bin");
             computeMapFromMessage(ajcLog);
             changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-
+            System.out.println(classToSpecs);
             try (FileOutputStream fos
                          = new FileOutputStream(getArtifactsDir() + File.separator + "classToSpecs.bin");
                  ObjectOutputStream oos = new ObjectOutputStream(fos)) {

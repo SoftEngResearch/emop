@@ -195,6 +195,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
             }
             changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+            System.out.println(classToSpecs);
 
             computeAffectedSpecs(dependencyChanged);
 
@@ -985,7 +986,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
     private List<String> getNewlyUsedLibraries() throws MojoExecutionException {
         if (dependencyChanged) {
-            return null;
+//            return null;
         }
 
         List<String> libraries = new ArrayList<>();
@@ -1001,6 +1002,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
         }
 
         getLog().info("[eMOP] Found " + libraries.size() + " newly used libraries.");
+        System.out.println(libraries);
         return libraries;
     }
 
