@@ -117,7 +117,6 @@ public class MethodsHelper {
             javaClass = Roaster.parse(JavaClassSource.class, Files.newInputStream(file.toPath()));
         } catch (NoSuchFileException ex) {
             System.err.println("File " + filePath + " not found.");
-            ex.printStackTrace();
             return;
         }
         String sourceCode = new String(Files.readAllBytes(Paths.get(file.toURI())));

@@ -76,11 +76,11 @@ public class RpsMojo extends MonitorMojo {
                     writeMapToFile();
                 }
             }
-//            try {
-//                Files.delete(ajcLog);
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            }
+            try {
+                Files.delete(ajcLog);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         long end = System.currentTimeMillis();
@@ -112,6 +112,8 @@ public class RpsMojo extends MonitorMojo {
                 changedMap.get(key).add(value);
                 i += 1;
             }
+
+            getLog().info("Added " + i + " class/spec to the changedMap from AspectJ's log.");
         } if (getGranularity() == Granularity.METHOD) {
             Classpath sfClassPath = getSureFireClassPath();
             ClassLoader loader = createClassLoader(sfClassPath);
@@ -168,9 +170,11 @@ public class RpsMojo extends MonitorMojo {
                 Set<String> methodSpecs = methodToSpecsUpdateMap.getOrDefault(key, new HashSet<>());
                 methodToSpecsUpdateMap.put(key, methodSpecs);
                 methodSpecs.add(spec);
+                i += 1;
             }
+
+            getLog().info("Added " + i + " method/spec to the methodToSpecsUpdateMap from AspectJ's log.");
         }
-        getLog().info("Added " + i + " class/spec to the changedMap from AspectJ's log.");
     }
 
     private void writeMapToFile() throws MojoExecutionException {

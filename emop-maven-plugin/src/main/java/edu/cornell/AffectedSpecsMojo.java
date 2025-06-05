@@ -298,7 +298,17 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
             try {
                 MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
+//                System.out.println("! computeMapFromMessage on ms");
                 computeMapFromMessage(ms);
+
+                List<String> classesToInstrument = getNewlyUsedLibraries();
+                if (classesToInstrument != null) {
+                    IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
+//                    System.out.println("!! computeMapFromMessage on ms2");
+                    computeMapFromMessage(ms2);
+                    Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
+                }
+
                 MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -783,10 +793,14 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 String filePath = url.getPath();
 //                System.out.println("Granularity.METHOD " + filePath + " and klas is " + klas);
 
-                filePath = filePath.replace(".class", ".java")
-                        .replace("target", "src")
-                        .replace("test-classes", "test/java")
-                        .replace("classes", "main/java");
+                if (filePath.contains("jar!")) {
+                    filePath = getArtifactsDir() + "lib-jars" + filePath.split("!")[1];
+                } else {
+                    filePath = filePath.replace(".class", ".java")
+                            .replace("target", "src")
+                            .replace("test-classes", "test/java")
+                            .replace("classes", "main/java");
+                }
 
                 try {
                     // This method has a return value, but it also updated a global variable inside its class.
@@ -807,10 +821,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 methodSpecs.add(spec);
             }
             for (String method : getImpactedMethods()) {
+//                System.out.println(">>> METHOD IS " + method);
                 methodToSpecsUpdateMap.putIfAbsent(MethodsHelper.convertAsmToJava(method), new HashSet<>());
             }
-
-            System.out.println(methodToSpecsUpdateMap);
         }
     }
 
