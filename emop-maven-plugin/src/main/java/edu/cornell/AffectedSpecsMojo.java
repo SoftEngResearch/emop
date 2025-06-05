@@ -240,6 +240,31 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             ) {
                 return;
             }
+            getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
+
+            IMessage[] ms = doCompileTimeInstrumentation();
+
+            long start = System.currentTimeMillis();
+            methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
+
+            try {
+                MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
+//                System.out.println("! computeMapFromMessage on ms");
+                computeMapFromMessage(ms);
+
+//                List<String> classesToInstrument = getNewlyUsedLibraries();
+//                if (classesToInstrument != null) {
+//                    IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
+////                    System.out.println("!! computeMapFromMessage on ms2");
+//                    computeMapFromMessage(ms2);
+//                    Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
+//                }
+
+                MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
             if (finerInstrumentation) {
                 if (!dependencyChanged) {
                     Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
@@ -261,14 +286,14 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                                         .getModifiedMethodsToLineNumbers()
                                         .get(javaFormat);
                                 if (range != null) {
-                                    int start = range.get(0);
+                                    int begin = range.get(0);
                                     int end = range.get(1);
                                     // First time
                                     classToImpactedLineNumbers.putIfAbsent(classDotFormat.split("#")[0],
                                             new HashSet<>());
                                     // Add all relevant lines
-                                    for (int line = start; line <= end; line++) {
-                                        classToImpactedLineNumbers.get(classDotFormat).add(line);
+                                    for (int line = begin; line <= end; line++) {
+                                        classToImpactedLineNumbers.get(classDotFormat.split("#")[0]).add(line);
                                     }
                                 }
                             }
@@ -289,30 +314,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     }
                 }
             }
-            getLog().info("[eMOP] Invoking the AffectedSpecsMethods Mojo...");
 
-            IMessage[] ms = doCompileTimeInstrumentation();
-
-            long start = System.currentTimeMillis();
-            methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
-
-            try {
-                MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
-//                System.out.println("! computeMapFromMessage on ms");
-                computeMapFromMessage(ms);
-
-                List<String> classesToInstrument = getNewlyUsedLibraries();
-                if (classesToInstrument != null) {
-                    IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
-//                    System.out.println("!! computeMapFromMessage on ms2");
-                    computeMapFromMessage(ms2);
-                    Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
-                }
-
-                MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
             // TODO: This debug segment looks really ugly, change it.
             if (debug) {
                 try (PrintWriter writer = new PrintWriter(getArtifactsDir() + File.separator + "lineMapping.txt")) {
@@ -419,13 +421,21 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             if (debug) {
                 getLog().info("Impacted Classes: " + getImpactedClasses());
             }
+
+            getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
+            IMessage[] ms = doCompileTimeInstrumentation();
+
+            long start = System.currentTimeMillis();
+            classesToSpecs = readMapFromFile(CLASSES_TO_SPECS_FILE_NAME);
+            methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
+
             if (finerInstrumentation) {
                 if (!dependencyChanged) {
                     Util.setEnv("IMPACTED_METHODS_FILE", getArtifactsDir() + File.separator + "impactedMethods.bin");
                     getLog().info("IMPACTED_METHODS_FILE is set to " + System.getenv("IMPACTED_METHODS_FILE"));
                     try (FileOutputStream fos
                                  = new FileOutputStream(getArtifactsDir() + File.separator + "impactedMethods.bin");
-                        ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                         ObjectOutputStream oos = new ObjectOutputStream(fos)) {
                         if (finerInstrumentationAlt) {
                             for (String impactedClass : getImpactedClasses()) {
                                 classToImpactedLineNumbers.putIfAbsent(impactedClass.replace("/", "."),
@@ -444,13 +454,13 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                                         .getModifiedMethodsToLineNumbers()
                                         .get(javaFormat);
                                 if (range != null) {
-                                    int start = range.get(0);
+                                    int begin = range.get(0);
                                     int end = range.get(1);
                                     // First time
                                     classToImpactedLineNumbers.putIfAbsent(classDotFormat.split("#")[0],
                                             new HashSet<>());
                                     // Add all relevant lines
-                                    for (int line = start; line <= end; line++) {
+                                    for (int line = begin; line <= end; line++) {
                                         classToImpactedLineNumbers.get(classDotFormat).add(line);
                                     }
                                 }
@@ -476,12 +486,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     }
                 }
             }
-            getLog().info("[eMOP] Invoking the AffectedSpecsHybrid Mojo...");
-            IMessage[] ms = doCompileTimeInstrumentation();
 
-            long start = System.currentTimeMillis();
-            classesToSpecs = readMapFromFile(CLASSES_TO_SPECS_FILE_NAME);
-            methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
             if (finerSpecMapping) {
                 try {
                     computeMethodsToSpecsMapFromMessage(ms);
@@ -1017,6 +1022,9 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
         List<String> libraries = new ArrayList<>();
         getLog().info("[eMOP] Checking for newly used libraries...");
+//       Set<String> impactedClasses = getImpactedMethods().stream()
+//                .map(str -> str.split("#")[0].replace('/', '.'))
+//                .collect(Collectors.toSet());
         for (String klass : getImpacted()) {
             // Search if classes is a library class
             if (!classToSpecs.containsKey(klass)) {
