@@ -77,9 +77,18 @@ public class MethodsHelper {
     public static Map<String, ArrayList<Integer>> getModifiedMethodsToLineNumbers() {
         Map<String, ArrayList<Integer>> modifiedMethodsToLineNumbers = new HashMap<>();
         for (Map.Entry<String, ArrayList<Integer>> entry : methodsToLineNumbers.entrySet()) {
-            String shortenedKey = entry.getKey()
-                    .split("/src/main/java/|/src/test/java/")[1]
-                    .replace(".java", "");
+//            System.out.println("FROM " + entry.getKey());
+            String shortenedKey = entry.getKey();
+            if (shortenedKey.contains(".class")) {
+                shortenedKey = shortenedKey
+                        .split("/lib-jars/")[1]
+                        .replace(".class", "");
+            } else {
+                shortenedKey = shortenedKey
+                        .split("/src/main/java/|/src/test/java/")[1]
+                        .replace(".java", "");
+            }
+//            System.out.println("TO "+ shortenedKey);
             if (modifiedMethodsToLineNumbers.containsKey(shortenedKey)) {
                 throw new RuntimeException("Duplicate fully-qualified method name: " + shortenedKey);
             }
