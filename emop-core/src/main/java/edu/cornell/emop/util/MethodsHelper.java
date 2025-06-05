@@ -59,6 +59,7 @@ public class MethodsHelper {
                      = new FileOutputStream(artifactsDir + File.separator + "lineMapping.bin");
              ObjectOutputStream oos = new ObjectOutputStream(fos)) {
             oos.writeObject(methodsToLineNumbers);
+//            System.out.println("SAVING methodsToLineNumg
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -102,7 +103,7 @@ public class MethodsHelper {
             return;
         }
 
-        if (filePath.contains(".starts")) {
+        if (filePath.endsWith(".class")) {
             computeMethodToLineNumbersLibrary(filePath);
             return;
         }
@@ -149,7 +150,7 @@ public class MethodsHelper {
             }
             methods.add(temp.toString());
             methodsToLineNumbers.put(filePath + "#" + temp, nums);
-            System.out.println("methodsToLineNumbers: " + filePath + "#" + temp + " -> " + nums);
+//            System.out.println("methodsToLineNumbers: " + filePath + "#" + temp + " -> " + nums);
         }
         classToMethods.put(filePath, methods);
         cachedFile.add(filePath);
@@ -268,8 +269,11 @@ public class MethodsHelper {
                                 nums.add(startLine);
                                 nums.add(endLine);
 
-//                                methods.add(methodKey);
-//                                methodsToLineNumbers.put(filePath + "#" + methodKey, nums);
+                                // /Users/kzg5/Desktop/Playground/osm-lib/src/main/java/com/conveyal/osmlib/display/Display.java#paintComponent(Graphics)
+                                String method = convertAsmToJava(methodKey);
+                                methods.add(method);
+                                methodsToLineNumbers.put(filePath + "#" + method, nums);
+//                                System.out.println("methodsToLineNumbers: " + filePath + "#" + method + " -> " + nums);
                             }
                         }
                     };
@@ -278,8 +282,7 @@ public class MethodsHelper {
 
             classReader.accept(classVisitor, 0);
         }
-//        classToMethods.put(filePath, methods);
-//        cachedFile.add(filePath);
-//        return methodRanges;
+        classToMethods.put(filePath, methods);
+        cachedFile.add(filePath);
     }
 }

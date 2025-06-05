@@ -124,7 +124,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 
     private enum OutputContent { MAP, SET }
 
-    private enum OutputFormat { BIN, TXT }
+    enum OutputFormat { BIN, TXT }
 
     private Map<String, Set<String>> changedMap = new HashMap<>();
 
@@ -801,6 +801,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     continue;
                 }
                 String key = klas.replace(".class", "") + "#" + method;
+//                System.out.println(">>> KEY IS " + key);
                 Set<String> methodSpecs = methodToSpecsUpdateMap.getOrDefault(key, new HashSet<>());
                 methodToSpecsUpdateMap.put(key, methodSpecs);
                 methodSpecs.add(spec);
@@ -808,6 +809,8 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             for (String method : getImpactedMethods()) {
                 methodToSpecsUpdateMap.putIfAbsent(MethodsHelper.convertAsmToJava(method), new HashSet<>());
             }
+
+            System.out.println(methodToSpecsUpdateMap);
         }
     }
 
@@ -816,7 +819,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
      * Write map from class to specs in either text or binary format.
      * @param format Output format of the map, text or binary
      */
-    private void writeMapToFile(Map<String, Set<String>> map, String fileName, OutputFormat format)
+    public void writeMapToFile(Map<String, Set<String>> map, String fileName, OutputFormat format)
             throws MojoExecutionException {
         switch (format) {
             case BIN:
@@ -912,7 +915,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
      * @param fileName Name of the file to read
      * @return The map read from file
      */
-    private Map<String, Set<String>> readMapFromFile(String fileName) throws MojoExecutionException {
+    public Map<String, Set<String>> readMapFromFile(String fileName) throws MojoExecutionException {
         Map<String, Set<String>> map = new HashMap<>();
         File oldMap = new File(getArtifactsDir() + File.separator + fileName);
         if (oldMap.exists()) {
