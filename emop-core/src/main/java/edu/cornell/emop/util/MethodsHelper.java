@@ -199,7 +199,7 @@ public class MethodsHelper {
             return methodAsmSignature.split("\\(")[0] + javaArgs;
         } catch (ArrayIndexOutOfBoundsException e) {
             System.err.println("Input methodAsmSignature:" + methodAsmSignature);
-            e.printStackTrace();
+//            e.printStackTrace();
         }
         // TODO: This might be problematic:
         return "";
