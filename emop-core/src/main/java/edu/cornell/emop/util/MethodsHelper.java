@@ -202,6 +202,11 @@ public class MethodsHelper {
      * @return The Java method signature corresponding to the given ASM signature.
      */
     public static String convertAsmToJava(String methodAsmSignature) {
+        if (!methodAsmSignature.contains("(")) {
+            // Not method, probably a field
+            return "";
+        }
+
         try {
             String methodArgs = "(" + methodAsmSignature.split("\\(")[1];
             String javaArgs = convertAsmSignatureToJava(methodArgs);

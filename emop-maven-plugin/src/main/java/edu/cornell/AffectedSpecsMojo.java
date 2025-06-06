@@ -252,15 +252,12 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 //                System.out.println("! computeMapFromMessage on ms");
                 computeMapFromMessage(ms);
 
-                /*
                 List<String> classesToInstrument = getNewlyUsedLibraries();
                 if (classesToInstrument != null) {
                     IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
                     computeMapFromMessage(ms2);
                     Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
                 }
-                 */
-
                 MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -353,7 +350,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             if (finerSpecMapping) {
                 methodToSpecsUpdateMap
                         .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-                System.out.println(methodToSpecsUpdateMap);
+//                System.out.println(methodToSpecsUpdateMap);
 
                 // Compute affected specs from changed methods or impacted methods
                 // TODO: "impacted" and "affected" should mean the same thing.
@@ -363,6 +360,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 if (getComputeImpactedMethods()) {
                     computeAffectedSpecs(getImpactedMethods());
                     getLog().info("[eMOP] Number of Impacted methods: " + getImpactedMethods().size());
+//                    System.out.println(getImpactedMethods());
                 } else {
                     computeAffectedSpecs(getAffectedMethods());
                     getLog().info("[eMOP] Number of affected methods: " + getAffectedMethods().size());
@@ -493,6 +491,16 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 try {
                     computeMethodsToSpecsMapFromMessage(ms);
                     computeClassesToSpecsMapFromMessage(ms);
+
+                    List<String> classesToInstrument = getNewlyUsedLibraries();
+                    if (classesToInstrument != null) {
+                        IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
+
+                        computeMethodsToSpecsMapFromMessage(ms2);
+                        computeClassesToSpecsMapFromMessage(ms2);
+
+                        Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
+                    }
                 } catch (Exception exception) {
                     exception.printStackTrace();
                 }
@@ -534,6 +542,13 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 getLog().info("[eMOP] Number of messages to process: " + Arrays.asList(ms).size());
             } else {
                 computeMapFromMessage(ms);
+                List<String> classesToInstrument = getNewlyUsedLibraries();
+                if (classesToInstrument != null) {
+                    IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
+                    computeMapFromMessage(ms2);
+                    Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
+                }
+
                 classToSpecs = readMapFromFile("classToSpecs.bin");
                 // Update map
                 changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
@@ -688,8 +703,14 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             URL url = loader.getResource(klas);
             String filePath = url.getPath();
 
-            filePath = filePath.replace(".class", ".java").replace("target", "src").replace("test-classes", "test/java")
-                    .replace("classes", "main/java");
+            if (filePath.contains("jar!")) {
+                filePath = getArtifactsDir() + "lib-jars" + filePath.split("!")[1];
+            } else {
+                filePath = filePath.replace(".class", ".java")
+                        .replace("target", "src")
+                        .replace("test-classes", "test/java")
+                        .replace("classes", "main/java");
+            }
 
             try {
                 MethodsHelper.computeMethodToLineNumbers(filePath);
@@ -1118,7 +1139,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             }
 
             // Source file not found in any standard directory
-            getLog().error("No source file found for class " + newClass);
+//            getLog().error("No source file found for class " + newClass);
         }
 
         Path mainClassesDir = getClassesDirectory().toPath().toAbsolutePath();

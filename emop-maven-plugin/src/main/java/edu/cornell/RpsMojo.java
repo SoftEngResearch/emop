@@ -35,6 +35,7 @@ public class RpsMojo extends MonitorMojo {
     private static final int SPEC_LINE_NUMBER = 4;
     private static final int TRIMMED_SPEC_NAME_INDEX = 4;
     private static final int SPEC_INDEX_IN_MSG = 5;
+    private static final String CLASSES_TO_SPECS_FILE_NAME = "classesToSpecs.bin";
     private static final String ASPECTJ_WEAVING_FILE = "aspectj-weaving-message.log";
     private static final String METHODS_TO_SPECS_FILE_NAME = "methodsToSpecs.bin";
 
@@ -47,7 +48,7 @@ public class RpsMojo extends MonitorMojo {
         System.setProperty("exiting-rps", "false");
 
         Path ajcLog = Paths.get(getArtifactsDir() + File.separator + ASPECTJ_WEAVING_FILE);
-        if (false && Files.exists(ajcLog)) {
+        if (Files.exists(ajcLog)) {
             getLog().info("AspectJ weaving log found: " + ajcLog.toString());
 
             if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
@@ -69,10 +70,34 @@ public class RpsMojo extends MonitorMojo {
                 if (finerSpecMapping) {
                     methodToSpecsUpdateMap
                             .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
-                    System.out.println(methodToSpecsUpdateMap);
+//                    System.out.println(methodToSpecsUpdateMap);
                     writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.BIN);
                 } else {
                     classToSpecs = readMapFromFile("classToSpecs.bin");
+                    changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+                    writeMapToFile();
+                }
+            } else if (getGranularity() == Granularity.HYBRID) {
+                classesToSpecs = readMapFromFile(CLASSES_TO_SPECS_FILE_NAME);
+                methodsToSpecs = readMapFromFile(METHODS_TO_SPECS_FILE_NAME);
+
+                if (finerSpecMapping) {
+                    try {
+                        computeMethodsToSpecsMapFromMessage(ajcLog);
+                        computeClassesToSpecsMapFromMessage(ajcLog);
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
+                    }
+                    methodToSpecsUpdateMap
+                            .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+                    classToSpecsUpdateMap
+                            .forEach((key, value) -> classesToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+
+                    writeMapToFile(classesToSpecs, CLASSES_TO_SPECS_FILE_NAME, OutputFormat.BIN);
+                    writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.BIN);
+                } else {
+                    classToSpecs = readMapFromFile("classToSpecs.bin");
+                    computeMapFromMessage(ajcLog);
                     changedMap.forEach((key, value) -> classToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
                     writeMapToFile();
                 }
@@ -176,6 +201,95 @@ public class RpsMojo extends MonitorMojo {
 
             getLog().info("Added " + i + " method/spec to the methodToSpecsUpdateMap from AspectJ's log.");
         }
+    }
+
+    private void computeClassesToSpecsMapFromMessage(Path ajcLog) throws MojoExecutionException {
+        String[] ms;
+        try {
+            ms = Files.lines(ajcLog).toArray(String[]::new);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Error reading ajcLog file", e);
+        }
+
+        MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
+        for (String message : ms) {
+            if (!message.contains("weaveinfo Join point")) {
+                continue;
+            }
+
+            String[] lexedMessage = message.split("'");
+            String key = lexedMessage[CLASS_INDEX_IN_MSG];
+            String value = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
+            if (!classToSpecsUpdateMap.containsKey(key)) {
+                classToSpecsUpdateMap.put(key, new HashSet<>());
+            }
+            classToSpecsUpdateMap.get(key).add(value);
+        }
+        MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
+    }
+
+    /**
+     * Compute a mapping from affected classes to specifications based on the
+     * messages from AJC log.
+     */
+    private void computeMethodsToSpecsMapFromMessage(Path ajcLog) throws Exception {
+        String[] ms;
+        try {
+            ms = Files.lines(ajcLog).toArray(String[]::new);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Error reading ajcLog file", e);
+        }
+
+        Classpath sfClassPath = getSureFireClassPath();
+        ClassLoader loader = createClassLoader(sfClassPath);
+        MethodsHelper.loadMethodsToLineNumbers(getArtifactsDir());
+        for (String message : ms) {
+            if (!message.contains("weaveinfo Join point")) {
+                continue;
+            }
+
+            String[] lexedMessage = message.split("'");
+            String klasName = lexedMessage[CLASS_INDEX_IN_MSG];
+            String spec = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
+
+            // It is possible that we don't have line number, so we need this tmp thing and set default to 0
+            String[] tmp = lexedMessage[SPEC_LINE_NUMBER].split(" ")[1].split(":");
+            int specLineNumber = 0;
+            if (tmp.length > 1) {
+                specLineNumber = Integer.parseInt(tmp[1].replace(")", ""));
+            }
+
+            String klas = ChecksumUtil.toClassOrJavaName(klasName, false);
+            URL url = loader.getResource(klas);
+            String filePath = url.getPath();
+
+            if (filePath.contains("jar!")) {
+                filePath = getArtifactsDir() + "lib-jars" + filePath.split("!")[1];
+            } else {
+                filePath = filePath.replace(".class", ".java")
+                        .replace("target", "src")
+                        .replace("test-classes", "test/java")
+                        .replace("classes", "main/java");
+            }
+
+            try {
+                MethodsHelper.computeMethodToLineNumbers(filePath);
+            } catch (ParserException exception) {
+                getLog().warn("File contains interface only, no methods found in " + filePath);
+            }
+
+            String method = MethodsHelper.getWrapMethod(filePath, specLineNumber);
+            if (method == null) {
+                getLog().warn("Spec at line " + specLineNumber + " in " + filePath + " is not within a method");
+                continue;
+            }
+            String key = klas.replace(".class", "") + "#" + method;
+            Set<String> methodSpecs = methodToSpecsUpdateMap.getOrDefault(key, new HashSet<>());
+            methodToSpecsUpdateMap.put(key, methodSpecs);
+            methodSpecs.add(spec);
+        }
+
+        MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
     }
 
     private void writeMapToFile() throws MojoExecutionException {
