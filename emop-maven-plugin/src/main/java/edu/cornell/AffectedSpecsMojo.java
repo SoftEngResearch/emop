@@ -252,13 +252,14 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 //                System.out.println("! computeMapFromMessage on ms");
                 computeMapFromMessage(ms);
 
-//                List<String> classesToInstrument = getNewlyUsedLibraries();
-//                if (classesToInstrument != null) {
-//                    IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
-////                    System.out.println("!! computeMapFromMessage on ms2");
-//                    computeMapFromMessage(ms2);
-//                    Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
-//                }
+                /*
+                List<String> classesToInstrument = getNewlyUsedLibraries();
+                if (classesToInstrument != null) {
+                    IMessage[] ms2 = doCompileTimeInstrumentation(classesToInstrument);
+                    computeMapFromMessage(ms2);
+                    Util.deleteRecursively(Paths.get(getArtifactsDir(), "lib-jars-tmp"));
+                }
+                 */
 
                 MethodsHelper.saveMethodsToLineNumbers(getArtifactsDir());
             } catch (Exception ex) {
@@ -352,6 +353,7 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
             if (finerSpecMapping) {
                 methodToSpecsUpdateMap
                         .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+                System.out.println(methodToSpecsUpdateMap);
 
                 // Compute affected specs from changed methods or impacted methods
                 // TODO: "impacted" and "affected" should mean the same thing.
@@ -791,8 +793,14 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                 String[] lexedMessage = message.getMessage().split("'");
                 String klasName = lexedMessage[CLASS_INDEX_IN_MSG];
                 String spec = lexedMessage[SPEC_INDEX_IN_MSG].substring(TRIMMED_SPEC_NAME_INDEX);
-                int specLineNumber = Integer
-                        .parseInt(lexedMessage[SPEC_LINE_NUMBER].split(" ")[1].split(":")[1].replace(")", ""));
+
+                // It is possible that we don't have line number, so we need this tmp thing and set default to 0
+                String[] tmp = lexedMessage[SPEC_LINE_NUMBER].split(" ")[1].split(":");
+                int specLineNumber = 0;
+                if (tmp.length > 1) {
+                    specLineNumber = Integer.parseInt(tmp[1].replace(")", ""));
+                }
+
                 String klas = ChecksumUtil.toClassOrJavaName(klasName, false);
                 URL url = loader.getResource(klas);
                 String filePath = url.getPath();
@@ -820,10 +828,10 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
                     continue;
                 }
                 String key = klas.replace(".class", "") + "#" + method;
-//                System.out.println(">>> KEY IS " + key);
                 Set<String> methodSpecs = methodToSpecsUpdateMap.getOrDefault(key, new HashSet<>());
                 methodToSpecsUpdateMap.put(key, methodSpecs);
                 methodSpecs.add(spec);
+//                System.out.println(">>> KEY IS " + key + ", methodSpecs is " + methodSpecs);
             }
             for (String method : getImpactedMethods()) {
 //                System.out.println(">>> METHOD IS " + method);
@@ -1025,12 +1033,25 @@ public class AffectedSpecsMojo extends ImpactedComponentsMojo {
 //       Set<String> impactedClasses = getImpactedMethods().stream()
 //                .map(str -> str.split("#")[0].replace('/', '.'))
 //                .collect(Collectors.toSet());
-        for (String klass : getImpacted()) {
-            // Search if classes is a library class
-            if (!classToSpecs.containsKey(klass)) {
-                // First time see, we need to get its specs
-                if (Files.exists(Paths.get(getArtifactsDir(), "lib-jars", klass.replace(".", File.separator) + ".class"))) {
-                    libraries.add(klass);
+
+        if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
+            for (String klass : getImpacted()) {
+                // Search if classes is a library class
+                if (!classToSpecs.containsKey(klass)) {
+                    // First time see, we need to get its specs
+                    if (Files.exists(Paths.get(getArtifactsDir(), "lib-jars", klass.replace(".", File.separator) + ".class"))) {
+                        libraries.add(klass);
+                    }
+                }
+            }
+        } else if (getGranularity() == Granularity.METHOD) {
+            for (String method : getImpactedMethods()) {
+                // Search if classes is a library class
+                if (!methodsToSpecs.containsKey(method)) {
+                    String klass = method.split("#")[0].replace('/', '.');
+                    if (Files.exists(Paths.get(getArtifactsDir(), "lib-jars", klass.replace(".", File.separator) + ".class"))) {
+                        libraries.add(klass);
+                    }
                 }
             }
         }

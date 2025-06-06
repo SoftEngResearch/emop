@@ -47,7 +47,7 @@ public class RpsMojo extends MonitorMojo {
         System.setProperty("exiting-rps", "false");
 
         Path ajcLog = Paths.get(getArtifactsDir() + File.separator + ASPECTJ_WEAVING_FILE);
-        if (Files.exists(ajcLog)) {
+        if (false && Files.exists(ajcLog)) {
             getLog().info("AspectJ weaving log found: " + ajcLog.toString());
 
             if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
@@ -69,6 +69,7 @@ public class RpsMojo extends MonitorMojo {
                 if (finerSpecMapping) {
                     methodToSpecsUpdateMap
                             .forEach((key, value) -> methodsToSpecs.merge(key, value, (oldValue, newValue) -> newValue));
+                    System.out.println(methodToSpecsUpdateMap);
                     writeMapToFile(methodsToSpecs, METHODS_TO_SPECS_FILE_NAME, OutputFormat.BIN);
                 } else {
                     classToSpecs = readMapFromFile("classToSpecs.bin");
