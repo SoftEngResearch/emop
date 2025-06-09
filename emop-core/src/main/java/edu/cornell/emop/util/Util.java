@@ -311,8 +311,11 @@ public class Util {
                     writer.println("            classToImpactedLineNumbers = new HashMap<String, HashSet<Integer>>();");
                     writer.println("        }");
                     writer.println("    }");
-                    writer.println("    return classToImpactedLineNumbers.keySet().contains(joinPoint.getSignature().getDeclaringTypeName())");
-                    writer.println("                && (classToImpactedLineNumbers.get(joinPoint.getSignature().getDeclaringTypeName()).contains(joinPoint.getSourceLocation().getLine()) || classToImpactedLineNumbers.get(joinPoint.getSignature().getDeclaringTypeName()).isEmpty());");
+                    writer.println("    String sourceType = joinPoint.getSourceLocation().getWithinType().getName();");
+                    writer.println("    int sourceLine = joinPoint.getSourceLocation().getLine();");
+                    writer.println("    return classToImpactedLineNumbers.keySet().contains(sourceType)");
+                    writer.println("            && (classToImpactedLineNumbers.get(sourceType).contains(sourceLine)");
+                    writer.println("                    || classToImpactedLineNumbers.get(sourceType).isEmpty());");
                     writer.println("}");
                 } else {
                     writer.println("private static HashSet<String> affectedMethods;");
