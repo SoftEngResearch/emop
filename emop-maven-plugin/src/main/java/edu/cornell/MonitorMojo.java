@@ -29,6 +29,9 @@ public class MonitorMojo extends AffectedSpecsMojo {
     @Parameter(property = "verboseAgent", defaultValue = "false")
     private boolean verboseAgent;
 
+    @Parameter(property = "haltForRTS", defaultValue = "false")
+    protected boolean haltForRTS;
+
     public void execute() throws MojoExecutionException {
         super.execute();
 
@@ -120,6 +123,10 @@ public class MonitorMojo extends AffectedSpecsMojo {
                     getArtifactsDir() + File.separator + AGENT_CONFIGURATION_FILE);
             long end = System.currentTimeMillis();
             getLog().info("[eMOP Timer] Generating aop-ajc.xml and replace it takes " + (end - start) + " ms");
+        }
+        if (haltForRTS) {
+            getLog().info("[eMOP] RTS is enabled, halting for RTS.");
+            System.exit(0);
         }
     }
 
