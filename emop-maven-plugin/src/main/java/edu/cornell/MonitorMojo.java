@@ -7,6 +7,7 @@ import java.util.Set;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.io.IOException;
 
 import edu.cornell.emop.maven.AgentLoader;
 import edu.cornell.emop.util.Util;
@@ -44,7 +45,7 @@ public class MonitorMojo extends AffectedSpecsMojo {
             verboseAgent = true;
 
             try {
-                Path ajcLog = Paths.get(getArtifactsDir() + File.separator + ASPECTJ_WEAVING_FILE);
+                Path ajcLog = Paths.get(getArtifactsDir() + File.separator + "aspectj-weaving-message.log");
                 if (Files.exists(ajcLog)) {
                     Files.delete(ajcLog);
                 }
