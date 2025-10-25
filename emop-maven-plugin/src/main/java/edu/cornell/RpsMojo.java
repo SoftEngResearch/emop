@@ -102,11 +102,6 @@ public class RpsMojo extends MonitorMojo {
                     writeMapToFile();
                 }
             }
-            try {
-                Files.delete(ajcLog);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
         }
 
         long end = System.currentTimeMillis();
