@@ -43,15 +43,14 @@ public class MonitorMojo extends AffectedSpecsMojo {
             // We need to save weaving messages to a file
             Util.setEnv("AJC_LOG", getArtifactsDir() + File.separator + "aspectj-weaving-message.log");
             verboseAgent = true;
-
-            try {
-                Path ajcLog = Paths.get(getArtifactsDir() + File.separator + "aspectj-weaving-message.log");
-                if (Files.exists(ajcLog)) {
-                    Files.delete(ajcLog);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        }
+        try {
+            Path ajcLog = Paths.get(getArtifactsDir() + File.separator + "aspectj-weaving-message.log");
+            if (Files.exists(ajcLog)) {
+                Files.delete(ajcLog);
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
         if (getGranularity() == Granularity.CLASS || getGranularity() == Granularity.FINE) {
